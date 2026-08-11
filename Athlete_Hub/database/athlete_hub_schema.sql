@@ -646,3 +646,4 @@ CREATE TABLE notifications (
         REFERENCES users(user_id)
         ON DELETE CASCADE
 );
+
