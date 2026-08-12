@@ -1,0 +1,352 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using AthleteHub.API.Data;
+using AthleteHub.API.DTOs;
+using AthleteHub.API.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+
+namespace AthleteHub.API.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
+{
+    private readonly AthleteHubDbContext _context;
+    private readonly IConfiguration _configuration;
+
+    public AuthController(
+        AthleteHubDbContext context,
+        IConfiguration configuration)
+    {
+        _context = context;
+        _configuration = configuration;
+    }
+
+
+    // ==========================================
+    // REGISTER ATHLETE
+    // POST: /api/Auth/register
+    // ==========================================
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(RegisterRequest request)
+    {
+        // Check if University ID already exists
+        var existingUniversityId = await _context.Users
+            .AnyAsync(u => u.UniversityId == request.UniversityId);
+
+        if (existingUniversityId)
+        {
+            return BadRequest(new
+            {
+                message = "University ID is already registered."
+            });
+        }
+
+        // Check if email already exists
+        var existingEmail = await _context.Users
+            .AnyAsync(u => u.Email == request.Email);
+
+        if (existingEmail)
+        {
+            return BadRequest(new
+            {
+                message = "Email is already registered."
+            });
+        }
+
+        // Find ATHLETE role
+        var athleteRole = await _context.Roles
+            .FirstOrDefaultAsync(r => r.RoleId == 1);
+
+        if (athleteRole == null)
+        {
+            return StatusCode(500, new
+            {
+                message = "ATHLETE role was not found in the database."
+            });
+        }
+
+        // Create user
+        var user = new User
+        {
+            RoleId = athleteRole.RoleId,
+
+            UniversityId = request.UniversityId,
+
+            Email = request.Email,
+
+            // Hash password before saving
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(
+                request.Password
+            ),
+
+            FirstName = request.FirstName,
+
+            MiddleName = request.MiddleName,
+
+            LastName = request.LastName,
+
+            Phone = request.Phone,
+
+            AccountStatus = "ACTIVE",
+
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Users.Add(user);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Athlete account successfully registered.",
+            userId = user.UserId,
+            universityId = user.UniversityId,
+            email = user.Email,
+            role = athleteRole.RoleName
+        });
+    }
+
+
+    // ==========================================
+    // LOGIN
+    // POST: /api/Auth/login
+    // ==========================================
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(LoginRequest request)
+    {
+        // Find user by email
+        var user = await _context.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+        // User does not exist
+        if (user == null)
+        {
+            return Unauthorized(new
+            {
+                message = "Invalid email or password."
+            });
+        }
+
+        // Check account status
+        if (user.AccountStatus != "ACTIVE")
+        {
+            return Unauthorized(new
+            {
+                message = "This account is not active."
+            });
+        }
+
+        // Verify password
+        bool passwordValid = BCrypt.Net.BCrypt.Verify(
+            request.Password,
+            user.PasswordHash
+        );
+
+        if (!passwordValid)
+        {
+            return Unauthorized(new
+            {
+                message = "Invalid email or password."
+            });
+        }
+
+
+        // ==========================================
+        // JWT CONFIGURATION
+        // ==========================================
+
+        var jwtKey = _configuration["Jwt:Key"];
+        var jwtIssuer = _configuration["Jwt:Issuer"];
+        var jwtAudience = _configuration["Jwt:Audience"];
+
+        if (string.IsNullOrEmpty(jwtKey))
+        {
+            return StatusCode(500, new
+            {
+                message = "JWT key is not configured."
+            });
+        }
+
+
+        // ==========================================
+        // JWT CLAIMS
+        // ==========================================
+
+        var claims = new List<Claim>
+        {
+            // User ID
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                user.UserId.ToString()
+            ),
+
+            // Email
+            new Claim(
+                ClaimTypes.Name,
+                user.Email
+            ),
+
+            // Role
+            new Claim(
+                ClaimTypes.Role,
+                user.Role.RoleName
+            ),
+
+            // University ID
+            new Claim(
+                "UniversityId",
+                user.UniversityId
+            ),
+
+            // First Name
+            new Claim(
+                "FirstName",
+                user.FirstName
+            ),
+
+            // Last Name
+            new Claim(
+                "LastName",
+                user.LastName
+            )
+        };
+
+
+        // ==========================================
+        // CREATE SIGNING KEY
+        // ==========================================
+
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtKey)
+        );
+
+
+        // ==========================================
+        // CREATE SIGNING CREDENTIALS
+        // ==========================================
+
+        var credentials = new SigningCredentials(
+            key,
+            SecurityAlgorithms.HmacSha256
+        );
+
+
+        // ==========================================
+        // CREATE JWT TOKEN
+        // ==========================================
+
+        var token = new JwtSecurityToken(
+            issuer: jwtIssuer,
+            audience: jwtAudience,
+            claims: claims,
+
+            // Token expires after 2 hours
+            expires: DateTime.UtcNow.AddHours(2),
+
+            signingCredentials: credentials
+        );
+
+
+        // Convert token to string
+        var tokenString = new JwtSecurityTokenHandler()
+            .WriteToken(token);
+
+
+        // ==========================================
+        // LOGIN RESPONSE
+        // ==========================================
+
+        return Ok(new
+        {
+            message = "Login successful.",
+
+            token = tokenString,
+
+            userId = user.UserId,
+
+            universityId = user.UniversityId,
+
+            email = user.Email,
+
+            firstName = user.FirstName,
+
+            lastName = user.LastName,
+
+            roleId = user.RoleId,
+
+            role = user.Role.RoleName
+        });
+    }
+
+
+    // ==========================================
+    // GET CURRENT USER
+    // GET: /api/Auth/me
+    // ==========================================
+    //
+    // This endpoint requires a valid JWT token.
+    //
+    // Request:
+    // GET /api/Auth/me
+    //
+    // Header:
+    // Authorization: Bearer YOUR_TOKEN
+    // ==========================================
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult GetCurrentUser()
+    {
+        // Get information from JWT claims
+        var userId = User.FindFirstValue(
+            ClaimTypes.NameIdentifier
+        );
+
+        var email = User.FindFirstValue(
+            ClaimTypes.Name
+        );
+
+        var role = User.FindFirstValue(
+            ClaimTypes.Role
+        );
+
+        var universityId = User.FindFirstValue(
+            "UniversityId"
+        );
+
+        var firstName = User.FindFirstValue(
+            "FirstName"
+        );
+
+        var lastName = User.FindFirstValue(
+            "LastName"
+        );
+
+
+        // Return information from authenticated user
+        return Ok(new
+        {
+            message = "JWT authentication successful.",
+
+            userId,
+
+            universityId,
+
+            email,
+
+            firstName,
+
+            lastName,
+
+            role
+        });
+    }
+}

@@ -647,3 +647,7 @@ CREATE TABLE notifications (
         ON DELETE CASCADE
 );
 
+USE athlete_hub;
+
+SHOW TABLES;
+

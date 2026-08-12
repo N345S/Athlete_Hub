@@ -3,4 +3,64 @@
 GET {{AthleteHub.API_HostAddress}}/weatherforecast/
 Accept: application/json
 
-###
+
+### Register Athlete
+POST http://localhost:5007/api/Auth/register
+Content-Type: application/json
+
+{
+    "universityId": "TEST-2026-001",
+    "email": "testathlete@example.com",
+    "password": "Password123!",
+    "firstName": "Test",
+    "middleName": "Athlete",
+    "lastName": "User",
+    "phone": "09123456789"
+}
+
+
+### Login Athlete
+POST http://localhost:5007/api/Auth/login
+Content-Type: application/json
+
+{
+    "email": "testathlete@example.com",
+    "password": "Password123!"
+}
+
+### Get Current User
+GET http://localhost:5007/api/Auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODY1NTU2OTYsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.hy7_6mz9cD-e6RNQgkq01sZmyGte5BfE91RIgh4XW6c
+
+### ATHLETE ROLE TEST
+GET http://localhost:5007/api/RoleTest/athlete
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODY1NTU2OTYsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.hy7_6mz9cD-e6RNQgkq01sZmyGte5BfE91RIgh4XW6c
+
+
+
+### COACH ROLE TEST
+GET http://localhost:5007/api/RoleTest/coach
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODY1NTU2OTYsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.hy7_6mz9cD-e6RNQgkq01sZmyGte5BfE91RIgh4XW6c
+
+
+### DIRECTOR ROLE TEST
+GET http://localhost:5007/api/RoleTest/director
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODY1NTU2OTYsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.hy7_6mz9cD-e6RNQgkq01sZmyGte5BfE91RIgh4XW6c
+
+### Get My Athlete Profile
+GET http://localhost:5007/api/AthleteProfile/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODY1NTU2OTYsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.hy7_6mz9cD-e6RNQgkq01sZmyGte5BfE91RIgh4XW6c
+
+### Update My Athlete Profile
+PUT http://localhost:5007/api/AthleteProfile/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODY1NTU2OTYsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.hy7_6mz9cD-e6RNQgkq01sZmyGte5BfE91RIgh4XW6c
+Content-Type: application/json
+
+{
+    "course": "BS Information Technology",
+    "yearLevel": 4,
+    "birthDate": "2004-05-16",
+    "profilePhotoUrl": "https://example.com/profile.jpg",
+    "phone": "09123456789"
+}
+
