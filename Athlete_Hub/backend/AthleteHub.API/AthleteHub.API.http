@@ -64,3 +64,6 @@ Content-Type: application/json
     "phone": "09123456789"
 }
 
+### Get My Academic Records
+GET http://localhost:5007/api/AcademicRecords/me
+Authorization: Bearer PASTE_YOUR_JWT_TOKEN_HERE
