@@ -1,14 +1,4 @@
 -- ============================================================
--- ATHLETE-HUB DATABASE SCHEMA
--- Sprint 1
--- MySQL 8.0+
---
--- Schema only:
--- No sample/test data is inserted.
--- ============================================================
-
-
--- ============================================================
 -- 1. CREATE DATABASE
 -- ============================================================
 
@@ -647,7 +637,6 @@ CREATE TABLE notifications (
         ON DELETE CASCADE
 );
 
-USE athlete_hub;
 
-SHOW TABLES;
 
+SELECT * FROM users
