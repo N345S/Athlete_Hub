@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using AthleteHub.API.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +7,7 @@ namespace AthleteHub.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AcademicRecordsController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
@@ -17,96 +17,59 @@ public class AcademicRecordsController : ControllerBase
         _context = context;
     }
 
-
     // ==========================================
-    // GET CURRENT ATHLETE'S ACADEMIC RECORDS
-    // GET: /api/AcademicRecords/me
+    // GET ACADEMIC RECORDS FOR AN ATHLETE
+    // GET: /api/AcademicRecords/athlete/{athleteId}
     // ==========================================
 
-    [Authorize(Roles = "ATHLETE")]
-    [HttpGet("me")]
-    public async Task<IActionResult> GetMyAcademicRecords()
+    [HttpGet("athlete/{athleteId}")]
+    public async Task<IActionResult> GetAthleteAcademicRecords(int athleteId)
     {
-        // Get User ID from JWT
-        var userIdClaim = User.FindFirstValue(
-            ClaimTypes.NameIdentifier
-        );
-
-        if (string.IsNullOrEmpty(userIdClaim))
-        {
-            return Unauthorized(new
-            {
-                message = "User ID was not found in the JWT."
-            });
-        }
-
-        // Convert User ID to integer
-        if (!int.TryParse(userIdClaim, out int userId))
-        {
-            return Unauthorized(new
-            {
-                message = "Invalid User ID in JWT."
-            });
-        }
-
-
-        // Find the athlete profile belonging
-        // to the authenticated user
-        var athlete = await _context.AthleteProfiles
-            .FirstOrDefaultAsync(a => a.UserId == userId);
-
-        if (athlete == null)
-        {
-            return NotFound(new
-            {
-                message = "Athlete profile not found.",
-                userId = userId
-            });
-        }
-
-
-        // Get academic records
         var records = await _context.AcademicRecords
-            .Where(a => a.AthleteId == athlete.AthleteId)
-            .OrderByDescending(a => a.AcademicRecordId)
+            .Include(a => a.Term)
+            .Where(a => a.AthleteId == athleteId)
+            .OrderByDescending(a => a.Term.AcademicYear)
+            .ThenBy(a => a.Term.Semester)
+            .ThenBy(a => a.SubjectCode)
             .Select(a => new
             {
                 academicRecordId = a.AcademicRecordId,
-
                 athleteId = a.AthleteId,
 
-                termId = a.TermId,
-
-                importBatchId = a.ImportBatchId,
+                term = new
+                {
+                    termId = a.Term.TermId,
+                    academicYear = a.Term.AcademicYear,
+                    semester = a.Term.Semester,
+                    startDate = a.Term.StartDate,
+                    endDate = a.Term.EndDate
+                },
 
                 subjectCode = a.SubjectCode,
-
                 subjectName = a.SubjectName,
-
                 units = a.Units,
-
                 grade = a.Grade,
-
                 remarks = a.Remarks,
-
                 sourceType = a.SourceType,
-
                 importedAt = a.ImportedAt
             })
             .ToListAsync();
 
+        if (records.Count == 0)
+        {
+            return NotFound(new
+            {
+                message = "No academic records found for this athlete.",
+                athleteId = athleteId
+            });
+        }
 
-        // Return records
         return Ok(new
         {
-            endpoint = "GET /api/AcademicRecords/me",
-
-            message = "Academic records retrieved successfully.",
-
-            athleteId = athlete.AthleteId,
-
+            endpoint = $"GET /api/AcademicRecords/athlete/{athleteId}",
+            access = "GRANTED",
+            athleteId = athleteId,
             recordCount = records.Count,
-
             records
         });
     }
