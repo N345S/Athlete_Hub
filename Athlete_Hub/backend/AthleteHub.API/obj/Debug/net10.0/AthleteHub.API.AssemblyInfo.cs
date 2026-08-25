@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AthleteHub.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d652da64765a76f75539e37d2008c9a99cf82e4b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1a7c85c67e10f2659382a5b8ba9f8e033ebcd0f5")]
 [assembly: System.Reflection.AssemblyProductAttribute("AthleteHub.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AthleteHub.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
