@@ -100,6 +100,9 @@ if (app.Environment.IsDevelopment())
 // HTTPS redirection
 app.UseHttpsRedirection();
 
+// Serve uploaded document files
+app.UseStaticFiles();
+
 // JWT authentication
 app.UseAuthentication();
 

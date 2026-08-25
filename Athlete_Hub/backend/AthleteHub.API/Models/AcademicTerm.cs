@@ -9,7 +9,7 @@ public partial class AcademicTerm
 
     public string AcademicYear { get; set; } = null!;
 
-    public string TermName { get; set; } = null!;
+    public string Semester { get; set; } = null!;
 
     public DateTime? StartDate { get; set; }
 

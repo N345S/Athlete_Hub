@@ -62,4 +62,42 @@ public class RoleTestController : ControllerBase
             message = "You have successfully accessed the DIRECTOR-only endpoint."
         });
     }
+
+
+    // ==========================================
+    // ADMIN ONLY
+    // GET: /api/RoleTest/admin-test
+    // ==========================================
+
+    [Authorize(Roles = "ADMIN")]
+    [HttpGet("admin-test")]
+    public IActionResult AdminTest()
+    {
+        return Ok(new
+        {
+            endpoint = "GET /api/RoleTest/admin-test",
+            access = "GRANTED",
+            roleRequired = "ADMIN",
+            message = "You have successfully accessed the ADMIN-only endpoint."
+        });
+    }
+
+
+    // ==========================================
+    // REGISTRAR ONLY
+    // GET: /api/RoleTest/registrar
+    // ==========================================
+
+    [Authorize(Roles = "REGISTRAR")]
+    [HttpGet("registrar")]
+    public IActionResult RegistrarOnly()
+    {
+        return Ok(new
+        {
+            endpoint = "GET /api/RoleTest/registrar",
+            access = "GRANTED",
+            roleRequired = "REGISTRAR",
+            message = "You have successfully accessed the REGISTRAR-only endpoint."
+        });
+    }
 }

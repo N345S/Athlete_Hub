@@ -102,6 +102,14 @@ public class AuthController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        _context.AthleteProfiles.Add(new AthleteProfile
+        {
+            UserId = user.UserId,
+            StudentNumber = user.UniversityId
+        });
+
+        await _context.SaveChangesAsync();
+
         return Ok(new
         {
             message = "Athlete account successfully registered.",

@@ -153,7 +153,7 @@ public partial class AthleteHubDbContext : DbContext
 
             entity.ToTable("academic_terms");
 
-            entity.HasIndex(e => new { e.AcademicYear, e.TermName }, "academic_year").IsUnique();
+            entity.HasIndex(e => new { e.AcademicYear, e.Semester }, "academic_year").IsUnique();
 
             entity.Property(e => e.TermId).HasColumnName("term_id");
             entity.Property(e => e.AcademicYear)
@@ -165,9 +165,9 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.StartDate)
                 .HasColumnType("date")
                 .HasColumnName("start_date");
-            entity.Property(e => e.TermName)
+            entity.Property(e => e.Semester)
                 .HasMaxLength(50)
-                .HasColumnName("term_name");
+                .HasColumnName("semester");
         });
 
         modelBuilder.Entity<Achievement>(entity =>

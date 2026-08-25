@@ -1,14 +1,4 @@
 -- ============================================================
--- ATHLETE-HUB DATABASE SCHEMA
--- Sprint 1
--- MySQL 8.0+
---
--- Schema only:
--- No sample/test data is inserted.
--- ============================================================
-
-
--- ============================================================
 -- 1. CREATE DATABASE
 -- ============================================================
 
@@ -203,7 +193,7 @@ CREATE TABLE academic_terms (
 
     academic_year VARCHAR(20) NOT NULL,
 
-    term_name VARCHAR(50) NOT NULL,
+    semester VARCHAR(50) NOT NULL,
 
     start_date DATE,
 
@@ -211,7 +201,7 @@ CREATE TABLE academic_terms (
 
     UNIQUE (
         academic_year,
-        term_name
+        semester
     )
 );
 
@@ -647,7 +637,6 @@ CREATE TABLE notifications (
         ON DELETE CASCADE
 );
 
-USE athlete_hub;
 
-SHOW TABLES;
 
+SELECT * FROM users
