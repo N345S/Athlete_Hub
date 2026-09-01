@@ -23,6 +23,26 @@ builder.Services.AddDbContext<AthleteHubDbContext>(options =>
 
 builder.Services.AddControllers();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:8000",
+                "http://127.0.0.1:8000",
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 
 // ==========================================
 // JWT AUTHENTICATION
@@ -99,6 +119,8 @@ if (app.Environment.IsDevelopment())
 
 // HTTPS redirection
 app.UseHttpsRedirection();
+
+app.UseCors("FrontendPolicy");
 
 // Serve uploaded document files
 app.UseStaticFiles();

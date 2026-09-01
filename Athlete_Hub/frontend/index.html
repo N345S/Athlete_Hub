@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Athlete-Hub | Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="brand-panel">
+        <div class="brand-header">
+          <div class="crest" aria-label="Athlete-Hub logo">
+            <span>AH</span>
+          </div>
+          <h1>Athlete-Hub</h1>
+        </div>
+
+        <p class="tagline">
+          Centralized Digital Portfolio &amp; Monitoring System
+        </p>
+
+        <div class="hero-copy">
+          Track academic and athletic performance on one platform — built for Filipino student-athletes, coaches, and administrators.
+        </div>
+
+        <div class="feature-pills" aria-label="Key features">
+          <span>Role-Based Access</span>
+          <span>PH Grading System</span>
+          <span>Digital Portfolio</span>
+          <span>Eligibility Tracking</span>
+        </div>
+      </section>
+
+      <section class="form-panel">
+        <div class="login-card">
+          <h2>Welcome back</h2>
+          <p>Sign in to access your Athlete-Hub portal</p>
+
+          <form id="loginForm" novalidate>
+            <div class="field-block">
+              <label for="email">Email Address</label>
+              <div class="input-wrap">
+                <span class="input-icon">✉</span>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="your.email@university.edu"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="field-block">
+              <label for="password">Password</label>
+              <div class="input-wrap">
+                <span class="input-icon">🔒</span>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  autocomplete="current-password"
+                  required
+                />
+                <button type="button" class="toggle-password" aria-label="Show password">◉</button>
+              </div>
+            </div>
+
+            <div class="helper-row">
+              <span class="status-pill">Secure access portal</span>
+            </div>
+
+            <div id="loginError" class="error-message" aria-live="polite"></div>
+
+            <button class="submit-button" type="submit">Sign In <span>→</span></button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

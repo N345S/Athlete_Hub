@@ -393,3 +393,4 @@ C:\Users\SMB\Documents\GitHub\Athlete_Hub\build-validation-sprint2-proposal\Athl
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\build-validation-sprint2-proposal\AthleteHub.API.runtimeconfig.json
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\build-validation-sprint2-proposal\AthleteHub.API.dll
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\build-validation-sprint2-proposal\AthleteHub.API.pdb
+C:\AthleteHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\bin\Debug\net10.0\AthleteHub.API.staticwebassets.runtime.json
