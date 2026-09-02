@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Athlete-Hub | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="dashboard-page">
+    <div class="dashboard-shell">
+      <aside class="sidebar">
+        <div class="brand-mini">
+          <div class="crest small">AH</div>
+          <div>
+            <strong>Athlete-Hub</strong>
+          </div>
+        </div>
+
+        <nav class="side-nav">
+          <button class="nav-item active">Overview</button>
+          <button class="nav-item">Portfolio</button>
+          <button class="nav-item">Academic</button>
+          <button class="nav-item">Performance</button>
+          <button class="nav-item">Records</button>
+        </nav>
+
+        <button id="logoutBtn" class="logout-btn">Log out</button>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Welcome back</p>
+            <h2 id="welcomeTitle">Loading...</h2>
+          </div>
+          <div id="userBadge" class="user-badge">Role</div>
+        </header>
+
+        <section class="stats-grid">
+          <article class="stat-card accent">
+            <span class="label">Current Status</span>
+            <strong id="statusValue">Active</strong>
+            <small id="statusDescription">Ready for updates</small>
+          </article>
+
+          <article class="stat-card">
+            <span class="label">Completion</span>
+            <strong id="completionValue">86%</strong>
+            <small id="completionDescription">Portfolio is on track</small>
+          </article>
+
+          <article class="stat-card">
+            <span class="label">Records</span>
+            <strong id="recordsValue">12</strong>
+            <small id="recordsDescription">Latest updates this month</small>
+          </article>
+        </section>
+
+        <section class="panel-grid">
+          <article class="panel">
+            <div class="panel-header">
+              <h3>Recent activities</h3>
+              <span>Today</span>
+            </div>
+            <ul class="activity-list">
+              <li><span class="dot green"></span> Academic record updated</li>
+              <li><span class="dot gold"></span> Training session logged</li>
+              <li><span class="dot blue"></span> Portfolio milestone reviewed</li>
+            </ul>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <h3>Role access</h3>
+              <span id="roleLabel">Student</span>
+            </div>
+            <div id="roleSummary" class="role-summary">
+              Student account is enabled for academic records and portfolio updates.
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

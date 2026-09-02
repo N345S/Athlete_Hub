@@ -637,6 +637,6 @@ CREATE TABLE notifications (
         ON DELETE CASCADE
 );
 
-
+USE athlete_hub;
 
 SELECT * FROM users
