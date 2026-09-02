@@ -108,6 +108,15 @@ public class AdminController : ControllerBase
 
             await _context.SaveChangesAsync();
         }
+        else if (role.RoleName == "COACH")
+        {
+            _context.CoachProfiles.Add(new CoachProfile
+            {
+                UserId = user.UserId
+            });
+
+            await _context.SaveChangesAsync();
+        }
 
         await _context.Entry(user).Reference(u => u.Role).LoadAsync();
         return CreatedAtAction(nameof(GetUser), new { userId = user.UserId }, ToResponse(user));
@@ -171,6 +180,17 @@ public class AdminController : ControllerBase
             {
                 UserId = user.UserId,
                 StudentNumber = user.UniversityId
+            });
+        }
+
+        var hasCoachProfile = await _context.CoachProfiles
+            .AnyAsync(profile => profile.UserId == user.UserId);
+
+        if (targetRole.RoleName == "COACH" && !hasCoachProfile)
+        {
+            _context.CoachProfiles.Add(new CoachProfile
+            {
+                UserId = user.UserId
             });
         }
 
