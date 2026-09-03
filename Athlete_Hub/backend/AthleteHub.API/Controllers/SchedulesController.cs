@@ -23,8 +23,24 @@ public class SchedulesController : ControllerBase
     {
         var query = _context.Schedules.AsQueryable();
         if (from.HasValue) query = query.Where(item => item.StartDatetime >= from.Value);
-        if (to.HasValue) query = query.Where(item => item.StartDatetime <= to.Value);
-        return Ok(await query.OrderBy(item => item.StartDatetime).Select(item => new { item.ScheduleId, item.Title, item.Description, item.ScheduleType, item.StartDatetime, item.EndDatetime, item.Location, item.CreatedBy }).ToListAsync());
+        if (to.HasValue) query = query.Where(item => item.StartDatetime < to.Value.Date.AddDays(1));
+        var schedules = await query
+            .OrderBy(item => item.StartDatetime)
+            .ToListAsync();
+
+        return Ok(schedules.Select(item => new
+        {
+            item.ScheduleId,
+            item.Title,
+            item.Description,
+            item.ScheduleType,
+            startDate = item.StartDatetime.ToString("yyyy-MM-dd"),
+            startTime = item.StartDatetime.ToString("HH:mm:ss"),
+            endDate = item.EndDatetime.HasValue ? item.EndDatetime.Value.ToString("yyyy-MM-dd") : null,
+            endTime = item.EndDatetime.HasValue ? item.EndDatetime.Value.ToString("HH:mm:ss") : null,
+            item.Location,
+            item.CreatedBy
+        }));
     }
 
     [HttpPost]
@@ -33,8 +49,16 @@ public class SchedulesController : ControllerBase
     {
         var type = request.ScheduleType.Trim().ToUpperInvariant();
         if (!ValidTypes.Contains(type)) return BadRequest(new { message = "Invalid schedule type." });
-        if (request.EndDatetime.HasValue && request.EndDatetime <= request.StartDatetime) return BadRequest(new { message = "End datetime must be after start datetime." });
-        var schedule = new Schedule { Title = request.Title.Trim(), Description = request.Description, ScheduleType = type, StartDatetime = request.StartDatetime, EndDatetime = request.EndDatetime, Location = request.Location, CreatedBy = GetUserId() };
+        if (!request.StartDate.HasValue || !request.StartTime.HasValue) return BadRequest(new { message = "Start date and start time are required." });
+        if (request.EndDate.HasValue != request.EndTime.HasValue) return BadRequest(new { message = "End date and end time must be provided together." });
+
+        var startDatetime = request.StartDate.Value.Date.Add(request.StartTime.Value);
+        var endDatetime = request.EndDate.HasValue
+            ? request.EndDate.Value.Date.Add(request.EndTime!.Value)
+            : (DateTime?)null;
+
+        if (endDatetime.HasValue && endDatetime <= startDatetime) return BadRequest(new { message = "End date and time must be after start date and time." });
+        var schedule = new Schedule { Title = request.Title.Trim(), Description = request.Description, ScheduleType = type, StartDatetime = startDatetime, EndDatetime = endDatetime, Location = request.Location, CreatedBy = GetUserId() };
         _context.Schedules.Add(schedule);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(Get), new { id = schedule.ScheduleId }, new { schedule.ScheduleId });

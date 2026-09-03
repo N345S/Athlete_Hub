@@ -67,7 +67,13 @@ public sealed class ScheduleRequest
     [Required, StringLength(30)]
     public string ScheduleType { get; set; } = string.Empty;
 
-    public DateTime StartDatetime { get; set; }
-    public DateTime? EndDatetime { get; set; }
+    [Required]
+    public DateTime? StartDate { get; set; }
+
+    [Required]
+    public TimeSpan? StartTime { get; set; }
+
+    public DateTime? EndDate { get; set; }
+    public TimeSpan? EndTime { get; set; }
     public string? Location { get; set; }
 }

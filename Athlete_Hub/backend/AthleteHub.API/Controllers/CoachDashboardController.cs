@@ -84,7 +84,16 @@ public class CoachDashboardController : ControllerBase
             }),
             attendance,
             eligibility,
-            upcomingSessions
+            upcomingSessions = upcomingSessions.Select(session => new
+            {
+                session.TrainingSessionId,
+                session.TeamId,
+                session.Title,
+                trainingDate = session.TrainingDate.ToString("yyyy-MM-dd"),
+                session.StartTime,
+                session.EndTime,
+                session.Location
+            })
         });
     }
 }

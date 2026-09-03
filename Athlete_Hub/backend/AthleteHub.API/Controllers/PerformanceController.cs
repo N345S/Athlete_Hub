@@ -34,7 +34,20 @@ public class PerformanceController : ControllerBase
             .OrderByDescending(record => record.RecordedDate)
             .Select(record => new { record.PerformanceRecordId, record.AthleteId, record.RecordedValue, record.RecordedDate, record.Notes, metric = new { record.Metric.MetricId, record.Metric.MetricName, record.Metric.Unit, sport = record.Metric.Sport.SportName } })
             .ToListAsync();
-        return Ok(new { athleteId, recordCount = records.Count, records });
+        return Ok(new
+        {
+            athleteId,
+            recordCount = records.Count,
+            records = records.Select(record => new
+            {
+                record.PerformanceRecordId,
+                record.AthleteId,
+                record.RecordedValue,
+                recordedDate = record.RecordedDate.ToString("yyyy-MM-dd"),
+                record.Notes,
+                metric = record.metric
+            })
+        });
     }
 
     [HttpPost("records")]

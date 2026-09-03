@@ -47,7 +47,17 @@ public class AchievementsController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(achievements);
+        return Ok(achievements.Select(achievement => new
+        {
+            achievement.AchievementId,
+            achievement.Title,
+            achievement.Description,
+            achievementDate = achievement.AchievementDate.HasValue ? achievement.AchievementDate.Value.ToString("yyyy-MM-dd") : null,
+            achievement.Category,
+            achievement.VerificationStatus,
+            achievement.VerifiedAt,
+            achievement.CreatedAt
+        }));
     }
 
     [Authorize(Roles = "ATHLETE")]
@@ -88,7 +98,7 @@ public class AchievementsController : ControllerBase
                 achievement.AchievementId,
                 achievement.Title,
                 achievement.Description,
-                achievement.AchievementDate,
+                achievementDate = achievement.AchievementDate.HasValue ? achievement.AchievementDate.Value.ToString("yyyy-MM-dd") : null,
                 achievement.Category,
                 achievement.VerificationStatus,
                 achievement.CreatedAt
