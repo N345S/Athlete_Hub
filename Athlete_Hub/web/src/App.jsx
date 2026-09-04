@@ -50,7 +50,7 @@ function CoachDashboard({ session, onLogout }) {
     <main className="coach-app">
       <aside className="sidebar">
         <div className="brand-block">
-          <img className="brand-logo" src="/athletehub-logo.svg" alt="Athlete-Hub logo" />
+          <img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" />
           <div><h1>Athlete-Hub</h1><small>Monitoring System</small></div>
         </div>
 
@@ -168,7 +168,7 @@ function StudentPortal({ session, onLogout }) {
     notifications: <PageSection title="Notifications" subtitle="Your alerts and important messages"><div className="data-list"><div className="data-row"><strong>Academic eligibility updates</strong><span>Review your latest grades and documents to stay eligible.</span></div><div className="data-row"><strong>Profile connected</strong><span>Your student account is authenticated with Athlete-Hub.</span></div></div></PageSection>,
   }[page]
 
-  return <main className="student-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.svg" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><div className="profile-block"><div className="avatar">{firstName.slice(0, 1)}{(session.lastName || 'A').slice(0, 1)}</div><div className="profile-meta"><strong>{fullName}</strong><span>Student-Athlete</span></div></div><nav className="main-nav" aria-label="Student navigation">{nav.map(([key, label]) => <button className={`nav-item ${page === key ? 'active' : ''}`} key={key} type="button" onClick={() => { setPage(key); setData(null) }}>{label}{key === 'notifications' && <span className="dot-badge">3</span>}</button>)}</nav><div className="grade-scale"><small>PH GRADE SCALE</small><div><span>1.00–1.25</span><strong>Excellent</strong></div><div><span>1.50–1.75</span><strong>Very Good</strong></div><div><span>2.00–2.25</span><strong>Good</strong></div><div><span>2.50–3.00</span><strong>Passing</strong></div><div><span>5.00</span><strong>Failed</strong></div></div><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="content-panel"><header className="topbar"><div className="crumbs"><span>Athlete Portal</span><span className="sep">›</span><strong>{nav.find(([key]) => key === page)?.[1]}</strong></div></header>{error && <div className="dashboard-state error-message">{error}</div>}{content}</div></main>
+  return <main className="student-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><div className="profile-block"><div className="avatar">{firstName.slice(0, 1)}{(session.lastName || 'A').slice(0, 1)}</div><div className="profile-meta"><strong>{fullName}</strong><span>Student-Athlete</span></div></div><nav className="main-nav" aria-label="Student navigation">{nav.map(([key, label]) => <button className={`nav-item ${page === key ? 'active' : ''}`} key={key} type="button" onClick={() => { setPage(key); setData(null) }}>{label}{key === 'notifications' && <span className="dot-badge">3</span>}</button>)}</nav><div className="grade-scale"><small>PH GRADE SCALE</small><div><span>1.00–1.25</span><strong>Excellent</strong></div><div><span>1.50–1.75</span><strong>Very Good</strong></div><div><span>2.00–2.25</span><strong>Good</strong></div><div><span>2.50–3.00</span><strong>Passing</strong></div><div><span>5.00</span><strong>Failed</strong></div></div><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="content-panel"><header className="topbar"><div className="crumbs"><span>Athlete Portal</span><span className="sep">›</span><strong>{nav.find(([key]) => key === page)?.[1]}</strong></div></header>{error && <div className="dashboard-state error-message">{error}</div>}{content}</div></main>
 }
 
 function PageSection({ title, subtitle, children }) {
@@ -250,7 +250,7 @@ function App() {
         <main className="login-shell">
           <section className="brand-panel">
             <div className="brand-header">
-              <img className="brand-logo" src="/athletehub-logo.svg" alt="Athlete-Hub logo" />
+              <img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" />
               <h1>Athlete-Hub</h1>
             </div>
             <p className="tagline">Centralized Digital Portfolio & Monitoring System</p>
@@ -322,7 +322,7 @@ function App() {
         <main className="student-app">
           <aside className="sidebar">
             <div className="brand-block">
-              <img className="brand-logo" src="/athletehub-logo.svg" alt="Athlete-Hub logo" />
+              <img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" />
               <div>
                 <h1>Athlete-Hub</h1>
                 <small>Monitoring System</small>
@@ -398,7 +398,7 @@ function App() {
         <main className="login-shell">
           <section className="brand-panel">
             <div className="brand-header">
-              <img className="brand-logo" src="/athletehub-logo.svg" alt="Athlete-Hub logo" />
+              <img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" />
               <h1>Athlete-Hub</h1>
             </div>
             <p className="tagline">Role access portal</p>
