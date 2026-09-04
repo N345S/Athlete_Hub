@@ -75,6 +75,31 @@ if (togglePasswordButton) {
   });
 }
 
+if (document.body.classList.contains('student-shell')) {
+  const session = JSON.parse(sessionStorage.getItem('athleteHubSession') || 'null');
+
+  if (!session || !['ATHLETE', 'STUDENT'].includes(String(session.role || '').toUpperCase())) {
+    window.location.href = 'index.html';
+  } else {
+    const fullName = `${session.firstName || 'Student'} ${session.lastName || 'Athlete'}`.trim();
+    document.querySelectorAll('.profile-meta strong').forEach((element) => {
+      element.textContent = fullName;
+    });
+    document.querySelectorAll('.profile-mini strong').forEach((element) => {
+      element.textContent = session.firstName || 'Student';
+    });
+    document.querySelectorAll('.avatar').forEach((element) => {
+      element.textContent = `${(session.firstName || 'S').slice(0, 1)}${(session.lastName || 'A').slice(0, 1)}`;
+    });
+    document.querySelectorAll('.logout-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        sessionStorage.removeItem('athleteHubSession');
+        window.location.href = 'index.html';
+      });
+    });
+  }
+}
+
 if (document.body.classList.contains('dashboard-page')) {
   const session = JSON.parse(sessionStorage.getItem('athleteHubSession') || 'null');
 

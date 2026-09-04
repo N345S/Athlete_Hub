@@ -39,6 +39,21 @@
   color: #f8e8ea;
 }
 
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 10px;
+  background: white;
+}
+
+.brand-header .brand-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+}
+
 .brand-header h1 {
   margin: 0;
   font-size: 2.2rem;
@@ -269,6 +284,9 @@
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .nav-item.active {
@@ -412,8 +430,445 @@
   font-weight: 700;
 }
 
+.coach-app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+  background: #f3f1f1;
+}
+
+.coach-content {
+  padding: 24px;
+  min-width: 0;
+}
+
+.coach-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.coach-heading h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1.8rem;
+}
+
+.coach-heading p {
+  margin: 6px 0 0;
+  color: #7d8798;
+}
+
+.coach-action {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  background: #980819;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.role-chip {
+  border-radius: 6px;
+  background: #fbe7e9;
+  color: #8f061a;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.dashboard-state {
+  padding: 22px;
+  border: 1px solid #ead8d8;
+  border-radius: 14px;
+  background: white;
+  color: #6b7280;
+}
+
+.coach-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.coach-stat {
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid #e4e5e8;
+  border-left: 4px solid #980819;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 5px 18px rgba(56, 36, 37, 0.05);
+}
+
+.coach-stat span,
+.coach-stat small {
+  display: block;
+  color: #7d8798;
+  font-size: 0.78rem;
+}
+
+.coach-stat strong {
+  display: block;
+  margin: 10px 0 4px;
+  color: #980819;
+  font-size: 1.7rem;
+}
+
+.coach-stat.blue-accent { border-left-color: #367df4; }
+.coach-stat.blue-accent strong { color: #2563eb; }
+.coach-stat.green-accent { border-left-color: #0abb83; }
+.coach-stat.green-accent strong { color: #009968; }
+.coach-stat.alert-accent { border-left-color: #ef3340; }
+.coach-stat.alert-accent strong { color: #e11d2e; }
+
+.eligibility-panel,
+.coach-panel {
+  border: 1px solid #e4e5e8;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 5px 18px rgba(56, 36, 37, 0.05);
+}
+
+.eligibility-panel {
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  background: #fffafa;
+}
+
+.section-title {
+  margin-bottom: 14px;
+  color: #a00b1c;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  border: 1px solid #f1dfe0;
+  border-radius: 12px;
+  background: white;
+}
+
+.team-row strong,
+.team-row small {
+  display: block;
+}
+
+.team-row small {
+  margin-top: 4px;
+  color: #929aaa;
+}
+
+.team-status {
+  border-radius: 999px;
+  background: #fff1c8;
+  color: #9a5b00;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.coach-lower-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 18px;
+}
+
+.coach-panel {
+  padding: 20px;
+}
+
+.panel-heading h3 {
+  margin: 0;
+  color: #172033;
+}
+
+.panel-heading p {
+  margin: 5px 0 16px;
+  color: #929aaa;
+  font-size: 0.82rem;
+}
+
+.team-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.team-card {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border: 1px solid #edf0f2;
+  border-radius: 10px;
+}
+
+.team-card > span {
+  width: fit-content;
+  border-radius: 5px;
+  background: #f8e4e5;
+  color: #980819;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+}
+
+.team-card small,
+.session-row small,
+.session-row span {
+  color: #929aaa;
+  font-size: 0.78rem;
+}
+
+.session-list {
+  display: grid;
+  gap: 10px;
+}
+
+.session-row {
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+  border-left: 3px solid #980819;
+  border-radius: 0 9px 9px 0;
+  background: #fff3f3;
+}
+
+.empty-copy {
+  margin: 0;
+  color: #929aaa;
+  font-size: 0.88rem;
+}
+
+.coach-list-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.coach-list-header h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1.8rem;
+}
+
+.coach-list-header p {
+  margin: 6px 0 0;
+  color: #929aaa;
+}
+
+.athlete-search {
+  padding: 14px;
+  margin-bottom: 18px;
+  border: 1px solid #e4e5e8;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 5px 18px rgba(56, 36, 37, 0.05);
+}
+
+.athlete-search input {
+  width: 100%;
+  border: 1px solid #e6e8eb;
+  border-radius: 10px;
+  padding: 13px 15px;
+  color: #172033;
+  background: #fafbfc;
+}
+
+.athlete-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.athlete-card {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  padding: 16px;
+  border: 1px solid #e4e5e8;
+  border-top: 4px solid #09b981;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 5px 18px rgba(56, 36, 37, 0.05);
+}
+
+.athlete-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.athlete-avatar {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #f8e4e5;
+  color: #980819;
+  font-weight: 800;
+}
+
+.athlete-card-top strong,
+.athlete-card-top small,
+.athlete-card-top span {
+  display: block;
+}
+
+.athlete-card-top small,
+.athlete-card-top span {
+  margin-top: 4px;
+  color: #929aaa;
+  font-size: 0.75rem;
+}
+
+.athlete-card-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 20px 0 14px;
+}
+
+.athlete-card-meta > div {
+  padding: 10px 8px;
+  border-radius: 9px;
+  background: #f8f9fa;
+  text-align: center;
+}
+
+.athlete-card-meta strong,
+.athlete-card-meta small {
+  display: block;
+}
+
+.athlete-card-meta strong {
+  color: #980819;
+  font-size: 1.2rem;
+}
+
+.athlete-card-meta small {
+  margin-top: 3px;
+  color: #929aaa;
+  font-size: 0.72rem;
+}
+
+.athlete-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.athlete-card-footer > span {
+  overflow: hidden;
+  color: #7d8798;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.athlete-card-footer button {
+  border: 1px solid #ead1d3;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #980819;
+  background: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.portal-page .page-header {
+  margin-bottom: 22px;
+}
+
+.portal-page .page-header h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1.8rem;
+}
+
+.portal-page .page-header p {
+  margin: 6px 0 0;
+  color: #7d8798;
+}
+
+.portal-panel {
+  border: 1px solid #e4e5e8;
+  border-radius: 14px;
+  padding: 20px;
+  background: white;
+  box-shadow: 0 5px 18px rgba(56, 36, 37, 0.05);
+}
+
+.data-list {
+  display: grid;
+  gap: 10px;
+}
+
+.data-list > p {
+  margin: 0;
+  color: #929aaa;
+}
+
+.data-row {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid #f0e5e5;
+  border-left: 3px solid #980819;
+  border-radius: 0 10px 10px 0;
+  background: #fffafa;
+}
+
+.data-row span {
+  color: #7d8798;
+  font-size: 0.82rem;
+}
+
+.profile-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.profile-details > div {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #fffafa;
+}
+
+.profile-details span {
+  color: #929aaa;
+  font-size: 0.78rem;
+}
+
 @media (max-width: 900px) {
   .login-shell { grid-template-columns: 1fr; }
-  .student-app { grid-template-columns: 1fr; }
+  .student-app, .coach-app { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr; }
+  .coach-stats-grid, .coach-lower-grid, .athlete-cards { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 620px) {
+  .coach-content { padding: 16px; }
+  .coach-heading { flex-direction: column; }
+  .coach-action { width: 100%; }
+  .coach-stats-grid, .coach-lower-grid, .team-cards, .athlete-cards { grid-template-columns: 1fr; }
+  .coach-list-header { flex-direction: column; }
+  .profile-details { grid-template-columns: 1fr; }
 }
