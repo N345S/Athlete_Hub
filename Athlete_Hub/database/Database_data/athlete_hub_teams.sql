@@ -34,7 +34,7 @@ CREATE TABLE `teams` (
   KEY `fk_team_coach` (`coach_id`),
   CONSTRAINT `fk_team_coach` FOREIGN KEY (`coach_id`) REFERENCES `coach_profiles` (`coach_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_team_sport` FOREIGN KEY (`sport_id`) REFERENCES `sports` (`sport_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -43,6 +43,7 @@ CREATE TABLE `teams` (
 
 LOCK TABLES `teams` WRITE;
 /*!40000 ALTER TABLE `teams` DISABLE KEYS */;
+INSERT INTO `teams` VALUES (1,3,1,'Track and Field Team','2026-2027','ACTIVE');
 /*!40000 ALTER TABLE `teams` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -55,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-08-25 15:04:00
+-- Dump completed on 2026-09-05 14:25:52
