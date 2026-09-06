@@ -38,17 +38,6 @@
         <a class="nav-item" href="student-notifications.html">Notifications <span class="dot-badge">3</span></a>
       </nav>
 
-      <div class="grade-scale">
-        <h3>PH Grade Scale</h3>
-        <ul>
-          <li><span>1.00-1.25</span><strong>Excellent</strong></li>
-          <li><span>1.50-1.75</span><strong>Very Good</strong></li>
-          <li><span>2.00-2.25</span><strong>Good</strong></li>
-          <li><span>2.50-3.00</span><strong>Passing</strong></li>
-          <li><span>5.00</span><strong>Failed</strong></li>
-        </ul>
-      </div>
-
       <button class="logout-button" type="button">Logout</button>
     </aside>
 
@@ -97,72 +86,27 @@
         </article>
       </section>
 
-      <section class="upload-card">
-        <div class="upload-box">
-          <span class="upload-icon">⇪</span>
-          <p>Click to upload or drag and drop</p>
-          <small>PDF, JPG, PNG up to 10MB</small>
-          <button type="button">Select File</button>
-        </div>
+      <section class="upload-card" id="documentUpload">
+        <label class="legacy-upload-box" id="documentDropZone">
+          <input id="documentFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" />
+          <strong>Drop documents here or click to browse</strong>
+          <small>PDF, PNG, JPG, DOC, or DOCX up to 10MB each</small>
+        </label>
+        <label class="legacy-field">Document type
+          <select id="documentTypeInput">
+            <option>Medical Clearance</option>
+            <option>Consent Form</option>
+            <option>Enrollment Form</option>
+            <option>Athletic Eligibility Form</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <div id="stagedDocumentList" class="staged-document-list"></div>
+        <div class="legacy-actions"><button id="uploadDocumentsButton" type="button">Upload files</button></div>
+        <p id="documentMessage" class="legacy-message" role="status"></p>
       </section>
 
-      <section class="document-list">
-        <div class="document-row approved">
-          <div class="doc-info">
-            <span class="doc-icon">✓</span>
-            <div>
-              <strong>Medical Clearance Certificate</strong>
-              <small>Uploaded • Aug 15, 2024 • 2.1 MB</small>
-            </div>
-          </div>
-          <div class="doc-actions">
-            <a href="#">Download</a>
-            <span class="doc-status approved">Approved</span>
-          </div>
-        </div>
-
-        <div class="document-row approved">
-          <div class="doc-info">
-            <span class="doc-icon">✓</span>
-            <div>
-              <strong>Consent Form</strong>
-              <small>Legal • Aug 16, 2024 • 1.8 MB</small>
-            </div>
-          </div>
-          <div class="doc-actions">
-            <a href="#">Download</a>
-            <span class="doc-status approved">Approved</span>
-          </div>
-        </div>
-
-        <div class="document-row pending">
-          <div class="doc-info">
-            <span class="doc-icon">⏳</span>
-            <div>
-              <strong>Enrollment Form – 2nd Semester</strong>
-              <small>Academic • Jan 10, 2025 • 1.5 MB</small>
-            </div>
-          </div>
-          <div class="doc-actions">
-            <a href="#">Download</a>
-            <span class="doc-status pending">Pending</span>
-          </div>
-        </div>
-
-        <div class="document-row rejected">
-          <div class="doc-info">
-            <span class="doc-icon">✕</span>
-            <div>
-              <strong>Athletic Eligibility Form</strong>
-              <small>Updated • April 15, 2025 • 0.9 MB</small>
-            </div>
-          </div>
-          <div class="doc-actions">
-            <a href="#">Download</a>
-            <span class="doc-status rejected">Rejected</span>
-          </div>
-        </div>
-      </section>
+      <section id="documentList" class="document-list"></section>
     </main>
     <script src="script.js"></script>
   </body>

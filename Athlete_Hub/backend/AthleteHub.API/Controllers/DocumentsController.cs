@@ -9,7 +9,7 @@ namespace AthleteHub.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "ATHLETE")]
+[Authorize(Roles = "ATHLETE,STUDENT")]
 public class DocumentsController : ControllerBase
 {
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)

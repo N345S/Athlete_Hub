@@ -167,42 +167,70 @@ button, a { font: inherit; }
   font-weight: 700;
 }
 
-.grade-scale {
-  margin-top: auto;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 12px;
-  padding: 12px 12px 10px;
-}
-
-.grade-scale h3 {
-  margin: 0 0 10px;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.8);
-}
-
-.grade-scale ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.legacy-upload-box {
   display: grid;
-  gap: 6px;
+  min-height: 130px;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 2px dashed #dcaeb3;
+  border-radius: 12px;
+  padding: 22px;
+  background: #fffafa;
+  color: #7d8798;
+  text-align: center;
+  cursor: pointer;
 }
 
-.grade-scale li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 0.76rem;
-  color: rgba(255,255,255,0.9);
+.legacy-upload-box.dragging,
+.legacy-upload-box:hover {
+  border-color: #980819;
+  background: #fff3f3;
 }
 
-.grade-scale strong {
-  color: #fff;
-  font-weight: 600;
-}
+.legacy-upload-box strong { color: #980819; }
+.legacy-upload-box input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.legacy-upload-box small { font-size: 0.78rem; }
+.legacy-field { display: grid; gap: 6px; max-width: 300px; margin-top: 14px; color: #475569; font-size: 0.82rem; font-weight: 700; }
+.legacy-field select { border: 1px solid #dce2ea; border-radius: 9px; padding: 10px; background: white; font: inherit; font-weight: 400; }
+.legacy-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.legacy-actions button { border: 0; border-radius: 9px; padding: 11px 15px; background: #980819; color: white; font-weight: 700; cursor: pointer; }
+.legacy-actions button:disabled { cursor: wait; opacity: 0.6; }
+.legacy-message { min-height: 1.2em; margin: 12px 0 0; color: #15803d; font-size: 0.85rem; }
+.legacy-message.error { color: #b91c1c; }
+.staged-document-list { display: grid; gap: 8px; margin-top: 14px; }
+.staged-document { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #e5e7eb; border-radius: 9px; padding: 10px 12px; background: #fafafa; }
+.staged-document.invalid { border-color: #fecaca; background: #fff7f7; }
+.staged-document strong, .staged-document small { display: block; }
+.staged-document small { margin-top: 3px; color: #929aaa; font-size: 0.76rem; }
+.staged-document button, .doc-actions button { border: 0; padding: 3px 0; background: transparent; color: #980819; font-weight: 700; cursor: pointer; }
+
+.legacy-calendar-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.legacy-calendar-controls > div { display: flex; align-items: center; gap: 6px; }
+.legacy-calendar-controls button { border: 1px solid #e1e5ea; border-radius: 7px; padding: 7px 10px; background: white; color: #475569; cursor: pointer; font-weight: 700; }
+.legacy-calendar-controls button.active { background: #980819; color: white; }
+.legacy-calendar-controls strong { min-width: 150px; color: #172033; text-align: center; }
+.legacy-calendar-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.legacy-filter { border: 1px solid currentColor; border-radius: 999px; padding: 6px 10px; background: transparent; color: #929aaa; cursor: pointer; font-size: 0.72rem; font-weight: 700; }
+.legacy-filter.active { color: #980819; background: #fff3f3; }
+.legacy-filter.type-training.active { color: #2563eb; background: #eff6ff; }
+.legacy-filter.type-competition.active { color: #7c3aed; background: #f5f3ff; }
+.legacy-filter.type-academic.active { color: #059669; background: #ecfdf5; }
+.legacy-filter.type-meeting.active { color: #c2410c; background: #fff7ed; }
+.legacy-weekdays, .legacy-calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.legacy-weekdays { border: 1px solid #e5e7eb; border-bottom: 0; border-radius: 9px 9px 0 0; background: #f8fafc; }
+.legacy-weekdays strong { padding: 9px 5px; color: #929aaa; font-size: 0.72rem; text-align: center; }
+.legacy-calendar-day { min-height: 96px; border: 1px solid #e5e7eb; padding: 7px; background: white; }
+.legacy-calendar-day.blank { background: #fafafa; }
+.legacy-calendar-day > strong { display: block; margin-bottom: 6px; color: #475569; font-size: 0.78rem; }
+.legacy-calendar-event { overflow: hidden; margin-bottom: 4px; border-left: 3px solid #980819; border-radius: 3px; padding: 4px 5px; background: #fff3f3; color: #7d1d2a; font-size: 0.68rem; text-overflow: ellipsis; white-space: nowrap; }
+.legacy-calendar-event.type-training, .legacy-event.type-training { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+.legacy-calendar-event.type-competition, .legacy-event.type-competition { border-color: #7c3aed; background: #f5f3ff; color: #6d28d9; }
+.legacy-calendar-event.type-academic, .legacy-event.type-academic { border-color: #059669; background: #ecfdf5; color: #047857; }
+.legacy-calendar-event.type-meeting, .legacy-event.type-meeting { border-color: #c2410c; background: #fff7ed; color: #9a3412; }
+.legacy-event-list { display: grid; gap: 9px; }
+.legacy-event { display: grid; gap: 5px; border-left: 4px solid #980819; border-radius: 0 9px 9px 0; padding: 12px 14px; background: #fffafa; }
+.legacy-event span, .legacy-event small { color: #7d8798; font-size: 0.8rem; }
 
 .logout-button {
   margin-top: 4px;

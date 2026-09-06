@@ -43,6 +43,65 @@ public class SchedulesController : ControllerBase
         }));
     }
 
+    [HttpGet("athlete")]
+    [Authorize(Roles = "ATHLETE,STUDENT")]
+    public async Task<IActionResult> GetAthleteCalendar(DateTime? from = null, DateTime? to = null)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var trainingQuery = _context.TrainingSessions
+            .Include(session => session.Team)
+            .Where(session => session.Team.TeamMembers.Any(member =>
+                member.Athlete.UserId == userId && member.DateLeft == null));
+
+        if (from.HasValue) trainingQuery = trainingQuery.Where(session => session.TrainingDate >= from.Value.Date);
+        if (to.HasValue) trainingQuery = trainingQuery.Where(session => session.TrainingDate <= to.Value.Date);
+
+        var trainingEvents = await trainingQuery
+            .Select(session => new
+            {
+                id = $"training-{session.TrainingSessionId}",
+                sourceId = session.TrainingSessionId,
+                type = "TRAINING",
+                session.Title,
+                session.Description,
+                startDate = session.TrainingDate.ToString("yyyy-MM-dd"),
+                startTime = session.StartTime.HasValue ? session.StartTime.Value.ToString() : null,
+                endDate = session.TrainingDate.ToString("yyyy-MM-dd"),
+                endTime = session.EndTime.HasValue ? session.EndTime.Value.ToString() : null,
+                session.Location,
+                teamName = session.Team.TeamName
+            })
+            .ToListAsync();
+
+        var scheduleQuery = _context.Schedules.AsQueryable();
+        if (from.HasValue) scheduleQuery = scheduleQuery.Where(item => item.StartDatetime >= from.Value);
+        if (to.HasValue) scheduleQuery = scheduleQuery.Where(item => item.StartDatetime < to.Value.Date.AddDays(1));
+
+        var sharedEvents = await scheduleQuery
+            .OrderBy(item => item.StartDatetime)
+            .Select(item => new
+            {
+                id = $"schedule-{item.ScheduleId}",
+                sourceId = item.ScheduleId,
+                type = item.ScheduleType,
+                item.Title,
+                item.Description,
+                startDate = item.StartDatetime.ToString("yyyy-MM-dd"),
+                startTime = item.StartDatetime.ToString("HH:mm:ss"),
+                endDate = item.EndDatetime.HasValue ? item.EndDatetime.Value.ToString("yyyy-MM-dd") : null,
+                endTime = item.EndDatetime.HasValue ? item.EndDatetime.Value.ToString("HH:mm:ss") : null,
+                item.Location,
+                teamName = (string?)null
+            })
+            .ToListAsync();
+
+        return Ok(trainingEvents.Cast<object>().Concat(sharedEvents));
+    }
+
     [HttpPost]
     [Authorize(Roles = "ADMIN,DIRECTOR,COACH,REGISTRAR")]
     public async Task<IActionResult> Create(ScheduleRequest request)
