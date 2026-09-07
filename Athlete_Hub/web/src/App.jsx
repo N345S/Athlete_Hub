@@ -135,7 +135,7 @@ function CalendarPage({ records, loading, trainingOnly = false, title = 'Schedul
   return <PageSection title={title} subtitle={subtitle}><div className="calendar-controls"><div className="calendar-navigation"><button className="icon-button" type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label="Previous month">‹</button><strong>{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong><button className="icon-button" type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="Next month">›</button></div><div className="segmented-control"><button className={view === 'calendar' ? 'active' : ''} type="button" onClick={() => setView('calendar')}>Calendar</button><button className={view === 'list' ? 'active' : ''} type="button" onClick={() => setView('list')}>List</button></div></div><div className="event-filters">{eventTypes.map((type) => <button className={`filter-button ${types.includes(type) ? 'active' : ''} type-${type.toLowerCase()}`} type="button" key={type} onClick={() => toggleType(type)}>{type}</button>)}</div>{loading ? <p>Loading schedule...</p> : view === 'list' ? <div className="event-list">{events.length ? events.map((item) => <article className={`event-card type-${item.type.toLowerCase()}`} key={item.id}><strong>{item.title}</strong><span>{item.type} · {formatEventDate(item.startDate)} · {formatEventTime(item.startTime)}{item.endTime ? `–${formatEventTime(item.endTime)}` : ''}</span><small>{item.location || 'Location TBA'}{item.teamName ? ` · ${item.teamName}` : ''}</small></article>) : <p>No events match the selected filters.</p>}</div> : <div className="calendar-grid"><div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <strong key={day}>{day}</strong>)}</div><div className="calendar-days">{cells.map((day, index) => <div className={`calendar-day ${day ? '' : 'blank'}`} key={`${day || 'blank'}-${index}`}>{day && <><span className="day-number">{day}</span>{eventsForDay(day).map((item) => <div className={`calendar-event type-${item.type.toLowerCase()}`} title={item.title} key={item.id}>{item.title}</div>)}</>}</div>)}</div></div>}</PageSection>
 }
 
-function CoachAthletesPage({ dashboard }) {
+function CoachAthletesPage({ dashboard, onViewPortfolio }) {
   const [search, setSearch] = useState('')
   const athletes = (dashboard?.teams || []).flatMap((team) =>
     (team.athletes || []).map((athlete) => ({ ...athlete, teamName: team.teamName, sport: team.sport }))
@@ -144,7 +144,28 @@ function CoachAthletesPage({ dashboard }) {
     `${athlete.firstName} ${athlete.lastName} ${athlete.studentNumber} ${athlete.sport}`.toLowerCase().includes(search.toLowerCase())
   )
 
-  return <section className="coach-athletes-page"><div className="coach-list-header"><div><h2>All Student-Athletes</h2><p>Showing {filteredAthletes.length} of {athletes.length} athletes under your supervision</p></div><span className="role-chip">{athletes.length} Total</span></div><div className="athlete-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search athletes by name, sport, or ID..." /></div><div className="athlete-cards">{filteredAthletes.length ? filteredAthletes.map((athlete) => <article className="athlete-card" key={`${athlete.teamName}-${athlete.athleteId}`}><div className="athlete-card-top"><div className="athlete-avatar">{(athlete.firstName || 'A').slice(0, 1)}{(athlete.lastName || 'A').slice(0, 1)}</div><div><strong>{athlete.firstName} {athlete.lastName}</strong><small>{athlete.studentNumber}</small><span>🏆 {athlete.sport}</span></div></div><div className="athlete-card-meta"><div><strong>—</strong><small>GPA</small></div><div><strong>—</strong><small>Attendance</small></div></div><div className="athlete-card-footer"><span>{athlete.teamName}</span><button type="button">View Profile</button></div></article>) : <div className="dashboard-state"><p className="empty-copy">No athletes are assigned to this coach yet.</p></div>}</div></section>
+  return <section className="coach-athletes-page"><div className="coach-list-header"><div><h2>All Student-Athletes</h2><p>Showing {filteredAthletes.length} of {athletes.length} athletes under your supervision</p></div><span className="role-chip">{athletes.length} Total</span></div><div className="athlete-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search athletes by name, sport, or ID..." /></div><div className="athlete-cards">{filteredAthletes.length ? filteredAthletes.map((athlete) => <article className="athlete-card" key={`${athlete.teamName}-${athlete.athleteId}`}><div className="athlete-card-top"><div className="athlete-avatar">{(athlete.firstName || 'A').slice(0, 1)}{(athlete.lastName || 'A').slice(0, 1)}</div><div><strong>{athlete.firstName} {athlete.lastName}</strong><small>{athlete.studentNumber}</small><span>🏆 {athlete.sport || 'Athlete'}</span></div></div><div className="athlete-card-meta"><div><strong>—</strong><small>GPA</small></div><div><strong>—</strong><small>Attendance</small></div></div><div className="athlete-card-footer"><span>{athlete.teamName || 'No team assigned'}</span><div><button type="button">View Profile</button><button type="button" onClick={() => onViewPortfolio(athlete)}>View Portfolio</button></div></div></article>) : <div className="dashboard-state"><p className="empty-copy">No athletes are assigned to this coach yet.</p></div>}</div></section>
+}
+
+function StaffPortfolioPanel({ portfolio, loading, error, onClose, onReview }) {
+  return <section className="coach-panel staff-portfolio-panel"><div className="panel-heading"><div><h2>{portfolio ? `${portfolio.firstName} ${portfolio.lastName}'s Portfolio` : 'Student Portfolio'}</h2><p>{portfolio?.studentNumber || 'Verified and pending achievement submissions'}</p></div><button className="schedule-more-button" type="button" onClick={onClose}>Close</button></div>{loading ? <p>Loading portfolio...</p> : error ? <p className="error-message">{error}</p> : portfolio?.items?.length ? <div className="data-list">{portfolio.items.map((item) => <div className="data-row" key={item.portfolioItemId}><strong>{item.title}</strong><span>{item.description || 'Portfolio submission'} · {item.achievementStatus || 'Pending'}</span>{item.evidence?.length ? <div className="evidence-links">{item.evidence.map((evidence) => <a href={`${API_BASE_URL}${evidence.fileUrl}`} target="_blank" rel="noreferrer" key={evidence.documentId}>View {evidence.documentName}</a>)}</div> : <small>No evidence attached</small>}{item.achievementStatus !== 'VERIFIED' && item.achievementId && <div className="review-actions"><button className="review-button approve" type="button" onClick={() => onReview(item, 'VERIFIED')}>Approve</button><button className="review-button reject" type="button" onClick={() => onReview(item, 'REJECTED')}>Reject</button></div>}</div>)}</div> : <p className="empty-copy">No portfolio submissions found.</p>}</section>
+}
+
+function PortfolioPage({ fullName, session, profile, records, loading, actionLoading, title, description, evidenceFiles, onTitleChange, onDescriptionChange, onFilesChange, onSubmit, onDelete }) {
+  const verifiedCount = records.filter((item) => item.achievementStatus === 'VERIFIED').length
+  const pendingCount = records.filter((item) => item.achievementStatus === 'PENDING').length
+  const rejectedCount = records.filter((item) => item.achievementStatus === 'REJECTED').length
+  const initials = `${(session.firstName || 'S').slice(0, 1)}${(session.lastName || 'A').slice(0, 1)}`
+
+  return <section className="portfolio-page">
+    <div className="portfolio-heading"><h2>Athletic Portfolio</h2><p>Comprehensive digital portfolio for {fullName}</p></div>
+    <section className="portfolio-identity"><div className="portfolio-top"><div className="portfolio-avatar">{initials}</div><div className="portfolio-name-block"><h3>{fullName}</h3><p>{profile?.course || 'Student-Athlete'} · Athlete-Hub portfolio</p><div className="portfolio-meta-row"><span>{session.email}</span><span>{profile?.studentNumber || 'Student ID pending'}</span></div></div></div><div className="portfolio-info-grid"><div><span>Student ID</span><strong>{profile?.studentNumber || '—'}</strong></div><div><span>Academic Year</span><strong>{profile?.yearLevel || '—'}</strong></div><div><span>Program</span><strong>{profile?.course || '—'}</strong></div><div><span>University</span><strong>{session.universityId || '—'}</strong></div></div></section>
+    <section className="portfolio-summary"><div className="summary-box"><span className="summary-icon gold">★</span><strong>{records.length}</strong><small>Total submissions</small></div><div className="summary-box"><span className="summary-icon green">✓</span><strong>{verifiedCount}</strong><small>Verified achievements</small></div><div className="summary-box"><span className="summary-icon purple">◷</span><strong>{pendingCount}</strong><small>Awaiting review</small></div><div className="summary-box"><span className="summary-icon pink">!</span><strong>{rejectedCount}</strong><small>Needs changes</small></div></section>
+    <section className="portfolio-workspace"><div className="portfolio-section-heading"><div><h3>Achievements &amp; Awards</h3><p>Submit your accomplishments for coach verification.</p></div><span className="portfolio-count">{records.length} entries</span></div>
+      <form className="portfolio-submit-form" onSubmit={onSubmit}><div><label htmlFor="achievement-title">Achievement title</label><input id="achievement-title" value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="e.g. Regional Basketball Championship" required /></div><div><label htmlFor="achievement-description">Description or evidence notes</label><textarea id="achievement-description" value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="Describe the achievement and supporting evidence" rows="3" /></div><div><label htmlFor="achievement-evidence">Evidence files</label><div className="file-picker"><input id="achievement-evidence" className="file-picker-input" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" multiple onChange={(event) => onFilesChange(Array.from(event.target.files || []))} /><label className="add-file-button" htmlFor="achievement-evidence"><span aria-hidden="true">+</span> Add files</label><small>{evidenceFiles.length ? `${evidenceFiles.length} file(s) selected` : 'Attach photos, certificates, or supporting files.'}</small></div></div><button type="submit" disabled={actionLoading}>{actionLoading ? 'Submitting...' : 'Submit for approval'}</button></form>
+      <div className="portfolio-achievements">{loading ? <p>Loading portfolio...</p> : records.length ? records.map((item) => <article className="portfolio-achievement" key={item.portfolioItemId}><div className="achievement-mark">★</div><div className="achievement-copy"><div className="achievement-title-row"><h4>{item.title}</h4><span className={`achievement-status ${String(item.achievementStatus || 'PENDING').toLowerCase()}`}>{item.achievementStatus || 'PENDING'}</span></div><p>{item.description || 'Portfolio submission awaiting review.'}</p>{item.evidence?.length ? <div className="evidence-links">{item.evidence.map((evidence) => <a href={`${API_BASE_URL}${evidence.fileUrl}`} target="_blank" rel="noreferrer" key={evidence.documentId}>{evidence.documentName}</a>)}</div> : null}<small>{item.achievementDate ? formatEventDate(item.achievementDate) : 'Date not provided'}</small></div>{item.achievementStatus !== 'VERIFIED' && <button className="achievement-delete" type="button" disabled={actionLoading} onClick={() => onDelete(item)}>Delete</button>}</article>) : <p className="empty-copy">No portfolio submissions yet. Add your first achievement above.</p>}</div>
+    </section>
+  </section>
 }
 
 function CoachDashboard({ session, onLogout }) {
@@ -157,6 +178,44 @@ function CoachDashboard({ session, onLogout }) {
   const [view, setView] = useState('dashboard')
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [portfolio, setPortfolio] = useState(null)
+  const [portfolioLoading, setPortfolioLoading] = useState(false)
+  const [portfolioError, setPortfolioError] = useState('')
+
+  const viewPortfolio = async (athlete) => {
+    setPortfolioLoading(true)
+    setPortfolioError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Portfolio/athlete/${athlete.athleteId}`, { headers: { Authorization: `Bearer ${session.token}` } })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to load portfolio.')
+      setPortfolio(result)
+    } catch (err) {
+      setPortfolioError(err.message || 'Unable to load portfolio.')
+    } finally {
+      setPortfolioLoading(false)
+    }
+  }
+
+  const reviewAchievement = async (item, status) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Achievements/${item.achievementId}/verify?status=${status}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${session.token}` },
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to review achievement.')
+      setPortfolio((current) => {
+        if (!current) return current
+        const items = status === 'REJECTED'
+          ? current.items.filter((entry) => entry.achievementId !== item.achievementId)
+          : current.items.map((entry) => entry.achievementId === item.achievementId ? { ...entry, achievementStatus: result.verificationStatus } : entry)
+        return { ...current, items }
+      })
+    } catch (err) {
+      setPortfolioError(err.message || 'Unable to review achievement.')
+    }
+  }
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -247,8 +306,8 @@ function CoachDashboard({ session, onLogout }) {
       </aside>
 
       <div className="coach-content">
-        <header className="topbar"><div className="crumbs"><span>Coach Portal</span><span className="sep">›</span><strong>{view === 'athletes' ? 'All Athletes' : view === 'schedule' ? 'Schedule' : 'Coach Dashboard'}</strong></div><span className="role-chip">Coach</span></header>
-        {view === 'athletes' ? <CoachAthletesPage dashboard={dashboard} /> : view === 'schedule' ? <div className="coach-schedule-page"><section className="coach-heading"><div><h2>Schedule</h2><p>Full training schedule for your assigned teams</p></div><button className="coach-action" type="button" onClick={() => setShowScheduleModal(true)}>+ Add Training Schedule</button></section>{scheduleError && <div className="dashboard-state error-message">{scheduleError}</div>}<CalendarPage records={scheduleRecords} loading={scheduleLoading} trainingOnly title="Schedule" subtitle="Use calendar or list view to track every training session" /></div> : <>
+        <header className="topbar"><div className="crumbs"><span>{String(session.role).toUpperCase() === 'DIRECTOR' ? 'Director Portal' : 'Coach Portal'}</span><span className="sep">›</span><strong>{view === 'athletes' ? 'All Athletes' : view === 'schedule' ? 'Schedule' : 'Coach Dashboard'}</strong></div><span className="role-chip">{session.role}</span></header>
+        {view === 'athletes' ? <><CoachAthletesPage dashboard={dashboard} onViewPortfolio={viewPortfolio} />{(portfolio || portfolioLoading || portfolioError) && <StaffPortfolioPanel portfolio={portfolio} loading={portfolioLoading} error={portfolioError} onReview={reviewAchievement} onClose={() => { setPortfolio(null); setPortfolioError('') }} />}</> : view === 'schedule' ? <div className="coach-schedule-page"><section className="coach-heading"><div><h2>Schedule</h2><p>Full training schedule for your assigned teams</p></div><button className="coach-action" type="button" onClick={() => setShowScheduleModal(true)}>+ Add Training Schedule</button></section>{scheduleError && <div className="dashboard-state error-message">{scheduleError}</div>}<CalendarPage records={scheduleRecords} loading={scheduleLoading} trainingOnly title="Schedule" subtitle="Use calendar or list view to track every training session" /></div> : <>
         <section className="coach-heading"><div><h2>Good morning, {session.firstName || 'Coach'}! <span>👋</span></h2><p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div><button className="coach-action" type="button" onClick={() => setShowScheduleModal(true)}>+ Add Training Schedule</button></section>
 
         {loading && <div className="dashboard-state">Loading coach data from the database...</div>}
@@ -289,8 +348,85 @@ function StudentPortal({ session, onLogout }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [achievementTitle, setAchievementTitle] = useState('')
+  const [achievementDescription, setAchievementDescription] = useState('')
+  const [evidenceFiles, setEvidenceFiles] = useState([])
+  const [portfolioActionLoading, setPortfolioActionLoading] = useState(false)
   const firstName = session.firstName || 'Student'
   const fullName = `${firstName} ${session.lastName || 'Athlete'}`.trim()
+
+  const addAchievementToPortfolio = async (event) => {
+    event.preventDefault()
+    if (!evidenceFiles.length) {
+      setError('Add at least one evidence file before submitting this achievement.')
+      return
+    }
+    setPortfolioActionLoading(true)
+    setError('')
+    try {
+      const headers = { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' }
+      const achievementResponse = await fetch(`${API_BASE_URL}/api/Achievements`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ title: achievementTitle, description: achievementDescription }),
+      })
+      const achievement = await achievementResponse.json().catch(() => null)
+      if (!achievementResponse.ok) throw new Error(achievement?.message || 'Unable to submit achievement.')
+      for (const file of evidenceFiles) {
+        const evidenceBody = new FormData()
+        evidenceBody.append('documentType', 'Achievement Evidence')
+        evidenceBody.append('achievementId', achievement.achievementId)
+        evidenceBody.append('file', file)
+        const evidenceResponse = await fetch(`${API_BASE_URL}/api/Documents`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.token}` },
+          body: evidenceBody,
+        })
+        const evidenceResult = await evidenceResponse.json().catch(() => null)
+        if (!evidenceResponse.ok) throw new Error(evidenceResult?.message || `Unable to upload ${file.name}.`)
+      }
+      const portfolioResponse = await fetch(`${API_BASE_URL}/api/Portfolio`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ achievementId: achievement.achievementId, title: achievement.title, description: achievement.description }),
+      })
+      const portfolioResult = await portfolioResponse.json().catch(() => null)
+      if (!portfolioResponse.ok) throw new Error(portfolioResult?.message || 'Unable to add achievement to portfolio.')
+      setAchievementTitle('')
+      setAchievementDescription('')
+      setEvidenceFiles([])
+      setData(null)
+      setRefreshKey((value) => value + 1)
+    } catch (err) {
+      setError(err.message || 'Unable to submit achievement.')
+    } finally {
+      setPortfolioActionLoading(false)
+    }
+  }
+
+  const deletePortfolioAchievement = async (item) => {
+    setPortfolioActionLoading(true)
+    setError('')
+    try {
+      const headers = { Authorization: `Bearer ${session.token}` }
+      const response = await fetch(`${API_BASE_URL}/api/Portfolio/${item.portfolioItemId}`, { method: 'DELETE', headers })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to remove portfolio submission.')
+      if (item.achievementId) {
+        const achievementResponse = await fetch(`${API_BASE_URL}/api/Achievements/${item.achievementId}`, { method: 'DELETE', headers })
+        if (!achievementResponse.ok && achievementResponse.status !== 404) {
+          const achievementResult = await achievementResponse.json().catch(() => null)
+          throw new Error(achievementResult?.message || 'Portfolio removed, but achievement cleanup failed.')
+        }
+      }
+      setData(null)
+      setRefreshKey((value) => value + 1)
+    } catch (err) {
+      setError(err.message || 'Unable to remove portfolio submission.')
+    } finally {
+      setPortfolioActionLoading(false)
+    }
+  }
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -306,7 +442,6 @@ function StudentPortal({ session, onLogout }) {
     const endpoints = {
       dashboard: profile?.athleteId ? `/api/AcademicRecords/dashboard/${profile.athleteId}` : null,
       grades: profile?.athleteId ? `/api/AcademicRecords/dashboard/${profile.athleteId}` : null,
-      sports: '/api/Achievements/me',
       schedule: '/api/Schedules/athlete',
       documents: '/api/Documents/me',
       portfolio: '/api/Portfolio/me',
@@ -325,16 +460,15 @@ function StudentPortal({ session, onLogout }) {
       .finally(() => setLoading(false))
   }, [page, profile?.athleteId, session.token, refreshKey])
 
-  const nav = [['dashboard', 'Dashboard'], ['grades', 'My Grades'], ['sports', 'My Sports'], ['schedule', 'Schedule'], ['documents', 'Documents'], ['portfolio', 'Portfolio'], ['profile', 'Profile'], ['notifications', 'Notifications']]
+  const nav = [['dashboard', 'Dashboard'], ['grades', 'My Grades'], ['schedule', 'Schedule'], ['documents', 'Documents'], ['portfolio', 'Portfolio'], ['profile', 'Profile'], ['notifications', 'Notifications']]
   const records = data?.records || (Array.isArray(data) ? data : [])
 
   const content = {
     dashboard: <><div className="notice-banner"><span className="alert-icon">⚠</span><p>Keep your academic records and athletic documents updated to maintain eligibility.</p><button type="button" onClick={() => setPage('notifications')}>View All</button></div><section className="page-header"><h2>Welcome back, {firstName}! <span>☀️</span></h2><p>Your student-athlete overview</p></section><section className="stats-grid"><article className="stat-card danger"><div className="stat-label">Current GPA</div><div className="stat-value">{data?.averageGrade || '—'}</div><small>Academic performance</small></article><article className="stat-card blue"><div className="stat-label">Enrolled Units</div><div className="stat-value">{data?.totalUnits || '—'}</div><small>From your academic records</small></article><article className="stat-card green"><div className="stat-label">Next Training</div><div className="stat-subtitle">{data?.[0]?.title || 'No upcoming session'}</div><small>{data?.[0]?.trainingDate || 'Check your schedule'}</small></article><article className="stat-card orange"><div className="stat-label">Achievements</div><div className="stat-value">{data?.length || '—'}</div><small>Verified athletic records</small></article></section></>,
     grades: <PageSection title="My Grades" subtitle="Academic performance records from the registrar"><div className="data-list">{loading ? <p>Loading records...</p> : records.length ? records.map((item) => <div className="data-row" key={item.academicRecordId}><strong>{item.subjectCode} · {item.subjectName}</strong><span>Grade: {item.grade ?? 'Pending'} · {item.units || 0} units</span></div>) : <p>No academic records found.</p>}</div></PageSection>,
-    sports: <PageSection title="My Sports" subtitle="Your achievements and awards"><div className="data-list">{loading ? <p>Loading achievements...</p> : records.length ? records.map((item) => <div className="data-row" key={item.achievementId}><strong>{item.title}</strong><span>{item.category || 'Athletic achievement'} · {item.verificationStatus || 'Pending'}</span></div>) : <p>No achievements found.</p>}</div></PageSection>,
     schedule: <CalendarPage records={records} loading={loading} />,
     documents: <DocumentsPage records={records} loading={loading} session={session} onRefresh={() => { setData(null); setRefreshKey((value) => value + 1) }} />,
-    portfolio: <PageSection title="Athletic Portfolio" subtitle={`Digital portfolio for ${fullName}`}><div className="data-list">{loading ? <p>Loading portfolio...</p> : records.length ? records.map((item) => <div className="data-row" key={item.portfolioItemId}><strong>{item.title}</strong><span>{item.description || 'Portfolio item'} · {item.isVisible ? 'Visible' : 'Hidden'}</span></div>) : <p>No portfolio items found.</p>}</div></PageSection>,
+    portfolio: <PortfolioPage fullName={fullName} session={session} profile={profile} records={records} loading={loading} actionLoading={portfolioActionLoading} title={achievementTitle} description={achievementDescription} evidenceFiles={evidenceFiles} onTitleChange={setAchievementTitle} onDescriptionChange={setAchievementDescription} onFilesChange={setEvidenceFiles} onSubmit={addAchievementToPortfolio} onDelete={deletePortfolioAchievement} />,
     profile: <PageSection title="Profile" subtitle="Your personal and academic information"><div className="profile-details"><div><span>Name</span><strong>{fullName}</strong></div><div><span>Email</span><strong>{session.email}</strong></div><div><span>Student ID</span><strong>{profile?.studentNumber || '—'}</strong></div><div><span>Program</span><strong>{profile?.course || '—'}</strong></div><div><span>Year Level</span><strong>{profile?.yearLevel || '—'}</strong></div><div><span>University</span><strong>{session.universityId || '—'}</strong></div></div></PageSection>,
     notifications: <PageSection title="Notifications" subtitle="Your alerts and important messages"><div className="data-list"><div className="data-row"><strong>Academic eligibility updates</strong><span>Review your latest grades and documents to stay eligible.</span></div><div className="data-row"><strong>Profile connected</strong><span>Your student account is authenticated with Athlete-Hub.</span></div></div></PageSection>,
   }[page]
@@ -409,7 +543,7 @@ function App() {
 
   const normalizedRole = String(session?.role || '').toUpperCase()
   const isStudentRole = normalizedRole === 'ATHLETE' || normalizedRole === 'STUDENT'
-  const isCoachRole = normalizedRole === 'COACH'
+  const isStaffRole = normalizedRole === 'COACH' || normalizedRole === 'DIRECTOR'
 
   if (session && isStudentRole) {
     return <StudentPortal session={session} onLogout={() => setSession(null)} />
@@ -486,7 +620,7 @@ function App() {
             </div>
           </section>
         </main>
-      ) : isCoachRole ? (
+      ) : isStaffRole ? (
         <CoachDashboard session={session} onLogout={() => setSession(null)} />
       ) : isStudentRole ? (
         <main className="student-app">
@@ -510,7 +644,6 @@ function App() {
             <nav className="main-nav" aria-label="Main navigation">
               <a className="nav-item active" href="#">Dashboard</a>
               <a className="nav-item" href="#">My Grades</a>
-              <a className="nav-item" href="#">My Sports</a>
               <a className="nav-item" href="#">Schedule</a>
               <a className="nav-item" href="#">Documents</a>
               <a className="nav-item" href="#">Portfolio</a>

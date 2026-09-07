@@ -198,12 +198,6 @@ function StudentDashboardScreen({ route, navigation }: { route: any; navigation:
           <Text style={styles.listItem}>NSTP 102 - 3.00</Text>
         </View>
 
-        <View style={styles.listCard}>
-          <Text style={styles.listTitle}>My Sports</Text>
-          <Text style={styles.listItem}>Basketball • Team Captain</Text>
-          <Text style={styles.listItem}>Training • 4x per week</Text>
-        </View>
-
         <Pressable style={styles.logoutButton} onPress={logout}>
           <Text style={styles.logoutText}>Log out</Text>
         </Pressable>

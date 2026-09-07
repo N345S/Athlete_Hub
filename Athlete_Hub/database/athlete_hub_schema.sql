@@ -166,6 +166,8 @@ CREATE TABLE team_members (
 
     athlete_id INT NOT NULL,
 
+    achievement_id INT,
+
     date_joined DATE,
 
     date_left DATE,
@@ -392,7 +394,12 @@ CREATE TABLE documents (
     CONSTRAINT fk_document_athlete
         FOREIGN KEY (athlete_id)
         REFERENCES athlete_profiles(athlete_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_document_achievement
+        FOREIGN KEY (achievement_id)
+        REFERENCES achievements(achievement_id)
+        ON DELETE SET NULL
 );
 
 

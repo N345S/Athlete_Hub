@@ -105,7 +105,32 @@ public class AchievementsController : ControllerBase
             });
     }
 
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ATHLETE,STUDENT")]
+    [HttpDelete("{achievementId}")]
+    public async Task<IActionResult> DeleteAchievement(int achievementId)
+    {
+        var athlete = await GetCurrentAthleteAsync();
+        var achievement = athlete == null
+            ? null
+            : await _context.Achievements.FirstOrDefaultAsync(item =>
+                item.AchievementId == achievementId && item.AthleteId == athlete.AthleteId);
+
+        if (achievement == null)
+        {
+            return NotFound(new { message = "Achievement not found." });
+        }
+
+        if (string.Equals(achievement.VerificationStatus, "VERIFIED", StringComparison.OrdinalIgnoreCase))
+        {
+            return Conflict(new { message = "Verified achievements require staff approval before removal." });
+        }
+
+        _context.Achievements.Remove(achievement);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [Authorize(Roles = "ADMIN,COACH,DIRECTOR")]
     [HttpPut("{achievementId}/verify")]
     public async Task<IActionResult> VerifyAchievement(
         int achievementId,
@@ -126,6 +151,11 @@ public class AchievementsController : ControllerBase
             return NotFound(new { message = "Achievement not found." });
         }
 
+        if (!await CanReviewAchievementAsync(achievement.AthleteId))
+        {
+            return Forbid();
+        }
+
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
             return Unauthorized(new { message = "User ID was not found in the JWT." });
@@ -134,6 +164,19 @@ public class AchievementsController : ControllerBase
         achievement.VerificationStatus = normalizedStatus;
         achievement.VerifiedBy = userId;
         achievement.VerifiedAt = DateTime.UtcNow;
+
+        if (normalizedStatus == "REJECTED")
+        {
+            var portfolioItems = await _context.PortfolioItems
+                .Where(item => item.AchievementId == achievementId)
+                .ToListAsync();
+            var evidenceDocuments = await _context.Documents
+                .Where(document => document.AchievementId == achievementId)
+                .ToListAsync();
+
+            _context.PortfolioItems.RemoveRange(portfolioItems);
+            _context.Documents.RemoveRange(evidenceDocuments);
+        }
 
         await _context.SaveChangesAsync();
 
@@ -144,6 +187,25 @@ public class AchievementsController : ControllerBase
             achievement.VerifiedBy,
             achievement.VerifiedAt
         });
+    }
+
+    private async Task<bool> CanReviewAchievementAsync(int athleteId)
+    {
+        if (User.IsInRole("ADMIN") || User.IsInRole("DIRECTOR"))
+        {
+            return true;
+        }
+
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return false;
+        }
+
+        var coach = await _context.CoachProfiles.FirstOrDefaultAsync(item => item.UserId == userId);
+        return coach != null && await _context.TeamMembers.AnyAsync(member =>
+            member.AthleteId == athleteId
+            && member.DateLeft == null
+            && member.Team.CoachId == coach.CoachId);
     }
 
     private async Task<AthleteProfile?> GetCurrentAthleteAsync()
