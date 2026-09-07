@@ -1,33 +1,22 @@
 @AthleteHub.API_HostAddress = http://localhost:5007
 
 ############################################################
-# WEATHER FORECAST
+# SPRINT 1 - FOUNDATIONS AND AUTHENTICATION
 ############################################################
 
+### Weather forecast
 GET {{AthleteHub.API_HostAddress}}/weatherforecast/
 Accept: application/json
 
-
-############################################################
-# DATABASE TEST
-############################################################
-
+### Database test
 GET {{AthleteHub.API_HostAddress}}/api/DatabaseTest
 Accept: application/json
 
-
-############################################################
-# GET ROLES
-############################################################
-
+### Get roles
 GET {{AthleteHub.API_HostAddress}}/api/Role
 Accept: application/json
 
-
-############################################################
-# REGISTER ATHLETE
-############################################################
-
+### Register athlete
 POST {{AthleteHub.API_HostAddress}}/api/Auth/register
 Content-Type: application/json
 
@@ -41,11 +30,7 @@ Content-Type: application/json
   "phone": "09123456789"
 }
 
-
-############################################################
-# LOGIN - ATHLETE
-############################################################
-
+### Login athlete
 POST {{AthleteHub.API_HostAddress}}/api/Auth/login
 Content-Type: application/json
 
@@ -53,20 +38,52 @@ Content-Type: application/json
   "email": "testathlete@example.com",
   "password": "Password123!"
 }
-> {%
-client.global.set("athleteToken", response.body.token);
-%}
+
+### Login coach
+POST {{AthleteHub.API_HostAddress}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "email": "testcoach@athletehub.com",
+  "password": "Coach123!"
+}
+
+### Login director
+POST {{AthleteHub.API_HostAddress}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "email": "testdirector@athletehub.com",
+  "password": "Director123!"
+}
 
 
+### Login admin
+POST {{AthleteHub.API_HostAddress}}/api/Auth/login
+Content-Type: application/json
 
+{
+  "email": "testadmin@athletehub.com",
+  "password": "Admin123!"
+}
+
+### Login registrar
+POST {{AthleteHub.API_HostAddress}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "email": "testregistrar@athletehub.com",
+  "password": "Registrar123!"
+}
 
 ############################################################
-# CREATE ACHIEVEMENT - ATHLETE
+# SPRINT 2 - ATHLETE MANAGEMENT AND PORTFOLIO
 ############################################################
 
+### Create achievement - athlete
 POST {{AthleteHub.API_HostAddress}}/api/Achievements
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODcyOTgxODQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.3Yj85jWvXspRbKrCfkRLjW7g07cQAOv9ax9KvXHoVxY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDc3OTAsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.Ka7KQC23jhdIECx6MsTInxC2z5plU-3be7_EFKcv_MA
 
 {
   "title": "Regional Track and Field Champion",
@@ -75,23 +92,14 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hc
   "category": "SPORTS"
 }
 
-
-############################################################
-# GET MY ACHIEVEMENTS - ATHLETE
-############################################################
-
+### Get my achievements - athlete
 GET {{AthleteHub.API_HostAddress}}/api/Achievements/me
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODcyOTgxODQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.3Yj85jWvXspRbKrCfkRLjW7g07cQAOv9ax9KvXHoVxY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDc3OTAsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.Ka7KQC23jhdIECx6MsTInxC2z5plU-3be7_EFKcv_MA
 
-
-############################################################
-# CREATE PORTFOLIO ITEM - ATHLETE
-############################################################
-
+### Create portfolio item - athlete
 POST {{AthleteHub.API_HostAddress}}/api/Portfolio
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODcyOTgxODQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.3Yj85jWvXspRbKrCfkRLjW7g07cQAOv9ax9KvXHoVxY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDc3OTAsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.Ka7KQC23jhdIECx6MsTInxC2z5plU-3be7_EFKcv_MA
 
 {
   "title": "Regional Championship Portfolio Entry",
@@ -100,22 +108,17 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hc
   "isVisible": true
 }
 
-
-############################################################
-# GET MY PORTFOLIO - ATHLETE
-############################################################
-
+### Get my portfolio - athlete
 GET {{AthleteHub.API_HostAddress}}/api/Portfolio/me
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODcyOTgxODQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.3Yj85jWvXspRbKrCfkRLjW7g07cQAOv9ax9KvXHoVxY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDc3OTAsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.Ka7KQC23jhdIECx6MsTInxC2z5plU-3be7_EFKcv_MA
 
+### Get my documents - athlete
+GET {{AthleteHub.API_HostAddress}}/api/Documents/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDc3OTAsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.Ka7KQC23jhdIECx6MsTInxC2z5plU-3be7_EFKcv_MA
 
-############################################################
-# UPLOAD DOCUMENT - ATHLETE
-############################################################
-
+### Upload document - athlete
 POST {{AthleteHub.API_HostAddress}}/api/Documents
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODcyOTgxODQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.3Yj85jWvXspRbKrCfkRLjW7g07cQAOv9ax9KvXHoVxY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDc3OTAsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.Ka7KQC23jhdIECx6MsTInxC2z5plU-3be7_EFKcv_MA
 Content-Type: multipart/form-data; boundary=UploadBoundary
 
 --UploadBoundary
@@ -129,141 +132,52 @@ Content-Type: application/pdf
 < C:\Users\SMB\Documents\transcript.pdf
 --UploadBoundary--
 
-
-############################################################
-# GET MY DOCUMENTS - ATHLETE
-############################################################
-
-GET {{AthleteHub.API_HostAddress}}/api/Documents/me
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODcyOTgxODQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.3Yj85jWvXspRbKrCfkRLjW7g07cQAOv9ax9KvXHoVxY
-
-
-############################################################
-# LOGIN - COACH
-############################################################
-
-POST {{AthleteHub.API_HostAddress}}/api/Auth/login
-Content-Type: application/json
-
-{
-  "email": "testcoach@athletehub.com",
-  "password": "Coach123!"
-}
-
-
-############################################################
-# LOGIN - DIRECTOR
-############################################################
-
-POST {{AthleteHub.API_HostAddress}}/api/Auth/login
-Content-Type: application/json
-
-{
-  "email": "testdirector@athletehub.com",
-  "password": "Director123!"
-}
-
-
-############################################################
-# LOGIN - ADMIN
-############################################################
-
-POST {{AthleteHub.API_HostAddress}}/api/Auth/login
-Content-Type: application/json
-
-{
-  "email": "testadmin@athletehub.com",
-  "password": "Admin123!"
-}
-
-
-
-############################################################
-# ADMIN - GET ALL USERS
-############################################################
-
+### Admin - get all users
 GET {{AthleteHub.API_HostAddress}}/api/Admin/users
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGFkbWluQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJVbml2ZXJzaXR5SWQiOiJURVNULUFETUlOLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkFkbWluIiwiZXhwIjoxNzg3MzA1MDczLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.nrrQ-QLdC7T8HZn-TXMiI9tMqIY77cvTu7XQmnjaX-M
+Authorization: Bearer {{adminToken}}
 
-
-############################################################
-# ADMIN - GET USER
-############################################################
-
+### Admin - get user
 GET {{AthleteHub.API_HostAddress}}/api/Admin/users/6
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGFkbWluQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJVbml2ZXJzaXR5SWQiOiJURVNULUFETUlOLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkFkbWluIiwiZXhwIjoxNzg3MzA1MDczLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.nrrQ-QLdC7T8HZn-TXMiI9tMqIY77cvTu7XQmnjaX-M
+Authorization: Bearer {{adminToken}}
 
-
-############################################################
-# ADMIN - CREATE USER
-############################################################
-
+### Admin - create coach account
 POST {{AthleteHub.API_HostAddress}}/api/Admin/users
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGFkbWluQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJVbml2ZXJzaXR5SWQiOiJURVNULUFETUlOLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkFkbWluIiwiZXhwIjoxNzg3MzA1MDczLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.nrrQ-QLdC7T8HZn-TXMiI9tMqIY77cvTu7XQmnjaX-M
+Authorization: Bearer {{adminToken}}
 
 {
-  "roleId": 1,
-  "universityId": "TEST-CRUD-001",
-  "email": "crudathlete@example.com",
-  "password": "Password123!",
+  "roleId": 2,
+  "universityId": "TEST-COACH-CRUD-001",
+  "email": "crudcoach@example.com",
+  "password": "Coach123!",
   "firstName": "CRUD",
   "middleName": null,
-  "lastName": "Athlete",
+  "lastName": "Coach",
   "phone": "09123456780"
 }
 
-
-
-############################################################
-# ADMIN - UPDATE USER
-############################################################
-
+### Admin - update user
 PUT {{AthleteHub.API_HostAddress}}/api/Admin/users/6
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGFkbWluQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJVbml2ZXJzaXR5SWQiOiJURVNULUFETUlOLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkFkbWluIiwiZXhwIjoxNzg3MzA1MDczLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.nrrQ-QLdC7T8HZn-TXMiI9tMqIY77cvTu7XQmnjaX-M
+Authorization: Bearer {{adminToken}}
 
 {
   "phone": "09123456781",
   "accountStatus": "ACTIVE"
 }
 
-
-############################################################
-# ADMIN - DELETE USER
-############################################################
-
+### Admin - delete user
 DELETE {{AthleteHub.API_HostAddress}}/api/Admin/users/6
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGFkbWluQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJVbml2ZXJzaXR5SWQiOiJURVNULUFETUlOLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkFkbWluIiwiZXhwIjoxNzg3MzA1MDczLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.nrrQ-QLdC7T8HZn-TXMiI9tMqIY77cvTu7XQmnjaX-M
-
-
+Authorization: Bearer {{adminToken}}
 
 ############################################################
-# LOGIN - REGISTRAR
+# SPRINT 3 - ACADEMIC AND ATHLETIC MONITORING
 ############################################################
 
-POST {{AthleteHub.API_HostAddress}}/api/Auth/login
-Content-Type: application/json
-
-{
-  "email": "testregistrar@athletehub.com",
-  "password": "Registrar123!"
-}
-> {%
-client.global.set("registrarToken", response.body.token);
-%}
-
-
-############################################################
-# SEND GRADE EVALUATION - REGISTRAR
-############################################################
-
+### Send grade evaluation - registrar
 POST {{AthleteHub.API_HostAddress}}/api/GradeEvaluations
 Content-Type: application/json
-Authorization: Bearer {{registrarToken}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjUiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdHJlZ2lzdHJhckBhdGhsZXRlaHViLmNvbSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlJFR0lTVFJBUiIsIlVuaXZlcnNpdHlJZCI6IlRFU1QtUkVHSVNUUkFSLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlJlZ2lzdHJhciIsImV4cCI6MTc4ODQwNTAwNiwiaXNzIjoiQXRobGV0ZUh1Yi5BUEkiLCJhdWQiOiJBdGhsZXRlSHViLkNsaWVudCJ9.o2vIpyNOfadWCBn6YAb4Qbds4guI0ecqoZW_voqQEOw
 
 {
   "athleteId": 1,
@@ -280,60 +194,122 @@ Authorization: Bearer {{registrarToken}}
   ]
 }
 
+### Academic records - athlete
+GET {{AthleteHub.API_HostAddress}}/api/AcademicRecords/athlete/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDM3OTQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.SY0_Su5YJuH5-kTo4_mBeYAYmvmtdxOi0S1C4-U09Vo
 
-############################################################
-# ADMIN-ONLY TEST
-############################################################
+### Academic monitoring dashboard - athlete
+GET {{AthleteHub.API_HostAddress}}/api/AcademicRecords/dashboard/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDM3OTQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.SY0_Su5YJuH5-kTo4_mBeYAYmvmtdxOi0S1C4-U09Vo
 
-GET http://localhost:5007/api/RoleTest/admin-test
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGFkbWluQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJVbml2ZXJzaXR5SWQiOiJURVNULUFETUlOLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkFkbWluIiwiZXhwIjoxNzg3Mjk0MTYxLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.GEVGIZPbtaiC_8NDc8bVYaeaHpBtdtLyUShQ33ng6vY
+### Delete academic record - registrar
+DELETE {{AthleteHub.API_HostAddress}}/api/AcademicRecords/2
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjUiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdHJlZ2lzdHJhckBhdGhsZXRlaHViLmNvbSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlJFR0lTVFJBUiIsIlVuaXZlcnNpdHlJZCI6IlRFU1QtUkVHSVNUUkFSLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlJlZ2lzdHJhciIsImV4cCI6MTc4ODQwNTAwNiwiaXNzIjoiQXRobGV0ZUh1Yi5BUEkiLCJhdWQiOiJBdGhsZXRlSHViLkNsaWVudCJ9.o2vIpyNOfadWCBn6YAb4Qbds4guI0ecqoZW_voqQEOw
 
-############################################################
-# REGISTRAR ONLY TEST
-############################################################
+### Coach monitoring dashboard
+GET {{AthleteHub.API_HostAddress}}/api/CoachDashboard
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-GET http://localhost:5007/api/RoleTest/registrar
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjUiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdHJlZ2lzdHJhckBhdGhsZXRlaHViLmNvbSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlJFR0lTVFJBUiIsIlVuaXZlcnNpdHlJZCI6IlRFU1QtUkVHSVNUUkFSLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlJlZ2lzdHJhciIsImV4cCI6MTc4NzI5NDY1OSwiaXNzIjoiQXRobGV0ZUh1Yi5BUEkiLCJhdWQiOiJBdGhsZXRlSHViLkNsaWVudCJ9.JcJ3shu5pxybmojGpRNj4LTRDPR_61Rsdc8D5dqDYsc
+### Performance metrics
+GET {{AthleteHub.API_HostAddress}}/api/Performance/metrics
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-############################################################
-# COACH ONLY TEST
-############################################################
+### Performance records for athlete
+GET {{AthleteHub.API_HostAddress}}/api/Performance/athlete/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-GET http://localhost:5007/api/RoleTest/coach
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg3Mjk0NjIxLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.rFWj8FX8ii51lGfGJqzL9xFQQ-ZqWqPoZ7Nf-7QemsY
+### Create performance record - coach
+POST {{AthleteHub.API_HostAddress}}/api/Performance/records
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-############################################################
-# DIRECTOR ONLY TEST
-############################################################
+{
+  "athleteId": 1,
+  "metricId": 1,
+  "recordedValue": 12.5,
+  "recordedDate": "2026-09-02",
+  "notes": "Sprint performance test"
+}
 
-GET http://localhost:5007/api/RoleTest/director
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjMiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGRpcmVjdG9yQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiRElSRUNUT1IiLCJVbml2ZXJzaXR5SWQiOiJURVNULURJUkVDVE9SLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkRpcmVjdG9yIiwiZXhwIjoxNzg3Mjk0NTAxLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.GHvSCEcQ_ow_vTQSKzeVsBDEaJGG0ZAQTBTv88QdcNE
+### Training sessions
+GET {{AthleteHub.API_HostAddress}}/api/Training/sessions
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-############################################################
-# ATHLETE ONLY TEST
-############################################################
+### Create training session - coach
+POST {{AthleteHub.API_HostAddress}}/api/Training/sessions
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-GET http://localhost:5007/api/RoleTest/athlete
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODcyOTQ2NDIsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.jdtP_MqIHGeftOZcJgC8onLp6mO6unbJuvvTYfc1uFc
+{
+  "teamId": 1,
+  "title": "Morning Training",
+  "description": "Sprint and conditioning",
+  "trainingDate": "2026-09-03",
+  "startTime": "08:00:00",
+  "endTime": "10:00:00",
+  "location": "Main Track"
+}
+### Delete Training session
+DELETE {{AthleteHub.API_HostAddress}}/api/Training/sessions/2
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-############################################################
-# ADMIN - GET ALL USERS
-############################################################
 
-GET http://localhost:5007/api/Admin/users
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGFkbWluQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJVbml2ZXJzaXR5SWQiOiJURVNULUFETUlOLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkFkbWluIiwiZXhwIjoxNzg3Mjk0MTYxLCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.GEVGIZPbtaiC_8NDc8bVYaeaHpBtdtLyUShQ33ng6vY
+### Attendance for training session
+GET {{AthleteHub.API_HostAddress}}/api/Training/sessions/1/attendance
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-############################################################
-# ACADEMIC RECORDS
-############################################################
+### Mark attendance - coach
+POST {{AthleteHub.API_HostAddress}}/api/Training/sessions/1/attendance
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
 
-### GET ACADEMIC RECORDS FOR ATHLETE
-GET http://localhost:5007/api/AcademicRecords/athlete/1
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODcyOTQ2NDIsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.jdtP_MqIHGeftOZcJgC8onLp6mO6unbJuvvTYfc1uFc
+{
+  "athleteId": 1,
+  "attendanceStatus": "PRESENT",
+  "remarks": "Arrived on time"
+}
+
+### Eligibility records for athlete
+GET {{AthleteHub.API_HostAddress}}/api/Eligibility/athlete/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDM3OTQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.SY0_Su5YJuH5-kTo4_mBeYAYmvmtdxOi0S1C4-U09Vo
+
+### Create eligibility record - registrar
+POST {{AthleteHub.API_HostAddress}}/api/Eligibility
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjUiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdHJlZ2lzdHJhckBhdGhsZXRlaHViLmNvbSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlJFR0lTVFJBUiIsIlVuaXZlcnNpdHlJZCI6IlRFU1QtUkVHSVNUUkFSLTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlJlZ2lzdHJhciIsImV4cCI6MTc4ODQwNTAwNiwiaXNzIjoiQXRobGV0ZUh1Yi5BUEkiLCJhdWQiOiJBdGhsZXRlSHViLkNsaWVudCJ9.o2vIpyNOfadWCBn6YAb4Qbds4guI0ecqoZW_voqQEOw
+
+{
+  "athleteId": 1,
+  "termId": 1,
+  "academicStatus": "ELIGIBLE",
+  "remarks": "Approved for current term"
+}
+
+### Schedule/calendar entries
+GET {{AthleteHub.API_HostAddress}}/api/Schedules
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGF0aGxldGVAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBVEhMRVRFIiwiVW5pdmVyc2l0eUlkIjoiVEVTVC0yMDI2LTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IlVzZXIiLCJleHAiOjE3ODg0MDM3OTQsImlzcyI6IkF0aGxldGVIdWIuQVBJIiwiYXVkIjoiQXRobGV0ZUh1Yi5DbGllbnQifQ.SY0_Su5YJuH5-kTo4_mBeYAYmvmtdxOi0S1C4-U09Vo
+
+### Schedule/calendar entries by date
+GET {{AthleteHub.API_HostAddress}}/api/Schedules?from=2026-09-01&to=2026-09-30
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
+
+### Create schedule - coach
+POST {{AthleteHub.API_HostAddress}}/api/Schedules
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
+
+{
+  "title": "PRISAA Competition",
+  "description": "Athletics competition",
+  "scheduleType": "COMPETITION",
+  "startDate": "2026-09-10",
+  "startTime": "08:00:00",
+  "endDate": "2026-09-10",
+  "endTime": "17:00:00",
+  "location": "University Stadium"
+}
+
+### Delete schedule
+DELETE {{AthleteHub.API_HostAddress}}/api/Schedules/6
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoidGVzdGNvYWNoQGF0aGxldGVodWIuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ09BQ0giLCJVbml2ZXJzaXR5SWQiOiJURVNULUNPQUNILTAwMSIsIkZpcnN0TmFtZSI6IlRlc3QiLCJMYXN0TmFtZSI6IkNvYWNoIiwiZXhwIjoxNzg4NDAzNjQ5LCJpc3MiOiJBdGhsZXRlSHViLkFQSSIsImF1ZCI6IkF0aGxldGVIdWIuQ2xpZW50In0.pvNGOGk0EXbSk2ZWCaurh9ZnSA0c_D-1Emznny5nA3g
+

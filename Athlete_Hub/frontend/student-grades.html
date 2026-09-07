@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Athlete-Hub | My Grades</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="student-app.css" />
+  </head>
+  <body class="student-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-mark">AH</div>
+        <div>
+          <h1>Athlete-Hub</h1>
+          <small>Monitoring System</small>
+        </div>
+      </div>
+
+      <div class="profile-block">
+        <div class="avatar">MJ</div>
+        <div class="profile-meta">
+          <strong>Marcus Johnson</strong>
+          <span>Student-Athlete</span>
+        </div>
+      </div>
+
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class="nav-item" href="student-dashboard.html">Dashboard</a>
+        <a class="nav-item active" href="student-grades.html">My Grades</a>
+        <a class="nav-item" href="student-schedule.html">Schedule</a>
+        <a class="nav-item" href="student-documents.html">Documents</a>
+        <a class="nav-item" href="student-portfolio.html">Portfolio</a>
+        <a class="nav-item" href="student-profile.html">Profile</a>
+        <a class="nav-item" href="student-notifications.html">Notifications <span class="dot-badge">3</span></a>
+      </nav>
+
+      <button class="logout-button" type="button">Logout</button>
+    </aside>
+
+    <main class="content-panel">
+      <header class="topbar">
+        <div class="crumbs">
+          <span>Athlete Portal</span>
+          <span class="sep">›</span>
+          <strong>My Grades</strong>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="search-box">Search...</div>
+          <div class="top-icon">🔔</div>
+          <div class="profile-mini">
+            <div class="avatar small">MJ</div>
+            <div>
+              <strong>Marcus</strong>
+              <small>Student-Athlete</small>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="subpage-header">
+        <h2>My Grades</h2>
+        <p>Academic performance records • Philippine Grading System (1.00-5.00)</p>
+      </section>
+
+      <section class="stats-inline">
+        <article class="mini-card">
+          <div class="mini-label">Overall GPA</div>
+          <div class="mini-value danger">1.80</div>
+          <small>Good</small>
+        </article>
+        <article class="mini-card">
+          <div class="mini-label">Athletic Eligibility</div>
+          <div class="mini-status success">Eligible</div>
+          <small>GPA meets the 3.00 requirement</small>
+        </article>
+        <article class="mini-card">
+          <div class="mini-label">Current Semester GPA</div>
+          <div class="mini-value blue">1.97</div>
+          <small>2nd Semester 2024-2025</small>
+        </article>
+      </section>
+
+      <section class="grades-table-card">
+        <h3>Current Semester Subjects</h3>
+        <p>2nd Semester 2024-2025 • 21 Enrolled Units</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Subject Code</th>
+              <th>Subject Name</th>
+              <th>Grade (PH)</th>
+              <th>Units</th>
+              <th>Label</th>
+              <th>Instructor</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CS301</td>
+              <td>Data Structures</td>
+              <td>1.75</td>
+              <td>3</td>
+              <td><span class="tag tag-good">Very Good</span></td>
+              <td>Dr. Santos</td>
+            </tr>
+            <tr>
+              <td>CS302</td>
+              <td>Algorithm Analysis</td>
+              <td>2.00</td>
+              <td>3</td>
+              <td><span class="tag tag-good">Good</span></td>
+              <td>Prof. Reyes</td>
+            </tr>
+            <tr>
+              <td>MATH201</td>
+              <td>Discrete Mathematics</td>
+              <td>1.50</td>
+              <td>3</td>
+              <td><span class="tag tag-good">Very Good</span></td>
+              <td>Dr. Lim</td>
+            </tr>
+            <tr>
+              <td>PE201</td>
+              <td>Physical Education 2</td>
+              <td>1.00</td>
+              <td>2</td>
+              <td><span class="tag tag-excellent">Excellent</span></td>
+              <td>Coach Bautista</td>
+            </tr>
+            <tr>
+              <td>ENG201</td>
+              <td>Technical Writing</td>
+              <td>2.25</td>
+              <td>3</td>
+              <td><span class="tag tag-good">Good</span></td>
+              <td>Prof. Cruz</td>
+            </tr>
+            <tr>
+              <td>NSTP102</td>
+              <td>NSTP 2</td>
+              <td>3.00</td>
+              <td>3</td>
+              <td><span class="tag tag-passing">Passing</span></td>
+              <td>Lt. Garcia</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="summary-boxes">
+          <div>
+            <strong>6</strong>
+            <span>Subjects</span>
+          </div>
+          <div>
+            <strong>17</strong>
+            <span>Total Units</span>
+          </div>
+          <div>
+            <strong>1.97</strong>
+            <span>Weighted GPA</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>

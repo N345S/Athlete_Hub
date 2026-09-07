@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Athlete-Hub | Documents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="student-app.css" />
+  </head>
+  <body class="student-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-mark">AH</div>
+        <div>
+          <h1>Athlete-Hub</h1>
+          <small>Monitoring System</small>
+        </div>
+      </div>
+
+      <div class="profile-block">
+        <div class="avatar">MJ</div>
+        <div class="profile-meta">
+          <strong>Marcus Johnson</strong>
+          <span>Student-Athlete</span>
+        </div>
+      </div>
+
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class="nav-item" href="student-dashboard.html">Dashboard</a>
+        <a class="nav-item" href="student-grades.html">My Grades</a>
+        <a class="nav-item" href="student-schedule.html">Schedule</a>
+        <a class="nav-item active" href="student-documents.html">Documents</a>
+        <a class="nav-item" href="student-portfolio.html">Portfolio</a>
+        <a class="nav-item" href="student-profile.html">Profile</a>
+        <a class="nav-item" href="student-notifications.html">Notifications <span class="dot-badge">3</span></a>
+      </nav>
+
+      <button class="logout-button" type="button">Logout</button>
+    </aside>
+
+    <main class="content-panel">
+      <header class="topbar">
+        <div class="crumbs">
+          <span>Athlete Portal</span>
+          <span class="sep">›</span>
+          <strong>Documents</strong>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="search-box">Search...</div>
+          <div class="top-icon">🔔</div>
+          <div class="profile-mini">
+            <div class="avatar small">MJ</div>
+            <div>
+              <strong>Marcus</strong>
+              <small>Student-Athlete</small>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="subpage-header">
+        <h2>Documents</h2>
+        <p>Upload and track your certificates, consent forms, and clearance documents</p>
+      </section>
+
+      <section class="stats-inline compact">
+        <article class="mini-card">
+          <div class="mini-label">Total Files</div>
+          <div class="mini-value danger">5</div>
+        </article>
+        <article class="mini-card">
+          <div class="mini-label">Approved</div>
+          <div class="mini-value success">3</div>
+        </article>
+        <article class="mini-card">
+          <div class="mini-label">Pending</div>
+          <div class="mini-value warning">1</div>
+        </article>
+        <article class="mini-card">
+          <div class="mini-label">Rejected</div>
+          <div class="mini-value error">1</div>
+        </article>
+      </section>
+
+      <section class="upload-card" id="documentUpload">
+        <label class="legacy-upload-box" id="documentDropZone">
+          <input id="documentFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" />
+          <strong>Drop documents here or click to browse</strong>
+          <small>PDF, PNG, JPG, DOC, or DOCX up to 10MB each</small>
+        </label>
+        <label class="legacy-field">Document type
+          <select id="documentTypeInput">
+            <option>Medical Clearance</option>
+            <option>Consent Form</option>
+            <option>Enrollment Form</option>
+            <option>Athletic Eligibility Form</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <div id="stagedDocumentList" class="staged-document-list"></div>
+        <div class="legacy-actions"><button id="uploadDocumentsButton" type="button">Upload files</button></div>
+        <p id="documentMessage" class="legacy-message" role="status"></p>
+      </section>
+
+      <section id="documentList" class="document-list"></section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>

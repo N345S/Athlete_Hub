@@ -9,7 +9,7 @@ namespace AthleteHub.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "ATHLETE")]
+[Authorize(Roles = "ATHLETE,STUDENT")]
 public class DocumentsController : ControllerBase
 {
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -48,6 +48,7 @@ public class DocumentsController : ControllerBase
                 document.DocumentName,
                 document.FileUrl,
                 document.Status,
+                document.AchievementId,
                 document.UploadedAt
             })
             .ToListAsync();
@@ -59,7 +60,8 @@ public class DocumentsController : ControllerBase
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> UploadDocument(
         [FromForm] string documentType,
-        [FromForm] IFormFile file)
+        [FromForm] IFormFile file,
+        [FromForm] int? achievementId)
     {
         if (string.IsNullOrWhiteSpace(documentType))
         {
@@ -89,6 +91,12 @@ public class DocumentsController : ControllerBase
             return NotFound(new { message = "Athlete profile not found." });
         }
 
+        if (achievementId.HasValue && !await _context.Achievements.AnyAsync(achievement =>
+                achievement.AchievementId == achievementId.Value && achievement.AthleteId == athlete.AthleteId))
+        {
+            return BadRequest(new { message = "The evidence achievement does not belong to this athlete." });
+        }
+
         var uploadDirectory = Path.Combine(
             _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"),
             "uploads",
@@ -107,6 +115,7 @@ public class DocumentsController : ControllerBase
         var document = new Document
         {
             AthleteId = athlete.AthleteId,
+            AchievementId = achievementId,
             DocumentType = documentType.Trim(),
             DocumentName = Path.GetFileName(file.FileName),
             FileUrl = $"/uploads/documents/{storedFileName}",
@@ -124,6 +133,7 @@ public class DocumentsController : ControllerBase
             document.DocumentName,
             document.FileUrl,
             document.Status,
+            document.AchievementId,
             document.UploadedAt
         });
     }
