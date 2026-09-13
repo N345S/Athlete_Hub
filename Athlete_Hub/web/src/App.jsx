@@ -151,6 +151,83 @@ function StaffPortfolioPanel({ portfolio, loading, error, onClose, onReview }) {
   return <section className="coach-panel staff-portfolio-panel"><div className="panel-heading"><div><h2>{portfolio ? `${portfolio.firstName} ${portfolio.lastName}'s Portfolio` : 'Student Portfolio'}</h2><p>{portfolio?.studentNumber || 'Verified and pending achievement submissions'}</p></div><button className="schedule-more-button" type="button" onClick={onClose}>Close</button></div>{loading ? <p>Loading portfolio...</p> : error ? <p className="error-message">{error}</p> : portfolio?.items?.length ? <div className="data-list">{portfolio.items.map((item) => <div className="data-row" key={item.portfolioItemId}><strong>{item.title}</strong><span>{item.description || 'Portfolio submission'} · {item.achievementStatus || 'Pending'}</span>{item.evidence?.length ? <div className="evidence-links">{item.evidence.map((evidence) => <a href={`${API_BASE_URL}${evidence.fileUrl}`} target="_blank" rel="noreferrer" key={evidence.documentId}>View {evidence.documentName}</a>)}</div> : <small>No evidence attached</small>}{item.achievementStatus !== 'VERIFIED' && item.achievementId && <div className="review-actions"><button className="review-button approve" type="button" onClick={() => onReview(item, 'VERIFIED')}>Approve</button><button className="review-button reject" type="button" onClick={() => onReview(item, 'REJECTED')}>Reject</button></div>}</div>)}</div> : <p className="empty-copy">No portfolio submissions found.</p>}</section>
 }
 
+function GradeEntryPage({ students }) {
+  const [search, setSearch] = useState('')
+  const filteredStudents = students.filter((student) => `${student.firstName} ${student.lastName} ${student.studentNumber} ${student.course || ''}`.toLowerCase().includes(search.toLowerCase()))
+  const gradeLabel = (grade) => grade == null ? 'Pending' : grade <= 1.25 ? 'Excellent' : grade <= 1.75 ? 'Very Good' : grade <= 2.25 ? 'Good' : grade <= 3 ? 'Passing' : 'Failed'
+
+  return <section className="grade-entry-page"><div className="registrar-heading"><div><h2>Grade Entry</h2><p>Encode and review student grades using the Philippine Grading System</p></div></div><div className="grade-entry-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, student ID, or program..." /><button type="button" onClick={() => setSearch('')}>Clear</button></div><div className="grade-student-list">{filteredStudents.length ? filteredStudents.map((student) => <article className="grade-student-card" key={student.athleteId}><div className="grade-student-header"><div><strong>{student.firstName} {student.lastName}</strong><small>{student.studentNumber} · {student.course || 'Program not set'} · Year {student.yearLevel || '—'}</small></div><span className={student.eligibilityStatus === 'ELIGIBLE' ? 'eligible-label' : 'attention-label'}>{student.eligibilityStatus}</span></div><div className="grade-actions"><button type="button">▣ Full Record</button><button type="button">✎ Edit Grades</button></div><div className="grade-records">{student.records?.length ? student.records.map((record) => <div className="grade-record-row" key={record.academicRecordId}><div><strong>{record.subjectCode}</strong><span>{record.subjectName} ({record.units || 0}u)</span><small>{record.remarks || 'Academic record'}</small></div><strong>{record.grade ?? '—'}</strong><em>{gradeLabel(record.grade)}</em></div>) : <p className="empty-copy">No academic records encoded yet.</p>}</div></article>) : <p className="empty-copy">No students match your search.</p>}</div></section>
+}
+
+function AcademicRecordsPage({ students }) {
+  const [search, setSearch] = useState('')
+  const filteredStudents = students.filter((student) => `${student.firstName} ${student.lastName} ${student.studentNumber} ${student.course || ''}`.toLowerCase().includes(search.toLowerCase()))
+
+  return <section className="academic-records-page"><div className="registrar-heading"><div><h2>Academic Records</h2><p>Upload academic records and update GWA</p></div></div><section className="academic-upload-panel"><span className="upload-icon">⇧</span><strong>Upload Academic Records</strong><small>Supports PDF, Excel (.xlsx), or CSV files. Max 10MB per file.</small><div><button className="coach-action" type="button">⇧ Upload Batch Grades</button><button className="template-button" type="button">Download Template</button></div></section><section className="gwa-panel"><div className="panel-heading"><div><h3>Update GWA (General Weighted Average)</h3><p>Review each student’s latest academic average from the database.</p></div></div><div className="academic-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search student, ID, or program..." /><button type="button" onClick={() => setSearch('')}>Clear</button></div><div className="gwa-grid">{filteredStudents.length ? filteredStudents.map((student) => <article className="gwa-card" key={student.athleteId}><div><strong>{student.firstName} {student.lastName}</strong><small>{student.studentNumber} · {student.course || 'Program not set'}</small></div><b>{student.averageGrade ?? '—'}</b><select defaultValue={student.averageGrade ?? ''} aria-label={`GWA for ${student.firstName} ${student.lastName}`}><option value="">Select GWA</option><option value="1.00">1.00 – Excellent</option><option value="1.25">1.25 – Excellent</option><option value="1.50">1.50 – Very Good</option><option value="1.75">1.75 – Very Good</option><option value="2.00">2.00 – Good</option><option value="2.25">2.25 – Good</option><option value="2.50">2.50 – Passing</option><option value="3.00">3.00 – Passing</option><option value="5.00">5.00 – Failed</option></select><button className="save-gwa-button" type="button" aria-label={`Save GWA for ${student.firstName} ${student.lastName}`}>▣</button></article>) : <p className="empty-copy">No students match your search.</p>}</div></section></section>
+}
+
+function EligibilityPage({ students }) {
+  const eligibleStudents = students.filter((student) => student.eligibilityStatus === 'ELIGIBLE')
+  const attentionStudents = students.filter((student) => student.eligibilityStatus !== 'ELIGIBLE')
+  const personRow = (student, eligible) => <div className={`eligibility-student-row ${eligible ? 'eligible-row' : 'attention-row'}`} key={student.athleteId}><div><strong>{student.firstName} {student.lastName}</strong><small>{student.studentNumber} · {student.course || 'Program not set'}</small></div><span>{student.averageGrade ?? '—'}</span><em>{eligible ? '✓ Eligible' : '⚠ At Risk'}</em><button type="button">{eligible ? 'Issue Clearance' : 'Edit Grades'}</button></div>
+
+  return <section className="eligibility-page"><div className="registrar-heading"><div><h2>Eligibility Verification</h2><p>Verify athletic eligibility based on academic standing</p></div><button className="template-button" type="button">⟳ Refresh Status</button></div><div className="eligibility-rule"><strong>ⓘ Eligibility Rule:</strong> A student-athlete is eligible if their GPA is <b>3.00 or below</b> and they have <b>no failing grades (5.00)</b> in the current semester.</div><section className="eligibility-group eligible-group"><h3>✓ Eligible Athletes ({eligibleStudents.length})</h3>{eligibleStudents.length ? eligibleStudents.map((student) => personRow(student, true)) : <p className="empty-copy">No eligible athletes found.</p>}</section><section className="eligibility-group attention-group"><h3>⚠ At Risk ({attentionStudents.length}) — GPA 2.75–3.00</h3>{attentionStudents.length ? attentionStudents.map((student) => personRow(student, false)) : <p className="empty-copy">No students currently need attention.</p>}</section></section>
+}
+
+function RegistrarDashboard({ session, onLogout }) {
+  const [dashboard, setDashboard] = useState(null)
+  const [search, setSearch] = useState('')
+  const [view, setView] = useState('dashboard')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/RegistrarDashboard`, { headers: { Authorization: `Bearer ${session.token}` } })
+      .then(async (response) => {
+        const result = await response.json().catch(() => null)
+        if (!response.ok) throw new Error(result?.message || 'Unable to load registrar dashboard.')
+        setDashboard(result)
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [session.token])
+
+  const students = (dashboard?.students || []).filter((student) => `${student.firstName} ${student.lastName} ${student.studentNumber} ${student.course || ''}`.toLowerCase().includes(search.toLowerCase()))
+
+  useEffect(() => {
+    const navButtons = Array.from(document.querySelectorAll('.registrar-app .nav-item'))
+    const gradeEntryButton = navButtons.find((button) => button.textContent.trim() === 'Grade Entry')
+    const academicRecordsButton = navButtons.find((button) => button.textContent.trim() === 'Academic Records')
+    const eligibilityButton = navButtons.find((button) => button.textContent.trim() === 'Eligibility')
+    if (!gradeEntryButton && !academicRecordsButton && !eligibilityButton) return undefined
+    const handleGradeEntryClick = () => setView('grades')
+    const handleAcademicRecordsClick = () => setView('academic-records')
+    const handleEligibilityClick = () => setView('eligibility')
+    gradeEntryButton?.addEventListener('click', handleGradeEntryClick)
+    academicRecordsButton?.addEventListener('click', handleAcademicRecordsClick)
+    eligibilityButton?.addEventListener('click', handleEligibilityClick)
+    return () => {
+      gradeEntryButton?.removeEventListener('click', handleGradeEntryClick)
+      academicRecordsButton?.removeEventListener('click', handleAcademicRecordsClick)
+      eligibilityButton?.removeEventListener('click', handleEligibilityClick)
+    }
+  }, [dashboard, view])
+
+  if (view === 'grades' && dashboard) {
+    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item active" type="button">Grade Entry</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Academic Records</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Eligibility</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Reports</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Grade Entry</strong></div><span className="role-chip">Registrar</span></header><GradeEntryPage students={dashboard.students || []} /></div></main>
+  }
+
+  if (view === 'academic-records' && dashboard) {
+    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item" type="button" onClick={() => setView('grades')}>Grade Entry</button><button className="nav-item active" type="button">Academic Records</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Eligibility</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Reports</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Academic Records</strong></div><span className="role-chip">Registrar</span></header><AcademicRecordsPage students={dashboard.students || []} /></div></main>
+  }
+
+  if (view === 'eligibility' && dashboard) {
+    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item" type="button" onClick={() => setView('grades')}>Grade Entry</button><button className="nav-item" type="button" onClick={() => setView('academic-records')}>Academic Records</button><button className="nav-item active" type="button">Eligibility</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Reports</button><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Eligibility Verification</strong></div><span className="role-chip">Registrar</span></header><EligibilityPage students={dashboard.students || []} /></div></main>
+  }
+
+  return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><div className="profile-block"><div className="avatar">{(session.firstName || 'R').slice(0, 1)}{(session.lastName || 'G').slice(0, 1)}</div><div className="profile-meta"><strong>{session.firstName} {session.lastName}</strong><span>Registrar</span></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item active" type="button">Dashboard</button><button className="nav-item" type="button">Grade Entry</button><button className="nav-item" type="button">Academic Records</button><button className="nav-item" type="button">Eligibility</button><button className="nav-item" type="button">Reports</button><button className="nav-item" type="button">Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Registrar Dashboard</strong></div><span className="role-chip">Registrar</span></header><section className="registrar-heading"><div><h2>Academic Records Overview</h2><p>Philippine Grading System (1.00–5.00) · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div><button className="coach-action" type="button">Encode Grades</button></section>{loading && <div className="dashboard-state">Loading academic records from the database...</div>}{error && <div className="dashboard-state error-message">{error}</div>}{!loading && !error && <><section className="registrar-stats"><article className="registrar-stat red-accent"><span>Total Students</span><strong>{dashboard.totalStudents}</strong><small>Registered athletes</small></article><article className="registrar-stat purple-accent"><span>Avg GPA</span><strong>{dashboard.averageGpa ?? '—'}</strong><small>Overall average</small></article><article className="registrar-stat green-accent"><span>Eligible</span><strong>{dashboard.eligibleCount}</strong><small>GPA ≤ 3.00</small></article><article className="registrar-stat orange-accent"><span>Need Attention</span><strong>{dashboard.attentionCount}</strong><small>At risk / ineligible</small></article></section><section className="grading-reference"><strong>ⓘ Philippine Grading System — Registrar Reference</strong><div><span>1.00–1.25 = Excellent</span><span>1.50–1.75 = Very Good</span><span>2.00–2.25 = Good</span><span>2.50–3.00 = Passing</span><span>5.00 = Failed</span></div></section><section className="registrar-alerts"><div className="section-title"><strong>⚠ Academic Alerts — Students Needing Attention</strong></div>{dashboard.attentionStudents.length ? dashboard.attentionStudents.map((student) => <div className="registrar-student-row" key={student.athleteId}><div><strong>{student.firstName} {student.lastName}</strong><small>{student.studentNumber} · {student.course || 'Program not set'}</small></div><span>{student.averageGrade ?? '—'}</span><em>{student.eligibilityStatus}</em><button type="button">Edit Grades</button></div>) : <p className="empty-copy">No students currently need attention.</p>}</section><section className="registrar-panel"><div className="panel-heading"><div><h3>All Academic Records</h3><p>Student records loaded from Athlete-Hub database</p></div><span className="role-chip">{students.length} shown</span></div><input className="registrar-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search students by name, course, or ID..." /><div className="registrar-table">{students.map((student) => <div className="registrar-table-row" key={student.athleteId}><strong>{student.firstName} {student.lastName}</strong><span>{student.studentNumber}</span><span>{student.course || '—'}</span><span>{student.averageGrade ?? '—'}</span><span className={student.eligibilityStatus === 'ELIGIBLE' ? 'eligible-label' : 'attention-label'}>{student.eligibilityStatus}</span></div>)}</div></section></>}</div></main>
+}
+
 function PortfolioPage({ fullName, session, profile, records, loading, actionLoading, title, description, evidenceFiles, onTitleChange, onDescriptionChange, onFilesChange, onSubmit, onDelete }) {
   const verifiedCount = records.filter((item) => item.achievementStatus === 'VERIFIED').length
   const pendingCount = records.filter((item) => item.achievementStatus === 'PENDING').length
@@ -544,9 +621,14 @@ function App() {
   const normalizedRole = String(session?.role || '').toUpperCase()
   const isStudentRole = normalizedRole === 'ATHLETE' || normalizedRole === 'STUDENT'
   const isStaffRole = normalizedRole === 'COACH' || normalizedRole === 'DIRECTOR'
+  const isRegistrarRole = normalizedRole === 'REGISTRAR'
 
   if (session && isStudentRole) {
     return <StudentPortal session={session} onLogout={() => setSession(null)} />
+  }
+
+  if (session && isRegistrarRole) {
+    return <RegistrarDashboard session={session} onLogout={() => setSession(null)} />
   }
 
   return (

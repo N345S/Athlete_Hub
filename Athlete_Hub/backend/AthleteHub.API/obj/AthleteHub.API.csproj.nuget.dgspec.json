@@ -1,32 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj": {}
+    "C:\\AthleteHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj": {
+    "C:\\AthleteHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+        "projectUniqueName": "C:\\AthleteHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
         "projectName": "AthleteHub.API",
-        "projectPath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
-        "packagesPath": "C:\\Users\\SMB\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\obj\\",
+        "projectPath": "C:\\AthleteHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+        "packagesPath": "C:\\Users\\lenovo\\.nuget\\packages\\",
+        "outputPath": "C:\\AthleteHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\SMB\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\lenovo\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -46,7 +39,7 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.300"
+        "SdkAnalysisLevel": "10.0.400"
       },
       "frameworks": {
         "net10.0": {
@@ -99,7 +92,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.400/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
