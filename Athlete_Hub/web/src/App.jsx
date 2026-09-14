@@ -483,6 +483,7 @@ function PageSection({ title, subtitle, children }) {
 function App() {
   const [email, setEmail] = useState('testathlete@example.com')
   const [password, setPassword] = useState('Password123!')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [session, setSession] = useState(() => {
@@ -597,13 +598,22 @@ function App() {
                     <span className="input-icon">🔒</span>
                     <input
                       id="password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
                       autoComplete="current-password"
                       required
                     />
+                    <button
+                      className="toggle-password"
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-pressed={showPassword}
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
                   </div>
                 </div>
 

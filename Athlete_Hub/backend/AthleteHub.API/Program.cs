@@ -117,8 +117,12 @@ if (app.Environment.IsDevelopment())
 // HTTP REQUEST PIPELINE
 // ==========================================
 
-// HTTPS redirection
-app.UseHttpsRedirection();
+if (app.Urls.Any(url => Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps))
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors("FrontendPolicy");
 
 app.UseCors("FrontendPolicy");
 

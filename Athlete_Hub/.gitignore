@@ -1,0 +1,7 @@
+# Ignore build & compilation outputs
+bin/
+obj/
+
+# Ignore local app settings with sensitive database credentials
+backend/AthleteHub.API/appsettings.json
+backend/AthleteHub.API/appsettings.Development.json
