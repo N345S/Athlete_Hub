@@ -23,6 +23,16 @@ public partial class TrainingSession
 
     public string? Location { get; set; }
 
+    public string ApprovalStatus { get; set; } = "PENDING";
+
+    public DateTime? SubmittedAt { get; set; }
+
+    public DateTime? ReviewedAt { get; set; }
+
+    public int? ReviewedBy { get; set; }
+
+    public string? RejectionReason { get; set; }
+
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
     public virtual CoachProfile Coach { get; set; } = null!;

@@ -250,7 +250,7 @@ if (scheduleCalendar) {
   const session = JSON.parse(sessionStorage.getItem('athleteHubSession') || 'null');
   let calendarDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let calendarView = 'calendar';
-  let activeTypes = new Set(['TRAINING', 'COMPETITION', 'ACADEMIC', 'MEETING', 'OTHER']);
+  let activeTypes = new Set(['TRAINING', 'SPORTS_EVENT', 'COMPETITION']);
   let events = [];
 
   const displayDate = (value) => new Date(`${value}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -260,7 +260,7 @@ if (scheduleCalendar) {
   const renderCalendar = () => {
     const monthName = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const visibleEvents = filteredEvents();
-    const filters = ['TRAINING', 'COMPETITION', 'ACADEMIC', 'MEETING', 'OTHER'].map((type) => `<button class="legacy-filter ${activeTypes.has(type) ? 'active' : ''} type-${type.toLowerCase()}" data-calendar-filter="${type}" type="button">${type}</button>`).join('');
+    const filters = ['TRAINING', 'SPORTS_EVENT', 'COMPETITION'].map((type) => `<button class="legacy-filter ${activeTypes.has(type) ? 'active' : ''} type-${type.toLowerCase()}" data-calendar-filter="${type}" type="button">${type.replace('_', ' ')}</button>`).join('');
     const controls = `<div class="legacy-calendar-controls"><div><button type="button" data-calendar-prev>‹</button><strong>${monthName}</strong><button type="button" data-calendar-next>›</button></div><div><button class="${calendarView === 'calendar' ? 'active' : ''}" type="button" data-calendar-view="calendar">Calendar</button><button class="${calendarView === 'list' ? 'active' : ''}" type="button" data-calendar-view="list">List</button></div></div><div class="legacy-calendar-filters">${filters}</div>`;
     if (calendarView === 'list') {
       scheduleCalendar.innerHTML = `${controls}<div class="legacy-event-list">${visibleEvents.length ? visibleEvents.map((event) => `<article class="legacy-event type-${event.type.toLowerCase()}"><strong>${event.title}</strong><span>${event.type} · ${displayDate(event.startDate)} · ${displayTime(event.startTime)}${event.endTime ? `–${displayTime(event.endTime)}` : ''}</span><small>${event.location || 'Location TBA'}${event.teamName ? ` · ${event.teamName}` : ''}</small></article>`).join('') : '<p class="empty-copy">No events match the selected filters.</p>'}</div>`;

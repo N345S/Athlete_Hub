@@ -1643,9 +1643,177 @@
 .event-card.type-competition { border-color: #7c3aed; background: #faf8ff; }
 .event-card.type-academic { border-color: #059669; background: #f5fffb; }
 .event-card.type-meeting { border-color: #c2410c; background: #fffaf5; }
+.event-card.type-school_event { border-color: #0f766e; background: #f2fffc; }
+.event-card.type-sports_event { border-color: #b45309; background: #fffaf0; }
+
+.performance-page,
+.performance-toolbar,
+.performance-entry-form {
+  display: grid;
+  gap: 14px;
+}
+
+.performance-toolbar,
+.performance-entry-form {
+  padding: 16px;
+  border: 1px solid #e4e5e8;
+  border-radius: 12px;
+  background: white;
+}
+
+.performance-toolbar label,
+.performance-entry-form label,
+.document-toolbar label {
+  display: grid;
+  gap: 6px;
+  color: #5d687b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.performance-toolbar select,
+.performance-entry-form input,
+.performance-entry-form select,
+.document-toolbar input,
+.document-toolbar textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #dedfe4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #172033;
+  background: #fff;
+  font: inherit;
+}
+
+.performance-athlete-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.performance-athlete-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 9px;
+  padding: 11px;
+  border: 1px solid #e4e5e8;
+  border-radius: 10px;
+  color: #172033;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.performance-athlete-card.selected {
+  border-color: #980819;
+  background: #fff4f5;
+  box-shadow: 0 0 0 2px rgba(152, 8, 25, 0.1);
+}
+
+.performance-athlete-card .athlete-avatar {
+  grid-row: span 2;
+}
+
+.performance-athlete-card small {
+  color: #929aaa;
+  font-size: 0.72rem;
+}
+
+.athlete-profile-page {
+  display: grid;
+  gap: 16px;
+}
+
+.athlete-profile-hero,
+.athlete-profile-details,
+.profile-portfolio-section {
+  border: 1px solid #e4e5e8;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(56, 36, 37, 0.05);
+}
+
+.athlete-profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px;
+}
+
+.athlete-profile-hero h2 {
+  margin: 0;
+  color: #172033;
+}
+
+.athlete-profile-hero p {
+  margin: 5px 0 0;
+  color: #7d8798;
+}
+
+.athlete-profile-details {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.athlete-profile-details div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  background: #fffafa;
+}
+
+.athlete-profile-details span {
+  color: #929aaa;
+  font-size: 0.72rem;
+}
+
+.profile-portfolio-section {
+  padding: 18px;
+}
+
+.performance-record-list {
+  margin-top: 4px;
+}
+
+.training-review-panel {
+  margin-bottom: 18px;
+}
+
+.training-review-row {
+  align-items: center;
+}
+
+.training-review-row > div:first-child,
+.notification-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.training-review-row small,
+.notification-row small {
+  color: #929aaa;
+  font-size: 0.75rem;
+}
+
+.notification-row.unread {
+  border-left: 4px solid #980819;
+  background: #fffafa;
+}
+
+.notification-row.read {
+  opacity: 0.78;
+}
 
 .registrar-app { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; background: #f3f1f1; }
 .registrar-content { min-width: 0; padding: 24px; }
+.registrar-app .registrar-stats,
+.registrar-app .grading-reference,
+.registrar-app .registrar-alerts { display: none; }
 .registrar-heading { display: flex; justify-content: space-between; gap: 18px; margin: 22px 0; }
 .registrar-heading h2 { margin: 0; color: #172033; font-size: 1.8rem; }
 .registrar-heading p { margin: 6px 0 0; color: #929aaa; }

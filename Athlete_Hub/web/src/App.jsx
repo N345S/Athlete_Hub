@@ -58,8 +58,73 @@ function CoachScheduleModal({ teams, session, onClose, onCreated }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title"><div className="modal-heading"><div><h2 id="schedule-modal-title">Add Training Schedule</h2><p>Create a session for one of your assigned teams.</p></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div><form className="schedule-form" onSubmit={handleSubmit}><label>Team<select value={form.teamId} onChange={(event) => setForm({ ...form, teamId: event.target.value })} required><option value="">Select a team</option>{teams.map((team) => <option key={team.teamId} value={team.teamId}>{team.teamName}</option>)}</select></label><label>Title<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Team practice" required /></label><div className="form-grid"><label>Date<input type="date" value={form.trainingDate} onChange={(event) => setForm({ ...form, trainingDate: event.target.value })} required /></label><label>Location<input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Gymnasium" /></label><label>Start time<input type="time" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} /></label><label>End time<input type="time" value={form.endTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} /></label></div><label>Description<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows="3" placeholder="Optional details for athletes" /></label>{error && <p className="form-error">{error}</p>}<div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit" disabled={saving || !teams.length}>{saving ? 'Saving...' : 'Add Schedule'}</button></div></form></section></div>
 }
 
+function DirectorScheduleModal({ session, onClose, onCreated }) {
+  const [form, setForm] = useState({ scheduleType: 'SPORTS_EVENT', title: '', startDate: '', startTime: '', endDate: '', endTime: '', location: '', description: '' })
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    if (!form.title.trim() || !form.startDate || !form.startTime) {
+      setError('Event title, date, and start time are required.')
+      return
+    }
+     if (form.endDate && form.endTime && new Date(`${form.endDate}T${form.endTime}`) <= new Date(`${form.startDate}T${form.startTime}`)) {
+      setError('End date and time must be after the start.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ ...form, title: form.title.trim(), endDate: form.endDate || null, endTime: form.endTime || null }),
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to add event.')
+      onCreated()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="director-schedule-modal-title"><div className="modal-heading"><div><h2 id="director-schedule-modal-title">Add Sports Event</h2><p>Create an athlete-related event for teams and athletes.</p></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div><form className="schedule-form" onSubmit={handleSubmit}><label>Event type<select value={form.scheduleType} onChange={(event) => setForm({ ...form, scheduleType: event.target.value })}><option value="SPORTS_EVENT">Sports event</option></select></label><label>Title<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Regional athletics meet" required /></label><div className="form-grid"><label>Start date<input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} required /></label><label>Start time<input type="time" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} required /></label><label>End date<input type="date" value={form.endDate} onChange={(event) => setForm({ ...form, endDate: event.target.value })} /></label><label>End time<input type="time" value={form.endTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} /></label></div><label>Location<input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Athletics stadium" /></label><label>Description<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows="3" placeholder="Optional event details" /></label>{error && <p className="form-error">{error}</p>}<div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Add event'}</button></div></form></section></div>
+}
+
+function DirectorTrainingReviewPanel({ sessions, session, onReviewed }) {
+  const [reviewingId, setReviewingId] = useState(null)
+  const [error, setError] = useState('')
+
+  const review = async (trainingSessionId, status) => {
+    const rejectionReason = status === 'REJECTED' ? window.prompt('Reason for rejecting this training session:') || '' : ''
+    setReviewingId(trainingSessionId)
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Training/sessions/${trainingSessionId}/review?status=${status}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ rejectionReason }),
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to review training session.')
+      onReviewed()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setReviewingId(null)
+    }
+  }
+
+  return <section className="coach-panel training-review-panel"><div className="panel-heading"><div><h3>Training approvals</h3><p>Review coach-submitted sessions before they are published to athletes.</p></div><span className="role-chip">{sessions.length} Pending</span></div>{error && <p className="form-error">{error}</p>}{sessions.length ? <div className="data-list">{sessions.map((item) => <div className="data-row training-review-row" key={item.trainingSessionId}><div><strong>{item.title}</strong><span>{item.teamName} · {item.sport} · Coach: {item.coachName}</span><small>{formatEventDate(item.trainingDate)} · {formatEventTime(item.startTime)}{item.endTime ? `–${formatEventTime(item.endTime)}` : ''} · {item.location || 'Location TBA'}</small>{item.description && <small>{item.description}</small>}</div><div className="review-actions"><button className="review-button approve" type="button" disabled={reviewingId === item.trainingSessionId} onClick={() => review(item.trainingSessionId, 'APPROVED')}>Approve</button><button className="review-button reject" type="button" disabled={reviewingId === item.trainingSessionId} onClick={() => review(item.trainingSessionId, 'REJECTED')}>Reject</button></div></div>)}</div> : <p className="empty-copy">No training sessions are waiting for approval.</p>}</section>
+}
+
 function DocumentsPage({ records, loading, session, onRefresh }) {
   const [documentType, setDocumentType] = useState('Medical Clearance')
+  const [documentTitle, setDocumentTitle] = useState('')
+  const [documentDescription, setDocumentDescription] = useState('')
   const [stagedFiles, setStagedFiles] = useState([])
   const [dragging, setDragging] = useState(false)
   const [message, setMessage] = useState('')
@@ -88,15 +153,17 @@ function DocumentsPage({ records, loading, session, onRefresh }) {
     setError('')
     setMessage('Uploading documents...')
     try {
-      for (const item of validFiles) {
-        const body = new FormData()
-        body.append('documentType', documentType)
-        body.append('file', item.file)
-        const response = await fetch(`${API_BASE_URL}/api/Documents`, { method: 'POST', headers: { Authorization: `Bearer ${session.token}` }, body })
-        const result = await response.json().catch(() => null)
-        if (!response.ok) throw new Error(result?.message || `Unable to upload ${item.file.name}.`)
-      }
+      const body = new FormData()
+      body.append('documentType', documentType)
+      body.append('title', documentTitle)
+      body.append('description', documentDescription)
+      validFiles.forEach((item) => body.append('files', item.file))
+      const response = await fetch(`${API_BASE_URL}/api/Documents`, { method: 'POST', headers: { Authorization: `Bearer ${session.token}` }, body })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to upload documents.')
       setStagedFiles([])
+      setDocumentTitle('')
+      setDocumentDescription('')
       setMessage('Documents uploaded and awaiting review.')
       onRefresh()
     } catch (err) {
@@ -117,13 +184,13 @@ function DocumentsPage({ records, loading, session, onRefresh }) {
     onRefresh()
   }
 
-  return <PageSection title="Documents" subtitle="Upload and track your clearance documents"><div className="document-toolbar"><label>Document type<select value={documentType} onChange={(event) => setDocumentType(event.target.value)}><option>Medical Clearance</option><option>Consent Form</option><option>Enrollment Form</option><option>Athletic Eligibility Form</option><option>Other</option></select></label></div><label className={`drop-zone ${dragging ? 'dragging' : ''}`} onDragEnter={(event) => { event.preventDefault(); setDragging(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); addFiles(event.dataTransfer.files) }}><input type="file" multiple accept={DOCUMENT_EXTENSIONS.join(',')} onChange={(event) => addFiles(event.target.files)} /><strong>Drop documents here or click to browse</strong><span>PDF, PNG, JPG, DOC, or DOCX up to 10 MB each</span></label>{stagedFiles.length > 0 && <div className="staged-files"><div className="panel-heading"><div><h3>Ready to upload</h3><p>Remove any file before submitting.</p></div><button className="primary-button" type="button" onClick={handleUpload} disabled={uploading}>{uploading ? 'Uploading...' : 'Upload files'}</button></div>{stagedFiles.map((item) => <div className={`staged-file ${item.error ? 'invalid' : ''}`} key={item.id}><div><strong>{item.file.name}</strong><span>{(item.file.size / 1024 / 1024).toFixed(2)} MB {item.error && `· ${item.error}`}</span></div><button className="text-button" type="button" onClick={() => setStagedFiles((current) => current.filter((file) => file.id !== item.id))}>Remove</button></div>)}</div>}{message && <p className="success-message">{message}</p>}{error && <p className="form-error">{error}</p>}<div className="data-list document-list">{loading ? <p>Loading documents...</p> : records.length ? records.map((item) => <div className="data-row document-row" key={item.documentId}><div><strong>{item.documentName}</strong><span>{item.documentType} · {item.status} · {new Date(item.uploadedAt).toLocaleDateString()}</span></div><div className="row-actions"><a href={`${API_BASE_URL}${item.fileUrl}`} target="_blank" rel="noreferrer">Open</a><button className="text-button danger-text" type="button" onClick={() => handleDelete(item.documentId)}>Delete</button></div></div>) : <p>No documents uploaded yet.</p>}</div></PageSection>
+  return <PageSection title="Documents" subtitle="Upload and track your clearance documents"><div className="document-toolbar"><label>Document type<select value={documentType} onChange={(event) => setDocumentType(event.target.value)}><option>Medical Clearance</option><option>Consent Form</option><option>Enrollment Form</option><option>Athletic Eligibility Form</option><option>Other</option></select></label><label>Submission title<input value={documentTitle} onChange={(event) => setDocumentTitle(event.target.value)} placeholder="e.g. PRISAA 2027 requirements" /></label><label>Description<textarea value={documentDescription} onChange={(event) => setDocumentDescription(event.target.value)} rows="2" placeholder="What are these documents for?" /></label></div><label className={`drop-zone ${dragging ? 'dragging' : ''}`} onDragEnter={(event) => { event.preventDefault(); setDragging(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); addFiles(event.dataTransfer.files) }}><input type="file" multiple accept={DOCUMENT_EXTENSIONS.join(',')} onChange={(event) => addFiles(event.target.files)} /><strong>Drop documents here or click to browse</strong><span>PDF, PNG, JPG, DOC, or DOCX up to 10 MB each</span></label>{stagedFiles.length > 0 && <div className="staged-files"><div className="panel-heading"><div><h3>Ready to upload</h3><p>Remove any file before submitting.</p></div><button className="primary-button" type="button" onClick={handleUpload} disabled={uploading}>{uploading ? 'Uploading...' : 'Upload files'}</button></div>{stagedFiles.map((item) => <div className={`staged-file ${item.error ? 'invalid' : ''}`} key={item.id}><div><strong>{item.file.name}</strong><span>{(item.file.size / 1024 / 1024).toFixed(2)} MB {item.error && `· ${item.error}`}</span></div><button className="text-button" type="button" onClick={() => setStagedFiles((current) => current.filter((file) => file.id !== item.id))}>Remove</button></div>)}</div>}{message && <p className="success-message">{message}</p>}{error && <p className="form-error">{error}</p>}<div className="data-list document-list">{loading ? <p>Loading documents...</p> : records.length ? records.map((item) => <div className="data-row document-row" key={item.documentId}><div><strong>{item.title || item.documentName}</strong><span>{item.documentType} · {item.status} · {new Date(item.uploadedAt).toLocaleDateString()}</span>{item.description && <small>{item.description}</small>}{item.title && item.documentName !== item.title && <small>File: {item.documentName}</small>}</div><div className="row-actions"><a href={`${API_BASE_URL}${item.fileUrl}`} target="_blank" rel="noreferrer">Open</a><button className="text-button danger-text" type="button" onClick={() => handleDelete(item.documentId)}>Delete</button></div></div>) : <p>No documents uploaded yet.</p>}</div></PageSection>
 }
 
-function CalendarPage({ records, loading, trainingOnly = false, title = 'Schedule', subtitle = 'Track your training, academic, competition, and other events' }) {
+function CalendarPage({ records, loading, trainingOnly = false, title = null, subtitle = null }) {
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   const [view, setView] = useState('calendar')
-  const eventTypes = trainingOnly ? ['TRAINING'] : ['TRAINING', 'COMPETITION', 'ACADEMIC', 'MEETING', 'OTHER']
+  const eventTypes = trainingOnly ? ['TRAINING'] : ['TRAINING', 'SPORTS_EVENT', 'COMPETITION']
   const [types, setTypes] = useState(eventTypes)
   const events = records.map((item) => ({ ...item, type: String(item.type || 'OTHER').toUpperCase() })).filter((item) => types.includes(item.type)).sort((a, b) => `${a.startDate} ${a.startTime || ''}`.localeCompare(`${b.startDate} ${b.startTime || ''}`))
   const firstDay = new Date(month.getFullYear(), month.getMonth(), 1)
@@ -132,23 +199,87 @@ function CalendarPage({ records, loading, trainingOnly = false, title = 'Schedul
   const eventsForDay = (day) => events.filter((item) => item.startDate === `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`)
   const toggleType = (type) => setTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type])
 
-  return <PageSection title={title} subtitle={subtitle}><div className="calendar-controls"><div className="calendar-navigation"><button className="icon-button" type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label="Previous month">‹</button><strong>{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong><button className="icon-button" type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="Next month">›</button></div><div className="segmented-control"><button className={view === 'calendar' ? 'active' : ''} type="button" onClick={() => setView('calendar')}>Calendar</button><button className={view === 'list' ? 'active' : ''} type="button" onClick={() => setView('list')}>List</button></div></div><div className="event-filters">{eventTypes.map((type) => <button className={`filter-button ${types.includes(type) ? 'active' : ''} type-${type.toLowerCase()}`} type="button" key={type} onClick={() => toggleType(type)}>{type}</button>)}</div>{loading ? <p>Loading schedule...</p> : view === 'list' ? <div className="event-list">{events.length ? events.map((item) => <article className={`event-card type-${item.type.toLowerCase()}`} key={item.id}><strong>{item.title}</strong><span>{item.type} · {formatEventDate(item.startDate)} · {formatEventTime(item.startTime)}{item.endTime ? `–${formatEventTime(item.endTime)}` : ''}</span><small>{item.location || 'Location TBA'}{item.teamName ? ` · ${item.teamName}` : ''}</small></article>) : <p>No events match the selected filters.</p>}</div> : <div className="calendar-grid"><div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <strong key={day}>{day}</strong>)}</div><div className="calendar-days">{cells.map((day, index) => <div className={`calendar-day ${day ? '' : 'blank'}`} key={`${day || 'blank'}-${index}`}>{day && <><span className="day-number">{day}</span>{eventsForDay(day).map((item) => <div className={`calendar-event type-${item.type.toLowerCase()}`} title={item.title} key={item.id}>{item.title}</div>)}</>}</div>)}</div></div>}</PageSection>
+  const calendarContent = <><div className="calendar-controls"><div className="calendar-navigation"><button className="icon-button" type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label="Previous month">‹</button><strong>{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong><button className="icon-button" type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="Next month">›</button></div><div className="segmented-control"><button className={view === 'calendar' ? 'active' : ''} type="button" onClick={() => setView('calendar')}>Calendar</button><button className={view === 'list' ? 'active' : ''} type="button" onClick={() => setView('list')}>List</button></div></div><div className="event-filters">{eventTypes.map((type) => <button className={`filter-button ${types.includes(type) ? 'active' : ''} type-${type.toLowerCase()}`} type="button" key={type} onClick={() => toggleType(type)}>{type.replace('_', ' ')}</button>)}</div>{loading ? <p>Loading schedule...</p> : view === 'list' ? <div className="event-list">{events.length ? events.map((item) => <article className={`event-card type-${item.type.toLowerCase()}`} key={item.id}><strong>{item.title}</strong><span>{item.type.replace('_', ' ')} · {formatEventDate(item.startDate)} · {formatEventTime(item.startTime)}{item.endTime ? `–${formatEventTime(item.endTime)}` : ''}</span><small>{item.location || 'Location TBA'}{item.teamName ? ` · ${item.teamName}` : ''}</small></article>) : <p>No events match the selected filters.</p>}</div> : <div className="calendar-grid"><div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <strong key={day}>{day}</strong>)}</div><div className="calendar-days">{cells.map((day, index) => <div className={`calendar-day ${day ? '' : 'blank'}`} key={`${day || 'blank'}-${index}`}>{day && <><span className="day-number">{day}</span>{eventsForDay(day).map((item) => <div className={`calendar-event type-${item.type.toLowerCase()}`} title={item.title} key={item.id}>{item.title}</div>)}</>}</div>)}</div></div>}</>
+  return title ? <PageSection title={title} subtitle={subtitle}>{calendarContent}</PageSection> : calendarContent
 }
 
-function CoachAthletesPage({ dashboard, onViewPortfolio }) {
+function CoachAthletesPage({ dashboard, onViewProfile, athletesOverride, observer = false }) {
   const [search, setSearch] = useState('')
-  const athletes = (dashboard?.teams || []).flatMap((team) =>
+  const assignedAthletes = (dashboard?.teams || []).flatMap((team) =>
     (team.athletes || []).map((athlete) => ({ ...athlete, teamName: team.teamName, sport: team.sport }))
   )
+  const athletes = athletesOverride || assignedAthletes
   const filteredAthletes = athletes.filter((athlete) =>
     `${athlete.firstName} ${athlete.lastName} ${athlete.studentNumber} ${athlete.sport}`.toLowerCase().includes(search.toLowerCase())
   )
 
-  return <section className="coach-athletes-page"><div className="coach-list-header"><div><h2>All Student-Athletes</h2><p>Showing {filteredAthletes.length} of {athletes.length} athletes under your supervision</p></div><span className="role-chip">{athletes.length} Total</span></div><div className="athlete-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search athletes by name, sport, or ID..." /></div><div className="athlete-cards">{filteredAthletes.length ? filteredAthletes.map((athlete) => <article className="athlete-card" key={`${athlete.teamName}-${athlete.athleteId}`}><div className="athlete-card-top"><div className="athlete-avatar">{(athlete.firstName || 'A').slice(0, 1)}{(athlete.lastName || 'A').slice(0, 1)}</div><div><strong>{athlete.firstName} {athlete.lastName}</strong><small>{athlete.studentNumber}</small><span>🏆 {athlete.sport || 'Athlete'}</span></div></div><div className="athlete-card-meta"><div><strong>—</strong><small>GPA</small></div><div><strong>—</strong><small>Attendance</small></div></div><div className="athlete-card-footer"><span>{athlete.teamName || 'No team assigned'}</span><div><button type="button">View Profile</button><button type="button" onClick={() => onViewPortfolio(athlete)}>View Portfolio</button></div></div></article>) : <div className="dashboard-state"><p className="empty-copy">No athletes are assigned to this coach yet.</p></div>}</div></section>
+  return <section className="coach-athletes-page"><div className="coach-list-header"><div><h2>{observer ? 'All Athletes' : 'All Student-Athletes'}</h2><p>Showing {filteredAthletes.length} of {athletes.length} {observer ? 'athletes available for observation' : 'athletes under your supervision'}</p></div><span className="role-chip">{athletes.length} Total</span></div><div className="athlete-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search athletes by name, sport, or ID..." /></div><div className="athlete-cards">{filteredAthletes.length ? filteredAthletes.map((athlete) => <article className="athlete-card" key={`${athlete.teamName || 'unassigned'}-${athlete.athleteId}`}><div className="athlete-card-top"><div className="athlete-avatar">{(athlete.firstName || 'A').slice(0, 1)}{(athlete.lastName || 'A').slice(0, 1)}</div><div><strong>{athlete.firstName} {athlete.lastName}</strong><small>{athlete.studentNumber}</small><span>🏆 {athlete.sport || 'Athlete'}</span></div></div><div className="athlete-card-meta"><div><strong>—</strong><small>GPA</small></div><div><strong>—</strong><small>Attendance</small></div></div><div className="athlete-card-footer"><span>{athlete.teamName || 'No team assigned'}</span><div><button type="button" onClick={() => onViewProfile(athlete)}>View Profile</button></div></div></article>) : <div className="dashboard-state"><p className="empty-copy">No athletes found.</p></div>}</div></section>
 }
 
-function StaffPortfolioPanel({ portfolio, loading, error, onClose, onReview }) {
-  return <section className="coach-panel staff-portfolio-panel"><div className="panel-heading"><div><h2>{portfolio ? `${portfolio.firstName} ${portfolio.lastName}'s Portfolio` : 'Student Portfolio'}</h2><p>{portfolio?.studentNumber || 'Verified and pending achievement submissions'}</p></div><button className="schedule-more-button" type="button" onClick={onClose}>Close</button></div>{loading ? <p>Loading portfolio...</p> : error ? <p className="error-message">{error}</p> : portfolio?.items?.length ? <div className="data-list">{portfolio.items.map((item) => <div className="data-row" key={item.portfolioItemId}><strong>{item.title}</strong><span>{item.description || 'Portfolio submission'} · {item.achievementStatus || 'Pending'}</span>{item.evidence?.length ? <div className="evidence-links">{item.evidence.map((evidence) => <a href={`${API_BASE_URL}${evidence.fileUrl}`} target="_blank" rel="noreferrer" key={evidence.documentId}>View {evidence.documentName}</a>)}</div> : <small>No evidence attached</small>}{item.achievementStatus !== 'VERIFIED' && item.achievementId && <div className="review-actions"><button className="review-button approve" type="button" onClick={() => onReview(item, 'VERIFIED')}>Approve</button><button className="review-button reject" type="button" onClick={() => onReview(item, 'REJECTED')}>Reject</button></div>}</div>)}</div> : <p className="empty-copy">No portfolio submissions found.</p>}</section>
+function AthleteProfilePage({ athlete, portfolio, loading, error, canReview, onBack, onReview }) {
+  return <section className="athlete-profile-page"><button className="schedule-more-button" type="button" onClick={onBack}>← Back to athletes</button><section className="athlete-profile-hero"><div className="portfolio-avatar">{(athlete?.firstName || 'A').slice(0, 1)}{(athlete?.lastName || 'A').slice(0, 1)}</div><div><h2>{athlete?.firstName} {athlete?.lastName}</h2><p>{athlete?.studentNumber || 'Student ID pending'} · {athlete?.sport || 'Athlete'}</p></div></section><section className="athlete-profile-details"><div><span>Program</span><strong>{athlete?.course || '—'}</strong></div><div><span>Year level</span><strong>{athlete?.yearLevel || '—'}</strong></div><div><span>Team</span><strong>{athlete?.teamName || 'No team assigned'}</strong></div><div><span>Sport</span><strong>{athlete?.sport || '—'}</strong></div></section><section className="coach-panel profile-portfolio-section"><div className="panel-heading"><div><h3>Complete portfolio</h3><p>Achievements, descriptions, statuses, dates, and evidence.</p></div></div>{loading ? <p>Loading portfolio...</p> : error ? <p className="error-message">{error}</p> : portfolio?.items?.length ? <div className="data-list">{portfolio.items.map((item) => <article className="data-row" key={item.portfolioItemId}><strong>{item.title}</strong><span>{item.description || 'No description provided.'}</span><small>{item.achievementStatus || 'Pending'} · {item.achievementDate ? formatEventDate(item.achievementDate) : 'Date not provided'}</small>{item.evidence?.length ? <div className="evidence-links">{item.evidence.map((evidence) => <a href={`${API_BASE_URL}${evidence.fileUrl}`} target="_blank" rel="noreferrer" key={evidence.documentId}>{evidence.documentName}</a>)}</div> : <small>No evidence attached</small>}{canReview && item.achievementStatus !== 'VERIFIED' && item.achievementId && <div className="review-actions"><button className="review-button approve" type="button" onClick={() => onReview(item, 'VERIFIED')}>Approve</button><button className="review-button reject" type="button" onClick={() => onReview(item, 'REJECTED')}>Reject</button></div>}</article>)}</div> : <p className="empty-copy">No portfolio submissions found.</p>}</section></section>
+}
+
+function PerformancePage({ athletes, session, canEdit }) {
+  const [metrics, setMetrics] = useState([])
+  const [selectedAthleteId, setSelectedAthleteId] = useState(athletes[0]?.athleteId || '')
+  const [search, setSearch] = useState('')
+  const [records, setRecords] = useState([])
+  const [form, setForm] = useState({ metricId: '', recordedValue: '', recordedDate: new Date().toISOString().slice(0, 10), notes: '' })
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/Performance/metrics`, { headers: { Authorization: `Bearer ${session.token}` } })
+      .then(async (response) => {
+        const result = await response.json().catch(() => [])
+        if (!response.ok) throw new Error(result?.message || 'Unable to load performance metrics.')
+        setMetrics(result)
+        setForm((current) => ({ ...current, metricId: current.metricId || String(result[0]?.metricId || '') }))
+      })
+      .catch((err) => setError(err.message))
+  }, [session.token])
+
+  useEffect(() => {
+    if (!selectedAthleteId) {
+      setRecords([])
+      return
+    }
+    setLoading(true)
+    fetch(`${API_BASE_URL}/api/Performance/athlete/${selectedAthleteId}`, { headers: { Authorization: `Bearer ${session.token}` } })
+      .then(async (response) => {
+        const result = await response.json().catch(() => null)
+        if (!response.ok) throw new Error(result?.message || 'Unable to load performance records.')
+        setRecords(result.records || [])
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [selectedAthleteId, session.token])
+
+  const addRecord = async (event) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Performance/records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ ...form, athleteId: Number(selectedAthleteId), metricId: Number(form.metricId), recordedValue: Number(form.recordedValue) }),
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to save performance record.')
+      setForm((current) => ({ ...current, recordedValue: '', notes: '' }))
+      setSelectedAthleteId(String(selectedAthleteId))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const filteredAthletes = athletes.filter((athlete) => `${athlete.firstName} ${athlete.lastName} ${athlete.studentNumber} ${athlete.sport || ''}`.toLowerCase().includes(search.toLowerCase()))
+  return <section className="performance-page"><div className="coach-heading"><div><h2>Performance</h2><p>{canEdit ? 'Select an athlete to record performance results.' : 'Select an athlete to view performance results.'}</p></div></div>{error && <div className="dashboard-state error-message">{error}</div>}<div className="performance-toolbar"><label>Search athletes<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, sport, or ID..." /></label><div className="performance-athlete-cards">{filteredAthletes.length ? filteredAthletes.map((athlete) => <button className={`performance-athlete-card ${String(selectedAthleteId) === String(athlete.athleteId) ? 'selected' : ''}`} type="button" key={athlete.athleteId} onClick={() => setSelectedAthleteId(String(athlete.athleteId))}><span className="athlete-avatar">{(athlete.firstName || 'A').slice(0, 1)}{(athlete.lastName || 'A').slice(0, 1)}</span><strong>{athlete.firstName} {athlete.lastName}</strong><small>{athlete.studentNumber} · {athlete.sport || 'Athlete'}</small></button>) : <p className="empty-copy">No athletes found.</p>}</div></div>{canEdit && selectedAthleteId && <form className="performance-entry-form" onSubmit={addRecord}><label>Metric<select value={form.metricId} onChange={(event) => setForm({ ...form, metricId: event.target.value })} required><option value="">Select metric</option>{metrics.map((metric) => <option key={metric.metricId} value={metric.metricId}>{metric.metricName} ({metric.unit || 'value'})</option>)}</select></label><label>Value<input type="number" min="0" step="0.01" value={form.recordedValue} onChange={(event) => setForm({ ...form, recordedValue: event.target.value })} required /></label><label>Date<input type="date" value={form.recordedDate} onChange={(event) => setForm({ ...form, recordedDate: event.target.value })} required /></label><label>Notes<input value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Optional observation" /></label><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Add performance'}</button></form>}{loading ? <p>Loading performance records...</p> : selectedAthleteId ? <div className="data-list performance-record-list">{records.length ? records.map((record) => <div className="data-row" key={record.performanceRecordId}><strong>{record.metric.metricName}: {record.recordedValue} {record.metric.unit || ''}</strong><span>{record.recordedDate} · {record.notes || 'No notes'}</span></div>) : <p>No performance records found.</p>}</div> : <p className="empty-copy">Select an athlete to view performance.</p>}</section>
 }
 
 function GradeEntryPage({ students }) {
@@ -258,10 +389,21 @@ function CoachDashboard({ session, onLogout }) {
   const [portfolio, setPortfolio] = useState(null)
   const [portfolioLoading, setPortfolioLoading] = useState(false)
   const [portfolioError, setPortfolioError] = useState('')
+  const [showDirectorScheduleModal, setShowDirectorScheduleModal] = useState(false)
+  const [pendingTrainingSessions, setPendingTrainingSessions] = useState([])
+  const [pendingTrainingError, setPendingTrainingError] = useState('')
+  const [selectedAthlete, setSelectedAthlete] = useState(null)
+  const isDirector = String(session.role).toUpperCase() === 'DIRECTOR'
+  const directorAthletes = (dashboard?.athletes || []).flatMap((athlete) => athlete.teams?.length
+    ? athlete.teams.map((team) => ({ ...athlete, teamName: team.teamName, sport: team.sport }))
+    : [{ ...athlete }])
 
-  const viewPortfolio = async (athlete) => {
-    setPortfolioLoading(true)
+  const viewProfile = async (athlete) => {
+    setSelectedAthlete(athlete)
+    setPortfolio(null)
     setPortfolioError('')
+    setPortfolioLoading(true)
+    setView('profile')
     try {
       const response = await fetch(`${API_BASE_URL}/api/Portfolio/athlete/${athlete.athleteId}`, { headers: { Authorization: `Bearer ${session.token}` } })
       const result = await response.json().catch(() => null)
@@ -297,21 +439,21 @@ function CoachDashboard({ session, onLogout }) {
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/CoachDashboard`, {
+        const response = await fetch(`${API_BASE_URL}/api/${isDirector ? 'DirectorDashboard' : 'CoachDashboard'}`, {
           headers: { Authorization: `Bearer ${session.token}` },
         })
         const data = await response.json()
         if (!response.ok) throw new Error(data?.message || 'Unable to load coach dashboard.')
         setDashboard(data)
       } catch (err) {
-        setError(err.message || 'Unable to load coach dashboard.')
+        setError(err.message || `Unable to load ${isDirector ? 'director' : 'coach'} dashboard.`)
       } finally {
         setLoading(false)
       }
     }
 
     loadDashboard()
-  }, [session.token, refreshKey])
+  }, [session.token, refreshKey, isDirector])
 
   useEffect(() => {
     const loadSchedule = async () => {
@@ -323,21 +465,23 @@ function CoachDashboard({ session, onLogout }) {
         to.setDate(to.getDate() + 14)
         const formatQueryDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
         const query = view === 'schedule' ? '' : `?from=${formatQueryDate(from)}&to=${formatQueryDate(to)}`
-        const response = await fetch(`${API_BASE_URL}/api/Training/sessions${query}`, {
+        const response = await fetch(`${API_BASE_URL}/api/Schedules/staff${query}`, {
           headers: { Authorization: `Bearer ${session.token}` },
         })
         const result = await response.json()
         if (!response.ok) throw new Error(result?.message || 'Unable to load schedule.')
         setScheduleRecords(result.map((item) => ({
-          id: `training-${item.trainingSessionId}`,
-          type: 'TRAINING',
+          id: item.id,
+          type: item.type,
           title: item.title,
           description: item.description,
-          startDate: item.trainingDate,
+          startDate: item.startDate,
           startTime: item.startTime,
           endTime: item.endTime,
           location: item.location,
           teamName: item.teamName,
+          approvalStatus: item.approvalStatus,
+          rejectionReason: item.rejectionReason,
         })))
       } catch (err) {
         setScheduleError(err.message || 'Unable to load schedule.')
@@ -347,13 +491,28 @@ function CoachDashboard({ session, onLogout }) {
     }
 
     loadSchedule()
-  }, [session.token, view, refreshKey])
+  }, [session.token, view, refreshKey, isDirector])
+
+  useEffect(() => {
+    if (!isDirector) return
+    const loadPendingTraining = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/Training/pending`, { headers: { Authorization: `Bearer ${session.token}` } })
+        const result = await response.json().catch(() => [])
+        if (!response.ok) throw new Error(result?.message || 'Unable to load training approvals.')
+        setPendingTrainingSessions(result)
+      } catch (err) {
+        setPendingTrainingError(err.message)
+      }
+    }
+    loadPendingTraining()
+  }, [isDirector, session.token, refreshKey])
 
   const eligibleCount = dashboard?.eligibility?.find((item) =>
     String(item.status).toUpperCase().includes('ELIG')
   )?.count || 0
   const attentionCount = Math.max((dashboard?.athleteCount || 0) - eligibleCount, 0)
-  const coachName = `${session.firstName || 'Coach'} ${session.lastName || ''}`.trim()
+  const coachName = `${session.firstName || (isDirector ? 'Director' : 'Coach')} ${session.lastName || ''}`.trim()
   const upcomingScheduleRecords = scheduleRecords
 
   return (
@@ -366,14 +525,14 @@ function CoachDashboard({ session, onLogout }) {
 
         <div className="profile-block">
           <div className="avatar coach-avatar">{(session.firstName || 'C').slice(0, 1)}{(session.lastName || 'D').slice(0, 1)}</div>
-          <div className="profile-meta"><strong>{coachName}</strong><span>Coach</span></div>
+          <div className="profile-meta"><strong>{coachName}</strong><span>{isDirector ? 'Director' : 'Coach'}</span></div>
         </div>
 
-        <nav className="main-nav" aria-label="Coach navigation">
+        <nav className="main-nav" aria-label={`${isDirector ? 'Director' : 'Coach'} navigation`}>
           <button className={`nav-item ${view === 'dashboard' ? 'active' : ''}`} type="button" onClick={() => setView('dashboard')}>Dashboard</button>
           <button className={`nav-item ${view === 'athletes' ? 'active' : ''}`} type="button" onClick={() => setView('athletes')}>Athletes</button>
           <button className={`nav-item ${view === 'schedule' ? 'active' : ''}`} type="button" onClick={() => setView('schedule')}>Schedule</button>
-          <a className="nav-item" href="#">Performance</a>
+          <button className={`nav-item ${view === 'performance' ? 'active' : ''}`} type="button" onClick={() => setView('performance')}>Performance</button>
           <a className="nav-item" href="#">Messages <span className="dot-badge">1</span></a>
           <a className="nav-item" href="#">Reports</a>
           <a className="nav-item" href="#">Profile</a>
@@ -383,8 +542,8 @@ function CoachDashboard({ session, onLogout }) {
       </aside>
 
       <div className="coach-content">
-        <header className="topbar"><div className="crumbs"><span>{String(session.role).toUpperCase() === 'DIRECTOR' ? 'Director Portal' : 'Coach Portal'}</span><span className="sep">›</span><strong>{view === 'athletes' ? 'All Athletes' : view === 'schedule' ? 'Schedule' : 'Coach Dashboard'}</strong></div><span className="role-chip">{session.role}</span></header>
-        {view === 'athletes' ? <><CoachAthletesPage dashboard={dashboard} onViewPortfolio={viewPortfolio} />{(portfolio || portfolioLoading || portfolioError) && <StaffPortfolioPanel portfolio={portfolio} loading={portfolioLoading} error={portfolioError} onReview={reviewAchievement} onClose={() => { setPortfolio(null); setPortfolioError('') }} />}</> : view === 'schedule' ? <div className="coach-schedule-page"><section className="coach-heading"><div><h2>Schedule</h2><p>Full training schedule for your assigned teams</p></div><button className="coach-action" type="button" onClick={() => setShowScheduleModal(true)}>+ Add Training Schedule</button></section>{scheduleError && <div className="dashboard-state error-message">{scheduleError}</div>}<CalendarPage records={scheduleRecords} loading={scheduleLoading} trainingOnly title="Schedule" subtitle="Use calendar or list view to track every training session" /></div> : <>
+        <header className="topbar"><div className="crumbs"><span>{isDirector ? 'Director Portal' : 'Coach Portal'}</span><span className="sep">›</span><strong>{view === 'athletes' ? 'All Athletes' : view === 'schedule' ? 'Schedule' : view === 'performance' ? 'Performance' : `${isDirector ? 'Director' : 'Coach'} Dashboard`}</strong></div><span className="role-chip">{session.role}</span></header>
+        {view === 'athletes' ? <CoachAthletesPage dashboard={dashboard} athletesOverride={isDirector ? directorAthletes : undefined} observer={isDirector} onViewProfile={viewProfile} /> : view === 'profile' ? <AthleteProfilePage athlete={selectedAthlete} portfolio={portfolio} loading={portfolioLoading} error={portfolioError} canReview={!isDirector} onBack={() => { setSelectedAthlete(null); setPortfolio(null); setView('athletes') }} onReview={reviewAchievement} /> : view === 'performance' ? <PerformancePage athletes={isDirector ? directorAthletes : (dashboard?.teams || []).flatMap((team) => (team.athletes || []).map((athlete) => ({ ...athlete, teamName: team.teamName, sport: team.sport })))} session={session} canEdit={!isDirector} /> : view === 'schedule' ? <div className="coach-schedule-page"><section className="coach-heading"><div><h2>Schedule</h2><p>{isDirector ? 'Sports events for all athletes' : 'Training, sports events, and competitions for your assigned teams'}</p></div>{isDirector ? <button className="coach-action" type="button" onClick={() => setShowDirectorScheduleModal(true)}>+ Add Sports Event</button> : <button className="coach-action" type="button" onClick={() => setShowScheduleModal(true)}>+ Add Training Schedule</button>}</section>{scheduleError && <div className="dashboard-state error-message">{scheduleError}</div>}<CalendarPage records={scheduleRecords} loading={scheduleLoading} /></div> : <>
         <section className="coach-heading"><div><h2>Good morning, {session.firstName || 'Coach'}! <span>👋</span></h2><p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div><button className="coach-action" type="button" onClick={() => setShowScheduleModal(true)}>+ Add Training Schedule</button></section>
 
         {loading && <div className="dashboard-state">Loading coach data from the database...</div>}
@@ -396,6 +555,9 @@ function CoachDashboard({ session, onLogout }) {
             <article className="coach-stat green-accent"><span>Eligible</span><strong>{eligibleCount}</strong><small>GPA ≤ 3.00</small></article>
             <article className="coach-stat alert-accent"><span>Need Attention</span><strong>{attentionCount}</strong><small>At risk / ineligible</small></article>
           </section>
+
+          {isDirector && pendingTrainingError && <div className="dashboard-state error-message">{pendingTrainingError}</div>}
+          {isDirector && <DirectorTrainingReviewPanel sessions={pendingTrainingSessions} session={session} onReviewed={() => setRefreshKey((value) => value + 1)} />}
 
           <section className="eligibility-panel">
             <div className="section-title"><strong>⚠ Academic Eligibility Alerts</strong></div>
@@ -414,6 +576,7 @@ function CoachDashboard({ session, onLogout }) {
         </>}
       </div>
       {showScheduleModal && <CoachScheduleModal teams={dashboard?.teams || []} session={session} onClose={() => setShowScheduleModal(false)} onCreated={() => { setShowScheduleModal(false); setRefreshKey((value) => value + 1) }} />}
+      {showDirectorScheduleModal && <DirectorScheduleModal session={session} onClose={() => setShowDirectorScheduleModal(false)} onCreated={() => { setShowDirectorScheduleModal(false); setRefreshKey((value) => value + 1) }} />}
     </main>
   )
 }
@@ -522,6 +685,7 @@ function StudentPortal({ session, onLogout }) {
       schedule: '/api/Schedules/athlete',
       documents: '/api/Documents/me',
       portfolio: '/api/Portfolio/me',
+      notifications: '/api/Notifications/me',
     }
     const endpoint = endpoints[page]
     if (!endpoint) return
@@ -547,7 +711,7 @@ function StudentPortal({ session, onLogout }) {
     documents: <DocumentsPage records={records} loading={loading} session={session} onRefresh={() => { setData(null); setRefreshKey((value) => value + 1) }} />,
     portfolio: <PortfolioPage fullName={fullName} session={session} profile={profile} records={records} loading={loading} actionLoading={portfolioActionLoading} title={achievementTitle} description={achievementDescription} evidenceFiles={evidenceFiles} onTitleChange={setAchievementTitle} onDescriptionChange={setAchievementDescription} onFilesChange={setEvidenceFiles} onSubmit={addAchievementToPortfolio} onDelete={deletePortfolioAchievement} />,
     profile: <PageSection title="Profile" subtitle="Your personal and academic information"><div className="profile-details"><div><span>Name</span><strong>{fullName}</strong></div><div><span>Email</span><strong>{session.email}</strong></div><div><span>Student ID</span><strong>{profile?.studentNumber || '—'}</strong></div><div><span>Program</span><strong>{profile?.course || '—'}</strong></div><div><span>Year Level</span><strong>{profile?.yearLevel || '—'}</strong></div><div><span>University</span><strong>{session.universityId || '—'}</strong></div></div></PageSection>,
-    notifications: <PageSection title="Notifications" subtitle="Your alerts and important messages"><div className="data-list"><div className="data-row"><strong>Academic eligibility updates</strong><span>Review your latest grades and documents to stay eligible.</span></div><div className="data-row"><strong>Profile connected</strong><span>Your student account is authenticated with Athlete-Hub.</span></div></div></PageSection>,
+    notifications: <PageSection title="Notifications" subtitle="Your alerts and important messages"><div className="data-list">{loading ? <p>Loading notifications...</p> : records.length ? records.map((item) => <div className={`data-row notification-row ${item.isRead ? 'read' : 'unread'}`} key={item.notificationId}><div><strong>{item.title}</strong><span>{item.message}</span><small>{item.createdAt ? new Date(item.createdAt).toLocaleString() : 'Just now'}</small></div></div>) : <p>No notifications yet.</p>}</div></PageSection>,
   }[page]
 
   return <main className="student-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><div className="profile-block"><div className="avatar">{firstName.slice(0, 1)}{(session.lastName || 'A').slice(0, 1)}</div><div className="profile-meta"><strong>{fullName}</strong><span>Student-Athlete</span></div></div><nav className="main-nav" aria-label="Student navigation">{nav.map(([key, label]) => <button className={`nav-item ${page === key ? 'active' : ''}`} key={key} type="button" onClick={() => { setPage(key); setData(null) }}>{label}{key === 'notifications' && <span className="dot-badge">3</span>}</button>)}</nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="content-panel"><header className="topbar"><div className="crumbs"><span>Athlete Portal</span><span className="sep">›</span><strong>{nav.find(([key]) => key === page)?.[1]}</strong></div></header>{error && <div className="dashboard-state error-message">{error}</div>}{content}</div></main>

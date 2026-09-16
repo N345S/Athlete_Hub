@@ -13,6 +13,10 @@ public partial class Document
 
     public string DocumentType { get; set; } = null!;
 
+    public string? Title { get; set; }
+
+    public string? Description { get; set; }
+
     public string DocumentName { get; set; } = null!;
 
     public string FileUrl { get; set; } = null!;

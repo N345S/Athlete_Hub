@@ -342,6 +342,12 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.DocumentType)
                 .HasMaxLength(100)
                 .HasColumnName("document_type");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.Description)
+                .HasColumnType("text")
+                .HasColumnName("description");
             entity.Property(e => e.FileUrl)
                 .HasMaxLength(500)
                 .HasColumnName("file_url");
@@ -688,6 +694,20 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasColumnType("text")
                 .HasColumnName("description");
+            entity.Property(e => e.ApprovalStatus)
+                .HasMaxLength(20)
+                .HasDefaultValue("APPROVED")
+                .HasColumnName("approval_status");
+            entity.Property(e => e.SubmittedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("submitted_at");
+            entity.Property(e => e.ReviewedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.RejectionReason)
+                .HasColumnType("text")
+                .HasColumnName("rejection_reason");
             entity.Property(e => e.EndTime)
                 .HasColumnType("time")
                 .HasColumnName("end_time");

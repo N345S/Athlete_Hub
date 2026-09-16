@@ -379,6 +379,10 @@ CREATE TABLE documents (
 
     document_type VARCHAR(100) NOT NULL,
 
+    title VARCHAR(200),
+
+    description TEXT,
+
     document_name VARCHAR(255) NOT NULL,
 
     file_url VARCHAR(500) NOT NULL,
@@ -458,6 +462,16 @@ CREATE TABLE training_sessions (
     end_time TIME,
 
     location VARCHAR(200),
+
+    approval_status VARCHAR(20) NOT NULL DEFAULT 'APPROVED',
+
+    submitted_at TIMESTAMP NULL,
+
+    reviewed_at TIMESTAMP NULL,
+
+    reviewed_by INT,
+
+    rejection_reason TEXT,
 
     CONSTRAINT fk_training_team
         FOREIGN KEY (team_id)
@@ -643,6 +657,36 @@ CREATE TABLE notifications (
         REFERENCES users(user_id)
         ON DELETE CASCADE
 );
+
+
+-- ============================================================
+-- EXISTING DATABASE UPGRADE COMMANDS
+-- ============================================================
+-- Run these statements one at a time in MySQL Workbench when
+-- upgrading an existing athlete_hub database. Do not run this
+-- section after recreating all tables from this schema file.
+
+ALTER TABLE documents
+    ADD COLUMN title VARCHAR(200) NULL AFTER document_type,
+    ADD COLUMN description TEXT NULL AFTER title;
+
+ALTER TABLE training_sessions
+    ADD COLUMN approval_status VARCHAR(20) NOT NULL DEFAULT 'APPROVED' AFTER location,
+    ADD COLUMN submitted_at TIMESTAMP NULL AFTER approval_status,
+    ADD COLUMN reviewed_at TIMESTAMP NULL AFTER submitted_at,
+    ADD COLUMN reviewed_by INT NULL AFTER reviewed_at,
+    ADD COLUMN rejection_reason TEXT NULL AFTER reviewed_by;
+
+ALTER TABLE schedules
+    MODIFY COLUMN schedule_type ENUM(
+        'TRAINING',
+        'COMPETITION',
+        'ACADEMIC',
+        'MEETING',
+        'OTHER',
+        'SCHOOL_EVENT',
+        'SPORTS_EVENT'
+    ) NOT NULL;
 
 USE athlete_hub;
 

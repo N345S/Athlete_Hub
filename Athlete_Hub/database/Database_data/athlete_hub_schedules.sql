@@ -26,7 +26,7 @@ CREATE TABLE `schedules` (
   `schedule_id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
-  `schedule_type` enum('TRAINING','COMPETITION','ACADEMIC','MEETING','OTHER') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `schedule_type` enum('TRAINING','COMPETITION','ACADEMIC','MEETING','OTHER','SCHOOL_EVENT','SPORTS_EVENT') COLLATE utf8mb4_unicode_ci NOT NULL,
   `start_datetime` datetime NOT NULL,
   `end_datetime` datetime DEFAULT NULL,
   `location` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

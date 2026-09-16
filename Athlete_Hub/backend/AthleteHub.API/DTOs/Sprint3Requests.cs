@@ -32,6 +32,11 @@ public sealed class TrainingSessionRequest
     public string? Location { get; set; }
 }
 
+public sealed class TrainingApprovalRequest
+{
+    public string? RejectionReason { get; set; }
+}
+
 public sealed class AttendanceRequest
 {
     [Required]

@@ -9,7 +9,7 @@ namespace AthleteHub.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "ATHLETE,STUDENT")]
+[Authorize]
 public class DocumentsController : ControllerBase
 {
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -45,6 +45,37 @@ public class DocumentsController : ControllerBase
             {
                 document.DocumentId,
                 document.DocumentType,
+                document.Title,
+                document.Description,
+                document.DocumentName,
+                document.FileUrl,
+                document.Status,
+                document.AchievementId,
+                document.UploadedAt
+            })
+            .ToListAsync();
+
+        return Ok(documents);
+    }
+
+    [HttpGet("athlete/{athleteId:int}")]
+    [Authorize(Roles = "COACH,DIRECTOR,ADMIN")]
+    public async Task<IActionResult> GetAthleteDocuments(int athleteId)
+    {
+        if (!await CanViewAthleteAsync(athleteId))
+        {
+            return Forbid();
+        }
+
+        var documents = await _context.Documents
+            .Where(document => document.AthleteId == athleteId)
+            .OrderByDescending(document => document.UploadedAt)
+            .Select(document => new
+            {
+                document.DocumentId,
+                document.DocumentType,
+                document.Title,
+                document.Description,
                 document.DocumentName,
                 document.FileUrl,
                 document.Status,
@@ -57,10 +88,12 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpPost]
-    [RequestSizeLimit(10_000_000)]
+    [Authorize(Roles = "ATHLETE,STUDENT")]
+    [RequestSizeLimit(100_000_000)]
     public async Task<IActionResult> UploadDocument(
         [FromForm] string documentType,
-        [FromForm] IFormFile file,
+        [FromForm] string? title,
+        [FromForm] string? description,
         [FromForm] int? achievementId)
     {
         if (string.IsNullOrWhiteSpace(documentType))
@@ -68,20 +101,36 @@ public class DocumentsController : ControllerBase
             return BadRequest(new { message = "Document type is required." });
         }
 
-        if (file == null || file.Length == 0)
+        var files = Request.Form.Files
+            .Where(file => string.Equals(file.Name, "file", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(file.Name, "files", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (files.Count == 0)
         {
-            return BadRequest(new { message = "A non-empty file is required." });
+            return BadRequest(new { message = "At least one non-empty file is required." });
         }
 
-        var extension = Path.GetExtension(file.FileName);
+        if (files.Any(file => file.Length == 0))
+        {
+            return BadRequest(new { message = "Files must not be empty." });
+        }
 
-        if (!AllowedExtensions.Contains(extension))
+        var invalidFile = files.Select(file => new { file, extension = Path.GetExtension(file.FileName) })
+            .FirstOrDefault(item => !AllowedExtensions.Contains(item.extension));
+        if (invalidFile != null)
         {
             return BadRequest(new
             {
-                message = "Unsupported file type.",
+                message = $"Unsupported file type: {Path.GetFileName(invalidFile.file.FileName)}.",
                 allowedExtensions = AllowedExtensions.OrderBy(value => value)
             });
+        }
+
+        var oversizedFile = files.FirstOrDefault(file => file.Length > 10_000_000);
+        if (oversizedFile != null)
+        {
+            return BadRequest(new { message = $"File exceeds the 10 MB limit: {Path.GetFileName(oversizedFile.FileName)}." });
         }
 
         var athlete = await GetCurrentAthleteAsync();
@@ -104,38 +153,47 @@ public class DocumentsController : ControllerBase
 
         Directory.CreateDirectory(uploadDirectory);
 
-        var storedFileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
-        var storedFilePath = Path.Combine(uploadDirectory, storedFileName);
-
-        await using (var stream = System.IO.File.Create(storedFilePath))
+        var documents = new List<Document>();
+        foreach (var file in files)
         {
-            await file.CopyToAsync(stream);
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var storedFileName = $"{Guid.NewGuid():N}{extension}";
+            var storedFilePath = Path.Combine(uploadDirectory, storedFileName);
+
+            await using (var stream = System.IO.File.Create(storedFilePath))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            documents.Add(new Document
+            {
+                AthleteId = athlete.AthleteId,
+                AchievementId = achievementId,
+                DocumentType = documentType.Trim(),
+                Title = string.IsNullOrWhiteSpace(title) ? null : title.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                DocumentName = Path.GetFileName(file.FileName),
+                FileUrl = $"/uploads/documents/{storedFileName}",
+                Status = "PENDING",
+                UploadedAt = DateTime.UtcNow
+            });
         }
 
-        var document = new Document
-        {
-            AthleteId = athlete.AthleteId,
-            AchievementId = achievementId,
-            DocumentType = documentType.Trim(),
-            DocumentName = Path.GetFileName(file.FileName),
-            FileUrl = $"/uploads/documents/{storedFileName}",
-            Status = "PENDING",
-            UploadedAt = DateTime.UtcNow
-        };
-
-        _context.Documents.Add(document);
+        _context.Documents.AddRange(documents);
         await _context.SaveChangesAsync();
 
-        return Created($"/api/Documents/{document.DocumentId}", new
+        return Created($"/api/Documents/{documents[0].DocumentId}", documents.Select(document => new
         {
             document.DocumentId,
             document.DocumentType,
+            document.Title,
+            document.Description,
             document.DocumentName,
             document.FileUrl,
             document.Status,
             document.AchievementId,
             document.UploadedAt
-        });
+        }));
     }
 
     [HttpDelete("{documentId}")]
@@ -174,5 +232,22 @@ public class DocumentsController : ControllerBase
         }
 
         return await _context.AthleteProfiles.FirstOrDefaultAsync(a => a.UserId == userId);
+    }
+
+    private async Task<bool> CanViewAthleteAsync(int athleteId)
+    {
+        if (User.IsInRole("DIRECTOR") || User.IsInRole("ADMIN"))
+        {
+            return await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == athleteId);
+        }
+
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return false;
+        }
+
+        var coach = await _context.CoachProfiles.FirstOrDefaultAsync(item => item.UserId == userId);
+        return coach != null && await _context.TeamMembers.AnyAsync(member =>
+            member.AthleteId == athleteId && member.DateLeft == null && member.Team.CoachId == coach.CoachId);
     }
 }
