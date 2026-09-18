@@ -192,7 +192,8 @@ button, a { font: inherit; }
 .legacy-upload-box input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .legacy-upload-box small { font-size: 0.78rem; }
 .legacy-field { display: grid; gap: 6px; max-width: 300px; margin-top: 14px; color: #475569; font-size: 0.82rem; font-weight: 700; }
-.legacy-field select { border: 1px solid #dce2ea; border-radius: 9px; padding: 10px; background: white; font: inherit; font-weight: 400; }
+.legacy-field select, .legacy-field input, .legacy-field textarea { border: 1px solid #dce2ea; border-radius: 9px; padding: 10px; background: white; font: inherit; font-weight: 400; }
+.legacy-field textarea { resize: vertical; }
 .legacy-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 .legacy-actions button { border: 0; border-radius: 9px; padding: 11px 15px; background: #980819; color: white; font-weight: 700; cursor: pointer; }
 .legacy-actions button:disabled { cursor: wait; opacity: 0.6; }

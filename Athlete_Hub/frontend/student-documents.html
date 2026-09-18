@@ -86,10 +86,11 @@
       </section>
 
       <section class="upload-card" id="documentUpload">
-        <label class="legacy-upload-box" id="documentDropZone">
-          <input id="documentFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" />
-          <strong>Drop documents here or click to browse</strong>
-          <small>PDF, PNG, JPG, DOC, or DOCX up to 10MB each</small>
+        <label class="legacy-field">Title
+          <input id="documentTitleInput" type="text" placeholder="e.g. PRISAA 2027 requirements" />
+        </label>
+        <label class="legacy-field">Description
+          <textarea id="documentDescriptionInput" rows="2" placeholder="What are these documents for?"></textarea>
         </label>
         <label class="legacy-field">Document type
           <select id="documentTypeInput">
@@ -99,6 +100,11 @@
             <option>Athletic Eligibility Form</option>
             <option>Other</option>
           </select>
+        </label>
+        <label class="legacy-upload-box" id="documentDropZone">
+          <input id="documentFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" />
+          <strong>Drop documents here or click to browse</strong>
+          <small>PDF, PNG, JPG, DOC, or DOCX up to 10MB each</small>
         </label>
         <div id="stagedDocumentList" class="staged-document-list"></div>
         <div class="legacy-actions"><button id="uploadDocumentsButton" type="button">Upload files</button></div>

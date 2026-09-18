@@ -146,21 +146,42 @@ public class TrainingController : ControllerBase
         var coach = await GetCoachAsync();
         if (coach == null || !await _context.Teams.AnyAsync(team => team.TeamId == request.TeamId && team.CoachId == coach.CoachId)) return Forbid();
         if (request.EndTime.HasValue && request.StartTime.HasValue && request.EndTime <= request.StartTime) return BadRequest(new { message = "End time must be after start time." });
-        var session = new TrainingSession { TeamId = request.TeamId, CoachId = coach.CoachId, Title = request.Title.Trim(), Description = request.Description, TrainingDate = request.TrainingDate.Date, StartTime = request.StartTime, EndTime = request.EndTime, Location = request.Location, ApprovalStatus = "PENDING", SubmittedAt = DateTime.UtcNow };
-        _context.TrainingSessions.Add(session);
+
+        var dates = (request.TrainingDates is { Count: > 0 } ? request.TrainingDates : [request.TrainingDate])
+            .Select(date => date.Date)
+            .Distinct()
+            .OrderBy(date => date)
+            .ToList();
+        if (dates.Count == 0) return BadRequest(new { message = "At least one training date is required." });
+
+        var sessions = dates.Select(date => new TrainingSession
+        {
+            TeamId = request.TeamId,
+            CoachId = coach.CoachId,
+            Title = request.Title.Trim(),
+            Description = request.Description,
+            TrainingDate = date,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
+            Location = request.Location,
+            ApprovalStatus = "PENDING",
+            SubmittedAt = DateTime.UtcNow
+        }).ToList();
+
+        _context.TrainingSessions.AddRange(sessions);
         await _context.SaveChangesAsync();
         var directorIds = await _context.Users.Where(user => user.Role.RoleName == "DIRECTOR").Select(user => user.UserId).ToListAsync();
         _context.Notifications.AddRange(directorIds.Select(userId => new Notification
         {
             UserId = userId,
             Title = "Training session approval requested",
-            Message = $"{session.Title} for team {request.TeamId} is waiting for director approval.",
+            Message = $"{sessions[0].Title} for team {request.TeamId} is waiting for director approval.",
             NotificationType = "TRAINING_APPROVAL_REQUEST",
             IsRead = false,
             CreatedAt = DateTime.UtcNow
         }));
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetSessions), new { id = session.TrainingSessionId }, new { session.TrainingSessionId });
+        return CreatedAtAction(nameof(GetSessions), new { id = sessions[0].TrainingSessionId }, new { trainingSessionIds = sessions.Select(session => session.TrainingSessionId) });
     }
 
     [HttpDelete("sessions/{sessionId}")]

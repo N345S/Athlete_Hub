@@ -27,6 +27,7 @@ public sealed class TrainingSessionRequest
 
     public string? Description { get; set; }
     public DateTime TrainingDate { get; set; }
+    public List<DateTime>? TrainingDates { get; set; }
     public TimeSpan? StartTime { get; set; }
     public TimeSpan? EndTime { get; set; }
     public string? Location { get; set; }
@@ -78,6 +79,7 @@ public sealed class ScheduleRequest
     [Required]
     public TimeSpan? StartTime { get; set; }
 
+    public List<DateTime>? Dates { get; set; }
     public DateTime? EndDate { get; set; }
     public TimeSpan? EndTime { get; set; }
     public string? Location { get; set; }
