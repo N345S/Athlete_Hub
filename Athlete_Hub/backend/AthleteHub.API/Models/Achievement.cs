@@ -23,6 +23,8 @@ public partial class Achievement
 
     public DateTime? VerifiedAt { get; set; }
 
+    public string? RejectionReason { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public virtual AthleteProfile Athlete { get; set; } = null!;

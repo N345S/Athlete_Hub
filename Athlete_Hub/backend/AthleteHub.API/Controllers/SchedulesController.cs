@@ -174,16 +174,23 @@ public class SchedulesController : ControllerBase
         if (!request.StartDate.HasValue || !request.StartTime.HasValue) return BadRequest(new { message = "Start date and start time are required." });
         if (request.EndDate.HasValue != request.EndTime.HasValue) return BadRequest(new { message = "End date and end time must be provided together." });
 
-        var startDatetime = request.StartDate.Value.Date.Add(request.StartTime.Value);
-        var endDatetime = request.EndDate.HasValue
-            ? request.EndDate.Value.Date.Add(request.EndTime!.Value)
-            : (DateTime?)null;
+        var dates = (request.Dates is { Count: > 0 } ? request.Dates : [request.StartDate.Value])
+            .Select(date => date.Date)
+            .Distinct()
+            .OrderBy(date => date)
+            .ToList();
 
-        if (endDatetime.HasValue && endDatetime <= startDatetime) return BadRequest(new { message = "End date and time must be after start date and time." });
-        var schedule = new Schedule { Title = request.Title.Trim(), Description = request.Description, ScheduleType = type, StartDatetime = startDatetime, EndDatetime = endDatetime, Location = request.Location, CreatedBy = GetUserId() };
-        _context.Schedules.Add(schedule);
+        var schedules = dates.Select(date =>
+        {
+            var startDatetime = date.Add(request.StartTime!.Value);
+            var endDatetime = request.EndTime.HasValue ? date.Add(request.EndTime.Value) : (DateTime?)null;
+            return new Schedule { Title = request.Title.Trim(), Description = request.Description, ScheduleType = type, StartDatetime = startDatetime, EndDatetime = endDatetime, Location = request.Location, CreatedBy = GetUserId() };
+        }).ToList();
+
+        if (schedules.Any(schedule => schedule.EndDatetime.HasValue && schedule.EndDatetime <= schedule.StartDatetime)) return BadRequest(new { message = "End date and time must be after start date and time." });
+        _context.Schedules.AddRange(schedules);
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(Get), new { id = schedule.ScheduleId }, new { schedule.ScheduleId });
+        return CreatedAtAction(nameof(Get), new { id = schedules[0].ScheduleId }, new { scheduleIds = schedules.Select(schedule => schedule.ScheduleId) });
     }
 
     [HttpDelete("{scheduleId}")]

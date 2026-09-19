@@ -182,6 +182,8 @@ const documentFileInput = document.getElementById('documentFileInput');
 const stagedDocumentList = document.getElementById('stagedDocumentList');
 const documentMessage = document.getElementById('documentMessage');
 const uploadDocumentsButton = document.getElementById('uploadDocumentsButton');
+const documentTitleInput = document.getElementById('documentTitleInput');
+const documentDescriptionInput = document.getElementById('documentDescriptionInput');
 
 if (documentList && documentDropZone && documentFileInput) {
   const session = JSON.parse(sessionStorage.getItem('athleteHubSession') || 'null');
@@ -229,6 +231,8 @@ if (documentList && documentDropZone && documentFileInput) {
       for (const item of validFiles) {
         const body = new FormData();
         body.append('documentType', document.getElementById('documentTypeInput').value);
+        body.append('title', documentTitleInput ? documentTitleInput.value : '');
+        body.append('description', documentDescriptionInput ? documentDescriptionInput.value : '');
         body.append('file', item.file);
         const response = await fetch(`${API_BASE_URL}/api/Documents`, { method: 'POST', headers: { Authorization: `Bearer ${session.token}` }, body });
         const result = await response.json().catch(() => null);
@@ -236,6 +240,8 @@ if (documentList && documentDropZone && documentFileInput) {
       }
       stagedFiles.splice(0, stagedFiles.length);
       renderStagedFiles();
+      if (documentTitleInput) documentTitleInput.value = '';
+      if (documentDescriptionInput) documentDescriptionInput.value = '';
       showDocumentMessage('Documents uploaded and awaiting review.');
       loadDocuments();
     } catch (error) { showDocumentMessage(error.message, true); } finally { uploadDocumentsButton.disabled = false; }

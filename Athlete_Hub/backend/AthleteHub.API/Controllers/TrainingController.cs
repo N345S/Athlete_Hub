@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AthleteHub.API.Controllers;
 
+/// <summary>
+/// Controller for managing training sessions, attendance, and approvals.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -16,8 +19,21 @@ public class TrainingController : ControllerBase
     private static readonly string[] ValidStatuses = ["PRESENT", "ABSENT", "LATE", "EXCUSED"];
     private readonly AthleteHubDbContext _context;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TrainingController"/> class.
+    /// </summary>
+    /// <param name="context">The database context.</param>
     public TrainingController(AthleteHubDbContext context) => _context = context;
 
+    /// <summary>
+    /// Gets training sessions filtered by date range and user role.
+    /// </summary>
+    /// <param name="from">Optional start date filter (inclusive).</param>
+    /// <param name="to">Optional end date filter (inclusive).</param>
+    /// <returns>List of training sessions with team and approval details.</returns>
+    /// <response code="200">Returns filtered training sessions.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
+    /// <response code="403">User not authorized to view sessions.</response>
     [HttpGet("sessions")]
     public async Task<IActionResult> GetSessions(DateTime? from = null, DateTime? to = null)
     {
@@ -58,6 +74,13 @@ public class TrainingController : ControllerBase
         }));
     }
 
+    /// <summary>
+    /// Gets pending training sessions awaiting director approval (director only).
+    /// </summary>
+    /// <returns>List of pending training sessions with team, sport, and coach details.</returns>
+    /// <response code="200">Returns pending training sessions.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
+    /// <response code="403">User is not a director.</response>
     [HttpGet("pending")]
     [Authorize(Roles = "DIRECTOR")]
     public async Task<IActionResult> GetPendingSessions()
@@ -87,6 +110,19 @@ public class TrainingController : ControllerBase
         return Ok(sessions);
     }
 
+    /// <summary>
+    /// Reviews a pending training session (director only).
+    /// </summary>
+    /// <param name="sessionId">The ID of the training session to review.</param>
+    /// <param name="status">The approval status: "APPROVED" or "REJECTED".</param>
+    /// <param name="request">Optional rejection reason if status is REJECTED.</param>
+    /// <returns>Updated session approval status and review timestamp.</returns>
+    /// <response code="200">Session reviewed successfully.</response>
+    /// <response code="400">Invalid status value.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
+    /// <response code="403">User is not a director.</response>
+    /// <response code="404">Training session not found.</response>
+    /// <response code="409">Session already reviewed.</response>
     [HttpPut("sessions/{sessionId}/review")]
     [Authorize(Roles = "DIRECTOR")]
     public async Task<IActionResult> ReviewSession(int sessionId, [FromQuery] string status, TrainingApprovalRequest request)
@@ -139,6 +175,15 @@ public class TrainingController : ControllerBase
         return Ok(new { session.TrainingSessionId, session.ApprovalStatus, session.ReviewedAt });
     }
 
+    /// <summary>
+    /// Creates one or more training sessions for a team (coach only).
+    /// </summary>
+    /// <param name="request">The training session details including dates, times, and location.</param>
+    /// <returns>Created training session IDs.</returns>
+    /// <response code="201">Training sessions created and submitted for approval.</response>
+    /// <response code="400">Invalid date/time or missing required fields.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
+    /// <response code="403">User is not a coach or not assigned to the team.</response>
     [HttpPost("sessions")]
     [Authorize(Roles = "COACH")]
     public async Task<IActionResult> CreateSession(TrainingSessionRequest request)
@@ -146,21 +191,42 @@ public class TrainingController : ControllerBase
         var coach = await GetCoachAsync();
         if (coach == null || !await _context.Teams.AnyAsync(team => team.TeamId == request.TeamId && team.CoachId == coach.CoachId)) return Forbid();
         if (request.EndTime.HasValue && request.StartTime.HasValue && request.EndTime <= request.StartTime) return BadRequest(new { message = "End time must be after start time." });
-        var session = new TrainingSession { TeamId = request.TeamId, CoachId = coach.CoachId, Title = request.Title.Trim(), Description = request.Description, TrainingDate = request.TrainingDate.Date, StartTime = request.StartTime, EndTime = request.EndTime, Location = request.Location, ApprovalStatus = "PENDING", SubmittedAt = DateTime.UtcNow };
-        _context.TrainingSessions.Add(session);
+
+        var dates = (request.TrainingDates is { Count: > 0 } ? request.TrainingDates : [request.TrainingDate])
+            .Select(date => date.Date)
+            .Distinct()
+            .OrderBy(date => date)
+            .ToList();
+        if (dates.Count == 0) return BadRequest(new { message = "At least one training date is required." });
+
+        var sessions = dates.Select(date => new TrainingSession
+        {
+            TeamId = request.TeamId,
+            CoachId = coach.CoachId,
+            Title = request.Title.Trim(),
+            Description = request.Description,
+            TrainingDate = date,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
+            Location = request.Location,
+            ApprovalStatus = "PENDING",
+            SubmittedAt = DateTime.UtcNow
+        }).ToList();
+
+        _context.TrainingSessions.AddRange(sessions);
         await _context.SaveChangesAsync();
         var directorIds = await _context.Users.Where(user => user.Role.RoleName == "DIRECTOR").Select(user => user.UserId).ToListAsync();
         _context.Notifications.AddRange(directorIds.Select(userId => new Notification
         {
             UserId = userId,
             Title = "Training session approval requested",
-            Message = $"{session.Title} for team {request.TeamId} is waiting for director approval.",
+            Message = $"{sessions[0].Title} for team {request.TeamId} is waiting for director approval.",
             NotificationType = "TRAINING_APPROVAL_REQUEST",
             IsRead = false,
             CreatedAt = DateTime.UtcNow
         }));
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetSessions), new { id = session.TrainingSessionId }, new { session.TrainingSessionId });
+        return CreatedAtAction(nameof(GetSessions), new { id = sessions[0].TrainingSessionId }, new { trainingSessionIds = sessions.Select(session => session.TrainingSessionId) });
     }
 
     [HttpDelete("sessions/{sessionId}")]

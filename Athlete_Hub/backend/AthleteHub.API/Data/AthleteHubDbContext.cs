@@ -202,6 +202,9 @@ public partial class AthleteHubDbContext : DbContext
                 .HasDefaultValueSql("'PENDING'")
                 .HasColumnType("enum('PENDING','VERIFIED','REJECTED')")
                 .HasColumnName("verification_status");
+            entity.Property(e => e.RejectionReason)
+                .HasColumnType("text")
+                .HasColumnName("rejection_reason");
             entity.Property(e => e.VerifiedAt)
                 .HasColumnType("timestamp")
                 .HasColumnName("verified_at");
@@ -456,6 +459,9 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.Unit)
                 .HasMaxLength(50)
                 .HasColumnName("unit");
+            entity.Property(e => e.DataType)
+                .HasMaxLength(50)
+                .HasColumnName("data_type");
 
             entity.HasOne(d => d.Sport).WithMany(p => p.PerformanceMetricDefinitions)
                 .HasForeignKey(d => d.SportId)
@@ -487,6 +493,14 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.RecordedValue)
                 .HasPrecision(10)
                 .HasColumnName("recorded_value");
+            entity.Property(e => e.DataType)
+                .HasMaxLength(50)
+                .HasColumnName("data_type");
+            entity.Property(e => e.Unit)
+                .HasMaxLength(30)
+                .HasColumnName("unit");
+            entity.Property(e => e.SessionId)
+                .HasColumnName("session_id");
 
             entity.HasOne(d => d.Athlete).WithMany(p => p.PerformanceRecords)
                 .HasForeignKey(d => d.AthleteId)
@@ -501,6 +515,11 @@ public partial class AthleteHubDbContext : DbContext
                 .HasForeignKey(d => d.MetricId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_performance_metric");
+
+            entity.HasOne(d => d.Session).WithMany()
+                .HasForeignKey(d => d.SessionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_performance_session");
         });
 
         modelBuilder.Entity<PortfolioItem>(entity =>
@@ -532,6 +551,16 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.Title)
                 .HasMaxLength(200)
                 .HasColumnName("title");
+            entity.Property(e => e.VerificationStatus)
+                .HasMaxLength(20)
+                .HasColumnName("verification_status");
+            entity.Property(e => e.VerifiedBy).HasColumnName("verified_by");
+            entity.Property(e => e.VerifiedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("verified_at");
+            entity.Property(e => e.RejectionReason)
+                .HasColumnType("text")
+                .HasColumnName("rejection_reason");
 
             entity.HasOne(d => d.Achievement).WithMany(p => p.PortfolioItems)
                 .HasForeignKey(d => d.AchievementId)

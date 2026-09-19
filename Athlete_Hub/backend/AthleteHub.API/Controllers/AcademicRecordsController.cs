@@ -1,4 +1,6 @@
 using AthleteHub.API.Data;
+using AthleteHub.API.DTOs;
+using AthleteHub.API.Models;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -93,6 +95,63 @@ public class AcademicRecordsController : ControllerBase
                 record.importedAt
             })
         });
+    }
+
+    [HttpPut("{academicRecordId}")]
+    [Authorize(Roles = "REGISTRAR")]
+    public async Task<IActionResult> UpdateAcademicRecord(
+        int academicRecordId,
+        UpdateAcademicRecordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.AcademicYear)
+            || string.IsNullOrWhiteSpace(request.Semester)
+            || string.IsNullOrWhiteSpace(request.SubjectCode)
+            || string.IsNullOrWhiteSpace(request.SubjectName))
+        {
+            return BadRequest(new { message = "Academic year, semester, subject code, and subject name are required." });
+        }
+
+        if (request.Grade is < 0 or > 100)
+        {
+            return BadRequest(new { message = "Grades must be between 0 and 100." });
+        }
+
+        var record = await _context.AcademicRecords
+            .Include(item => item.Term)
+            .FirstOrDefaultAsync(item => item.AcademicRecordId == academicRecordId);
+
+        if (record == null)
+        {
+            return NotFound(new { message = "Academic record not found." });
+        }
+
+        var term = await _context.AcademicTerms.FirstOrDefaultAsync(currentTerm =>
+            currentTerm.AcademicYear == request.AcademicYear.Trim()
+            && currentTerm.Semester == request.Semester.Trim());
+
+        if (term == null)
+        {
+            term = new AcademicTerm
+            {
+                AcademicYear = request.AcademicYear.Trim(),
+                Semester = request.Semester.Trim()
+            };
+            _context.AcademicTerms.Add(term);
+            await _context.SaveChangesAsync();
+        }
+
+        record.TermId = term.TermId;
+        record.SubjectCode = request.SubjectCode.Trim();
+        record.SubjectName = request.SubjectName.Trim();
+        record.Units = request.Units;
+        record.Grade = request.Grade;
+        record.Remarks = string.IsNullOrWhiteSpace(request.Remarks) ? null : request.Remarks.Trim();
+        record.SourceType = "API";
+        record.ImportedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Academic record updated successfully.", academicRecordId = record.AcademicRecordId });
     }
 
     [HttpDelete("{academicRecordId}")]

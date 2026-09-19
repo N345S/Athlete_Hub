@@ -21,6 +21,7 @@ public class RegistrarDashboardController : ControllerBase
             .AsNoTracking()
             .Include(athlete => athlete.User)
             .Include(athlete => athlete.AcademicRecords)
+                .ThenInclude(record => record.Term)
             .Include(athlete => athlete.EligibilityRecords)
             .ToListAsync();
 
@@ -56,7 +57,12 @@ public class RegistrarDashboardController : ControllerBase
                     record.Units,
                     record.Grade,
                     record.Remarks,
-                    termId = record.TermId
+                    term = new
+                    {
+                        record.Term.TermId,
+                        record.Term.AcademicYear,
+                        record.Term.Semester
+                    }
                 }).ToList()
             };
         }).ToList();

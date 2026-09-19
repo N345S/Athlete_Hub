@@ -577,7 +577,7 @@ CREATE TABLE performance_records (
         ON DELETE SET NULL
 );
 
-
+SELECT * FROM users
 -- ============================================================
 -- 20. SCHEDULES
 -- ============================================================
@@ -658,36 +658,135 @@ CREATE TABLE notifications (
         ON DELETE CASCADE
 );
 
-
 -- ============================================================
--- EXISTING DATABASE UPGRADE COMMANDS
+-- ATHLETE HUB - ADMIN ACCOUNT RESTORE
 -- ============================================================
--- Run these statements one at a time in MySQL Workbench when
--- upgrading an existing athlete_hub database. Do not run this
--- section after recreating all tables from this schema file.
-
-ALTER TABLE documents
-    ADD COLUMN title VARCHAR(200) NULL AFTER document_type,
-    ADD COLUMN description TEXT NULL AFTER title;
-
-ALTER TABLE training_sessions
-    ADD COLUMN approval_status VARCHAR(20) NOT NULL DEFAULT 'APPROVED' AFTER location,
-    ADD COLUMN submitted_at TIMESTAMP NULL AFTER approval_status,
-    ADD COLUMN reviewed_at TIMESTAMP NULL AFTER submitted_at,
-    ADD COLUMN reviewed_by INT NULL AFTER reviewed_at,
-    ADD COLUMN rejection_reason TEXT NULL AFTER reviewed_by;
-
-ALTER TABLE schedules
-    MODIFY COLUMN schedule_type ENUM(
-        'TRAINING',
-        'COMPETITION',
-        'ACADEMIC',
-        'MEETING',
-        'OTHER',
-        'SCHOOL_EVENT',
-        'SPORTS_EVENT'
-    ) NOT NULL;
 
 USE athlete_hub;
 
-SELECT * FROM users
+
+-- ============================================================
+-- 1. MAKE SURE ADMIN ROLE EXISTS
+-- ============================================================
+
+INSERT IGNORE INTO roles (
+    role_name,
+    description
+)
+VALUES (
+    'ADMIN',
+    'Administrator with full access'
+);
+
+
+-- ============================================================
+-- 2. GET THE ADMIN ROLE ID
+-- ============================================================
+
+SET @admin_role_id = (
+    SELECT role_id
+    FROM roles
+    WHERE role_name = 'ADMIN'
+    LIMIT 1
+);
+
+
+-- ============================================================
+-- 3. CHECK THAT THE ADMIN ROLE WAS FOUND
+-- ============================================================
+
+SELECT
+    @admin_role_id AS admin_role_id;
+
+
+-- ============================================================
+-- 4. CREATE OR RESTORE ADMIN ACCOUNT
+-- ============================================================
+
+INSERT INTO users (
+    role_id,
+    university_id,
+    email,
+    password_hash,
+    first_name,
+    middle_name,
+    last_name,
+    phone,
+    account_status
+)
+SELECT
+    @admin_role_id,
+    'ADMIN001',
+    'admin@athletehub.com',
+    '$2a$10$hP35PoXlzKbWxlRRhaLYM.wgFvPFY4RLIpWpOKrrM47Q.jOVy3Kqu',
+    'Admin',
+    NULL,
+    'User',
+    '1234567890',
+    'ACTIVE'
+WHERE @admin_role_id IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1
+      FROM users
+      WHERE email = 'admin@athletehub.com'
+  );
+
+
+-- ============================================================
+-- 5. IF ACCOUNT ALREADY EXISTS, MAKE SURE IT IS ADMIN/ACTIVE
+-- ============================================================
+
+UPDATE users
+SET
+    role_id = @admin_role_id,
+    university_id = 'ADMIN001',
+    account_status = 'ACTIVE'
+WHERE email = 'admin@athletehub.com';
+
+
+-- ============================================================
+-- 6. VERIFY ADMIN ACCOUNT
+-- ============================================================
+
+SELECT
+    u.user_id,
+    u.university_id,
+    u.email,
+    u.first_name,
+    u.middle_name,
+    u.last_name,
+    u.phone,
+    u.account_status,
+    r.role_id,
+    r.role_name
+FROM users u
+JOIN roles r
+    ON u.role_id = r.role_id
+WHERE u.email = 'admin@athletehub.com';
+
+
+-- ============================================================
+-- 7. SHOW ALL USERS
+-- ============================================================
+
+SELECT
+    u.user_id,
+    u.university_id,
+    u.email,
+    u.first_name,
+    u.last_name,
+    u.account_status,
+    r.role_name
+FROM users u
+JOIN roles r
+    ON u.role_id = r.role_id
+ORDER BY u.user_id;
+
+USE athlete_hub;
+
+UPDATE users
+SET password_hash = '$2a$11$xZiMRpx61EoSzs5Ykdgmg.nUGvK2x9.X9bNslrtUAcZbjFSxDGkJW',
+    account_status = 'ACTIVE'
+WHERE email = 'admin@athletehub.com';
+
+SELECT * FROM roles

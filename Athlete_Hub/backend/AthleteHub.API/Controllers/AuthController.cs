@@ -11,6 +11,9 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace AthleteHub.API.Controllers;
 
+/// <summary>
+/// Authentication controller for user registration, login, and token validation.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
@@ -18,6 +21,11 @@ public class AuthController : ControllerBase
     private readonly AthleteHubDbContext _context;
     private readonly IConfiguration _configuration;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AuthController"/> class.
+    /// </summary>
+    /// <param name="context">The database context.</param>
+    /// <param name="configuration">The application configuration.</param>
     public AuthController(
         AthleteHubDbContext context,
         IConfiguration configuration)
@@ -27,11 +35,14 @@ public class AuthController : ControllerBase
     }
 
 
-    // ==========================================
-    // REGISTER ATHLETE
-    // POST: /api/Auth/register
-    // ==========================================
-
+    /// <summary>
+    /// Registers a new athlete account.
+    /// </summary>
+    /// <param name="request">The registration request containing athlete details.</param>
+    /// <returns>Success message with user details or validation errors.</returns>
+    /// <response code="200">Account registered successfully.</response>
+    /// <response code="400">University ID or email already exists, or ATHLETE role not found.</response>
+    /// <response code="500">Internal server error.</response>
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
@@ -121,18 +132,22 @@ public class AuthController : ControllerBase
     }
 
 
-    // ==========================================
-    // LOGIN
-    // POST: /api/Auth/login
-    // ==========================================
-
+    /// <summary>
+    /// Authenticates a user and returns a JWT token.
+    /// </summary>
+    /// <param name="request">The login request containing email and password.</param>
+    /// <returns>JWT token with user claims or authentication error.</returns>
+    /// <response code="200">Login successful with JWT token.</response>
+    /// <response code="401">Invalid email, password, or inactive account.</response>
+    /// <response code="500">JWT key not configured.</response>
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {
         // Find user by email
+        var normalizedEmail = request.Email?.Trim().ToLowerInvariant();
         var user = await _context.Users
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
 
         // User does not exist
         if (user == null)
@@ -150,6 +165,11 @@ public class AuthController : ControllerBase
             {
                 message = "This account is not active."
             });
+        }
+
+        if (user.Role == null)
+        {
+            return StatusCode(500, new { message = "This account is missing a valid role assignment." });
         }
 
         // Verify password
@@ -295,20 +315,12 @@ public class AuthController : ControllerBase
     }
 
 
-    // ==========================================
-    // GET CURRENT USER
-    // GET: /api/Auth/me
-    // ==========================================
-    //
-    // This endpoint requires a valid JWT token.
-    //
-    // Request:
-    // GET /api/Auth/me
-    //
-    // Header:
-    // Authorization: Bearer YOUR_TOKEN
-    // ==========================================
-
+    /// <summary>
+    /// Gets the current authenticated user's information from JWT claims.
+    /// </summary>
+    /// <returns>User information extracted from the JWT token.</returns>
+    /// <response code="200">Returns user details from valid JWT.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
     [Authorize]
     [HttpGet("me")]
     public IActionResult GetCurrentUser()

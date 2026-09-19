@@ -45,6 +45,9 @@ public class PortfolioController : ControllerBase
                 item.DisplayOrder,
                 item.IsVisible,
                 item.CreatedAt,
+                item.VerificationStatus,
+                item.RejectionReason,
+                item.VerifiedAt,
                 achievementDate = item.Achievement == null ? null : item.Achievement.AchievementDate,
                 achievementStatus = item.Achievement == null
                     ? null
@@ -91,6 +94,9 @@ public class PortfolioController : ControllerBase
                 item.Description,
                 item.DisplayOrder,
                 item.CreatedAt,
+                item.VerificationStatus,
+                item.RejectionReason,
+                item.VerifiedAt,
                 achievementDate = item.Achievement == null ? null : item.Achievement.AchievementDate,
                 achievementStatus = item.Achievement == null ? null : item.Achievement.VerificationStatus,
                 evidence = item.Achievement == null
@@ -228,6 +234,99 @@ public class PortfolioController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    [HttpPut("{portfolioItemId}/verify")]
+    [Authorize(Roles = "COACH,DIRECTOR,ADMIN")]
+    public async Task<IActionResult> VerifyPortfolioItem(
+        int portfolioItemId,
+        [FromBody] PortfolioVerificationRequest request)
+    {
+        var normalizedStatus = request.Status?.Trim().ToUpperInvariant() ?? "VERIFIED";
+
+        if (normalizedStatus is not ("VERIFIED" or "REJECTED"))
+        {
+            return BadRequest(new { message = "Status must be VERIFIED or REJECTED." });
+        }
+
+        if (normalizedStatus == "REJECTED" && string.IsNullOrWhiteSpace(request.RejectionReason))
+        {
+            return BadRequest(new { message = "Rejection reason is required when rejecting a portfolio item." });
+        }
+
+        var item = await _context.PortfolioItems
+            .Include(i => i.Achievement)
+            .Include(i => i.Athlete).ThenInclude(athlete => athlete.User)
+            .FirstOrDefaultAsync(i => i.PortfolioItemId == portfolioItemId);
+
+        if (item == null)
+        {
+            return NotFound(new { message = "Portfolio item not found." });
+        }
+
+        if (!await CanAccessAthleteAsync(item.AthleteId))
+        {
+            return Forbid();
+        }
+
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return Unauthorized(new { message = "User ID was not found in the JWT." });
+        }
+
+        item.VerificationStatus = normalizedStatus;
+        item.VerifiedBy = userId;
+        item.VerifiedAt = DateTime.UtcNow;
+        item.RejectionReason = normalizedStatus == "REJECTED" ? request.RejectionReason?.Trim() : null;
+
+        if (item.Achievement != null)
+        {
+            item.Achievement.VerificationStatus = normalizedStatus;
+            item.Achievement.VerifiedBy = userId;
+            item.Achievement.VerifiedAt = DateTime.UtcNow;
+
+            var evidenceDocuments = await _context.Documents
+                .Where(document => document.AchievementId == item.AchievementId)
+                .ToListAsync();
+
+            if (normalizedStatus == "REJECTED")
+            {
+                foreach (var document in evidenceDocuments)
+                {
+                    document.Status = "REJECTED";
+                }
+            }
+            else if (normalizedStatus == "VERIFIED")
+            {
+                foreach (var document in evidenceDocuments)
+                {
+                    document.Status = "APPROVED";
+                }
+            }
+        }
+
+        _context.Notifications.Add(new Notification
+        {
+            UserId = item.Athlete.UserId,
+            Title = normalizedStatus == "VERIFIED" ? "Portfolio verified" : "Portfolio rejected",
+            Message = normalizedStatus == "VERIFIED"
+                ? $"Your portfolio submission \"{item.Title}\" was verified by your coach."
+                : $"Your portfolio submission \"{item.Title}\" was rejected.{(string.IsNullOrWhiteSpace(item.RejectionReason) ? string.Empty : $" Reason: {item.RejectionReason}")}",
+            NotificationType = normalizedStatus == "VERIFIED" ? "PORTFOLIO_VERIFIED" : "PORTFOLIO_REJECTED",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            item.PortfolioItemId,
+            achievementId = item.AchievementId,
+            item.VerificationStatus,
+            item.RejectionReason,
+            item.IsVisible
+        });
     }
 
     private async Task<AthleteProfile?> GetCurrentAthleteAsync()

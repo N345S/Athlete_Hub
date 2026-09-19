@@ -14,6 +14,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { LineChart } from 'react-native-chart-kit';
 
 const API_BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:5007' : 'http://localhost:5007';
 const SESSION_KEY = 'athleteHubSession';
@@ -32,6 +34,8 @@ type RootStackParamList = {
   Login: undefined;
   StudentDashboard: { session: Session };
   RoleDashboard: { session: Session };
+  PerformanceEntry: { session: Session; athlete: any };
+  PerformanceTrend: { session: Session; athlete: any };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -47,8 +51,8 @@ async function getStoredSession(): Promise<Session | null> {
 }
 
 function LoginScreen({ navigation }: { navigation: any }) {
-  const [email, setEmail] = useState('testathlete@example.com');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -138,9 +142,6 @@ function LoginScreen({ navigation }: { navigation: any }) {
         <Pressable style={[styles.button, loading && styles.buttonDisabled]} onPress={handleLogin} disabled={loading}>
           <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
         </Pressable>
-
-        <Text style={styles.helpText}>Student test account: testathlete@example.com</Text>
-        <Text style={styles.helpText}>Password: Password123!</Text>
       </View>
     </SafeAreaView>
   );
@@ -208,19 +209,34 @@ function StudentDashboardScreen({ route, navigation }: { route: any; navigation:
 
 function RoleDashboardScreen({ route, navigation }: { route: any; navigation: any }) {
   const { session } = route.params;
+  const role = String(session.role || '').toUpperCase();
 
   const logout = async () => {
     await AsyncStorage.removeItem(SESSION_KEY);
     navigation.replace('Login');
   };
 
+  const isCoachOrDirector = role === 'COACH' || role === 'DIRECTOR';
+
   return (
     <SafeAreaView style={styles.dashboardContainer}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.heading}>{String(session.role || 'Role').toUpperCase()} Dashboard</Text>
+        <Text style={styles.heading}>{role} Dashboard</Text>
         <Text style={styles.greeting}>Welcome, {session.firstName || 'User'}!</Text>
         <Text style={styles.subtle}>This dashboard is connected to the ASP.NET backend.</Text>
         <Text style={styles.subtle}>Database access is handled by the backend API, not directly from React Native.</Text>
+
+        {isCoachOrDirector && (
+          <View style={styles.listCard}>
+            <Text style={styles.listTitle}>Performance Tracking</Text>
+            <Pressable style={styles.button} onPress={() => Alert.alert('Feature', 'Navigate to athlete list to record performance')}>
+              <Text style={styles.buttonText}>Record Athlete Performance</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryButton} onPress={() => Alert.alert('Feature', 'Navigate to athlete list to view trends')}>
+              <Text style={styles.secondaryButtonText}>View Performance Trends</Text>
+            </Pressable>
+          </View>
+        )}
 
         <View style={styles.listCard}>
           <Text style={styles.listTitle}>Session Info</Text>
@@ -237,6 +253,223 @@ function RoleDashboardScreen({ route, navigation }: { route: any; navigation: an
   );
 }
 
+// Performance Entry Screen - for coaches to record athlete performance
+function PerformanceEntryScreen({ route, navigation }: { route: any; navigation: any }) {
+  const { session, athlete } = route.params;
+  const [dataType, setDataType] = useState('PUSH_UP');
+  const [value, setValue] = useState('');
+  const [sessionId, setSessionId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch available metrics
+        const metricsRes = await fetch(`${API_BASE_URL}/api/Performance/metrics`, {
+          headers: { Authorization: `Bearer ${session.token}` },
+        });
+        const metricsData = await metricsRes.json();
+        setMetrics(metricsData);
+
+        // Fetch training sessions for the coach
+        const sessionsRes = await fetch(`${API_BASE_URL}/api/Training/sessions`, {
+          headers: { Authorization: `Bearer ${session.token}` },
+        });
+        const sessionsData = await sessionsRes.json();
+        setSessions(sessionsData);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      }
+    };
+    fetchData();
+  }, [session.token]);
+
+  const handleSubmit = async () => {
+    if (!value.trim()) {
+      Alert.alert('Missing value', 'Please enter a performance value.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Performance/record`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({
+          athleteId: athlete.athleteId,
+          metricId: metrics[0]?.metricId || 1,
+          recordedValue: Number(value),
+          recordedDate: new Date().toISOString().slice(0, 10),
+          dataType,
+          sessionId: Number(sessionId) || 0,
+          notes,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.message || 'Failed to save record.');
+
+      Alert.alert('Success', 'Performance record saved successfully!');
+      navigation.goBack();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save record.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.dashboardContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.heading}>Record Performance</Text>
+        <Text style={styles.greeting}>Athlete: {athlete.firstName} {athlete.lastName}</Text>
+
+        <View style={styles.listCard}>
+          <Text style={styles.listTitle}>Performance Details</Text>
+
+          <Text style={styles.fieldLabel}>Data Type</Text>
+          <Picker selectedValue={dataType} onValueChange={setDataType} style={styles.picker}>
+            <Picker.Item label="Push-ups" value="PUSH_UP" />
+            <Picker.Item label="Balance (seconds)" value="BALANCE" />
+            <Picker.Item label="Sprint 10m (seconds)" value="SPRINT_10M" />
+            <Picker.Item label="Sprint 40m (seconds)" value="SPRINT_40M" />
+            <Picker.Item label="Velocity" value="VELOCITY" />
+          </Picker>
+
+          <Text style={styles.fieldLabel}>Value</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter value (e.g., 20)"
+            value={value}
+            onChangeText={setValue}
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.fieldLabel}>Session ID (Optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter session ID"
+            value={sessionId}
+            onChangeText={setSessionId}
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.fieldLabel}>Notes</Text>
+          <TextInput
+            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+            placeholder="Optional notes"
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+          />
+        </View>
+
+        <Pressable style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSubmit} disabled={loading}>
+          <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save Record'}</Text>
+        </Pressable>
+
+        <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.secondaryButtonText}>Cancel</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+// Performance Trend Screen - for viewing athlete progress
+function PerformanceTrendScreen({ route, navigation }: { route: any; navigation: any }) {
+  const { session, athlete } = route.params;
+  const [timeRange, setTimeRange] = useState<'overall' | 'monthly' | 'weekly'>('overall');
+  const [chartData, setChartData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchTrend = async () => {
+      try {
+        setLoading(true);
+        const result = await fetch(`${API_BASE_URL}/api/Performance/athlete/${athlete.athleteId}/trend?timeRange=${timeRange}`, {
+          headers: { Authorization: `Bearer ${session.token}` },
+        });
+        const data = await result.json();
+        if (!result.ok) throw new Error(data?.message || 'Failed to load trend data');
+        setChartData(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrend();
+  }, [athlete.athleteId, session.token, timeRange]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.dashboardContainer}>
+        <View style={styles.scrollContent}>
+          <Text style={styles.heading}>Loading trend data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.dashboardContainer}>
+        <View style={styles.scrollContent}>
+          <Text style={styles.heading}>Error: {error}</Text>
+          <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.secondaryButtonText}>Go Back</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const chartConfig = chartData ? {
+    data: chartData,
+    width: 350,
+    height: 300,
+    chartConfig: {
+      backgroundColor: '#f5f7fb',
+      backgroundGradientFrom: '#f5f7fb',
+      backgroundGradientTo: '#f5f7fb',
+      color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+    },
+    bezier: true,
+  } : null;
+
+  return (
+    <SafeAreaView style={styles.dashboardContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.heading}>Performance Trend</Text>
+        <Text style={styles.greeting}>{athlete.firstName} {athlete.lastName}</Text>
+
+        <View style={styles.timeRangeButtons}>
+          <Pressable style={[styles.timeRangeButton, timeRange === 'overall' && styles.timeRangeButtonActive]} onPress={() => setTimeRange('overall')}>
+            <Text style={[styles.timeRangeButtonText, timeRange === 'overall' && styles.timeRangeButtonTextActive]}>Overall</Text>
+          </Pressable>
+          <Pressable style={[styles.timeRangeButton, timeRange === 'monthly' && styles.timeRangeButtonActive]} onPress={() => setTimeRange('monthly')}>
+            <Text style={[styles.timeRangeButtonText, timeRange === 'monthly' && styles.timeRangeButtonTextActive]}>Monthly</Text>
+          </Pressable>
+          <Pressable style={[styles.timeRangeButton, timeRange === 'weekly' && styles.timeRangeButtonActive]} onPress={() => setTimeRange('weekly')}>
+            <Text style={[styles.timeRangeButtonText, timeRange === 'weekly' && styles.timeRangeButtonTextActive]}>Weekly</Text>
+          </Pressable>
+        </View>
+
+        {chartConfig && <LineChart data={chartConfig.data} width={chartConfig.width} height={chartConfig.height} chartConfig={chartConfig.chartConfig} bezier={chartConfig.bezier} />}
+
+        <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.secondaryButtonText}>Back</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
 export default function App() {
   return (
     <NavigationContainer>
@@ -244,6 +477,8 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="StudentDashboard" component={StudentDashboardScreen} />
         <Stack.Screen name="RoleDashboard" component={RoleDashboardScreen} />
+        <Stack.Screen name="PerformanceEntry" component={PerformanceEntryScreen} />
+        <Stack.Screen name="PerformanceTrend" component={PerformanceTrendScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -414,6 +649,62 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  picker: {
+    borderWidth: 1,
+    borderColor: '#dbe3f0',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 14,
+    fontSize: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 6,
+    marginTop: 16,
+  },
+  timeRangeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  timeRangeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#e2e8f0',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  timeRangeButtonActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  timeRangeButtonText: {
+    color: '#475569',
+    fontWeight: '600',
+  },
+  timeRangeButtonTextActive: {
+    color: '#fff',
+  },
+  secondaryButton: {
+    marginTop: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  secondaryButtonText: {
+    color: '#2563eb',
     fontSize: 16,
     fontWeight: '700',
   },

@@ -21,6 +21,14 @@ public partial class PortfolioItem
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? VerificationStatus { get; set; }
+
+    public int? VerifiedBy { get; set; }
+
+    public DateTime? VerifiedAt { get; set; }
+
+    public string? RejectionReason { get; set; }
+
     public virtual Achievement? Achievement { get; set; }
 
     public virtual AthleteProfile Athlete { get; set; } = null!;
