@@ -30,24 +30,12 @@
       <nav class="main-nav" aria-label="Main navigation">
         <a class="nav-item" href="student-dashboard.html">Dashboard</a>
         <a class="nav-item" href="student-grades.html">My Grades</a>
-        <a class="nav-item" href="student-sports.html">My Sports</a>
         <a class="nav-item active" href="student-schedule.html">Schedule</a>
         <a class="nav-item" href="student-documents.html">Documents</a>
         <a class="nav-item" href="student-portfolio.html">Portfolio</a>
         <a class="nav-item" href="student-profile.html">Profile</a>
         <a class="nav-item" href="student-notifications.html">Notifications <span class="dot-badge">3</span></a>
       </nav>
-
-      <div class="grade-scale">
-        <h3>PH Grade Scale</h3>
-        <ul>
-          <li><span>1.00-1.25</span><strong>Excellent</strong></li>
-          <li><span>1.50-1.75</span><strong>Very Good</strong></li>
-          <li><span>2.00-2.25</span><strong>Good</strong></li>
-          <li><span>2.50-3.00</span><strong>Passing</strong></li>
-          <li><span>5.00</span><strong>Failed</strong></li>
-        </ul>
-      </div>
 
       <button class="logout-button" type="button">Logout</button>
     </aside>
@@ -97,42 +85,8 @@
         </article>
       </section>
 
-      <section class="calendar-panel">
-        <div class="calendar-toolbar">
-          <button class="calendar-toggle active" type="button">Calendar View</button>
-          <button class="calendar-toggle" type="button">List View</button>
-        </div>
-
-        <div class="calendar-filters">
-          <span class="filter-tag sports">Sports Events</span>
-          <span class="filter-tag academic">Academic Events</span>
-        </div>
-
-        <div class="day-group">
-          <div class="date-tag">7</div>
-          <div class="date-header">Tuesday, April 7, 2026</div>
-          <div class="calendar-event sports-card">
-            <div class="event-title">Basketball Practice</div>
-            <div class="event-meta">4:00 PM – 6:00 PM • University Gymnasium</div>
-            <div class="event-note">Regular team practice session</div>
-          </div>
-          <div class="calendar-event sports-card alt">
-            <div class="event-title">Team Strategy Meeting</div>
-            <div class="event-meta">7:00 PM – 8:00 PM • Coach's Office</div>
-            <div class="event-note">Discuss game plan for championship</div>
-          </div>
-        </div>
-
-        <div class="day-group">
-          <div class="date-tag muted">8</div>
-          <div class="date-header">Wednesday, April 8, 2026</div>
-          <div class="calendar-event academic-card">
-            <div class="event-title">Midterm Exam – Data Structures</div>
-            <div class="event-meta">9:00 AM – 11:00 AM • Room 301, CS Building</div>
-            <div class="event-note">CS301 Midterm Examination</div>
-          </div>
-        </div>
-      </section>
+      <section class="calendar-panel" id="scheduleCalendar"></section>
     </main>
+    <script src="script.js"></script>
   </body>
 </html>

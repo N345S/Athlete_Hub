@@ -41,7 +41,7 @@ CREATE TABLE `academic_records` (
   CONSTRAINT `fk_academic_athlete` FOREIGN KEY (`athlete_id`) REFERENCES `athlete_profiles` (`athlete_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_academic_import_batch` FOREIGN KEY (`import_batch_id`) REFERENCES `academic_import_batches` (`import_batch_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_academic_term` FOREIGN KEY (`term_id`) REFERENCES `academic_terms` (`term_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -50,7 +50,7 @@ CREATE TABLE `academic_records` (
 
 LOCK TABLES `academic_records` WRITE;
 /*!40000 ALTER TABLE `academic_records` DISABLE KEYS */;
-INSERT INTO `academic_records` VALUES (1,1,1,NULL,'CCS101','Introduction to Computing',3.00,1.50,'Passed','MANUAL','2026-08-21 04:59:38'),(2,1,1,NULL,'WEB101','Web Development',3.00,1.75,'Passed','MANUAL','2026-08-21 04:59:38'),(3,1,1,NULL,'DB101','Database Management',3.00,1.50,'Passed','MANUAL','2026-08-21 04:59:38'),(4,1,1,NULL,'PE101','Physical Education',2.00,1.25,'Passed','MANUAL','2026-08-21 04:59:38'),(5,1,1,NULL,'CCS101','Introduction to Computing',3.00,1.50,'Passed','MANUAL','2026-08-21 05:17:53'),(6,1,1,NULL,'WEB101','Web Development',3.00,1.75,'Passed','MANUAL','2026-08-21 05:17:53'),(7,1,1,NULL,'DB101','Database Management',3.00,1.50,'Passed','MANUAL','2026-08-21 05:17:53'),(8,1,1,NULL,'PE101','Physical Education',2.00,1.25,'Passed','MANUAL','2026-08-21 05:17:53');
+INSERT INTO `academic_records` VALUES (3,1,1,NULL,'DB101','Database Management',3.00,1.50,'Passed','MANUAL','2026-08-21 04:59:38'),(4,1,1,NULL,'PE101','Physical Education',2.00,1.25,'Passed','MANUAL','2026-08-21 04:59:38'),(5,1,1,NULL,'CCS101','Introduction to Computing',3.00,1.50,'Passed','MANUAL','2026-08-21 05:17:53'),(6,1,1,NULL,'WEB101','Web Development',3.00,1.75,'Passed','MANUAL','2026-08-21 05:17:53'),(7,1,1,NULL,'DB101','Database Management',3.00,1.50,'Passed','MANUAL','2026-08-21 05:17:53'),(8,1,1,NULL,'PE101','Physical Education',2.00,1.25,'Passed','MANUAL','2026-08-21 05:17:53'),(9,1,15,1,'PE101','Athletic Performance',3.00,92.50,'Evaluation sent by registrar.','API','2026-09-02 17:10:33');
 /*!40000 ALTER TABLE `academic_records` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -63,4 +63,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03  0:48:07
+-- Dump completed on 2026-09-07  8:59:03

@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS `documents`;
 CREATE TABLE `documents` (
   `document_id` int NOT NULL AUTO_INCREMENT,
   `athlete_id` int NOT NULL,
+  `achievement_id` int DEFAULT NULL,
   `document_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `file_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -33,7 +34,7 @@ CREATE TABLE `documents` (
   PRIMARY KEY (`document_id`),
   KEY `fk_document_athlete` (`athlete_id`),
   CONSTRAINT `fk_document_athlete` FOREIGN KEY (`athlete_id`) REFERENCES `athlete_profiles` (`athlete_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -42,7 +43,7 @@ CREATE TABLE `documents` (
 
 LOCK TABLES `documents` WRITE;
 /*!40000 ALTER TABLE `documents` DISABLE KEYS */;
-INSERT INTO `documents` VALUES (1,1,'TRANSCRIPT','transcript.pdf','/uploads/documents/08c7cff194614036a099c5c2853a0a88.pdf','PENDING','2026-08-20 23:02:05');
+INSERT INTO `documents` VALUES (2,1,NULL,'Medical Clearance','ID.jpg','/uploads/documents/12e9ab8c0f6e45a4853d1686a0671736.jpg','PENDING','2026-09-06 16:50:21'),(3,1,9,'Achievement Evidence','ID.jpg','/uploads/documents/909492b348fd44c0a5d96785eaa47663.jpg','PENDING','2026-09-06 16:56:49');
 /*!40000 ALTER TABLE `documents` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -55,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03  0:48:06
+-- Dump completed on 2026-09-07  8:59:04

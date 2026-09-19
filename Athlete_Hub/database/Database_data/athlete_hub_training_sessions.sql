@@ -37,7 +37,7 @@ CREATE TABLE `training_sessions` (
   KEY `fk_training_coach` (`coach_id`),
   CONSTRAINT `fk_training_coach` FOREIGN KEY (`coach_id`) REFERENCES `coach_profiles` (`coach_id`),
   CONSTRAINT `fk_training_team` FOREIGN KEY (`team_id`) REFERENCES `teams` (`team_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -46,6 +46,7 @@ CREATE TABLE `training_sessions` (
 
 LOCK TABLES `training_sessions` WRITE;
 /*!40000 ALTER TABLE `training_sessions` DISABLE KEYS */;
+INSERT INTO `training_sessions` VALUES (3,1,1,'Morning Training','Sprint and conditioning','2026-09-03','08:00:00','10:00:00','Main Track');
 /*!40000 ALTER TABLE `training_sessions` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -58,4 +59,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-08-25 15:04:00
+-- Dump completed on 2026-09-05 14:25:53

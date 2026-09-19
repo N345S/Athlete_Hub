@@ -9,6 +9,8 @@ public partial class Document
 
     public int AthleteId { get; set; }
 
+    public int? AchievementId { get; set; }
+
     public string DocumentType { get; set; } = null!;
 
     public string DocumentName { get; set; } = null!;
@@ -20,4 +22,6 @@ public partial class Document
     public DateTime? UploadedAt { get; set; }
 
     public virtual AthleteProfile Athlete { get; set; } = null!;
+
+    public virtual Achievement? Achievement { get; set; }
 }

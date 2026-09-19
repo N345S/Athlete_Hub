@@ -38,7 +38,7 @@ CREATE TABLE `achievements` (
   KEY `fk_achievement_verifier` (`verified_by`),
   CONSTRAINT `fk_achievement_athlete` FOREIGN KEY (`athlete_id`) REFERENCES `athlete_profiles` (`athlete_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_achievement_verifier` FOREIGN KEY (`verified_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -47,7 +47,7 @@ CREATE TABLE `achievements` (
 
 LOCK TABLES `achievements` WRITE;
 /*!40000 ALTER TABLE `achievements` DISABLE KEYS */;
-INSERT INTO `achievements` VALUES (1,1,'Regional Track and Field Champion','Placed first in the 100-meter sprint.','2026-08-01','SPORTS','PENDING',NULL,NULL,'2026-08-20 21:43:26'),(2,1,'Regional Track and Field Champion','Placed first in the 100-meter sprint.','2026-08-01','SPORTS','PENDING',NULL,NULL,'2026-08-20 21:43:26'),(3,1,'Regional Track and Field Champion','Placed first in the 100-meter sprint.','2026-08-01','SPORTS','PENDING',NULL,NULL,'2026-08-20 21:58:53');
+INSERT INTO `achievements` VALUES (1,1,'Regional Track and Field Champion','Placed first in the 100-meter sprint.','2026-08-01','SPORTS','PENDING',NULL,NULL,'2026-08-20 21:43:26'),(2,1,'Regional Track and Field Champion','Placed first in the 100-meter sprint.','2026-08-01','SPORTS','PENDING',NULL,NULL,'2026-08-20 21:43:26'),(3,1,'Regional Track and Field Champion','Placed first in the 100-meter sprint.','2026-08-01','SPORTS','PENDING',NULL,NULL,'2026-08-20 21:58:53'),(4,1,'Regional Track and Field Champion','Placed first in the 100-meter sprint.','2026-08-01','SPORTS','PENDING',NULL,NULL,'2026-09-02 17:56:46'),(7,1,'Prisaa','wasdwa',NULL,NULL,'VERIFIED',2,'2026-09-06 16:50:59','2026-09-06 16:44:00'),(8,1,'Prisaa','wasdw',NULL,NULL,'VERIFIED',2,'2026-09-06 16:50:52','2026-09-06 16:45:14'),(9,1,'wasdw','wasdw',NULL,NULL,'VERIFIED',2,'2026-09-06 16:57:28','2026-09-06 16:56:49');
 /*!40000 ALTER TABLE `achievements` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -60,4 +60,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03  0:48:06
+-- Dump completed on 2026-09-07  8:59:03

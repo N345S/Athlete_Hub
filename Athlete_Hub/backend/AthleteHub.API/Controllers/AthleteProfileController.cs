@@ -97,7 +97,7 @@ public class AthleteProfileController : ControllerBase
 
             yearLevel = athlete.YearLevel,
 
-            birthDate = athlete.BirthDate,
+            birthDate = athlete.BirthDate.HasValue ? athlete.BirthDate.Value.ToString("yyyy-MM-dd") : null,
 
             profilePhotoUrl = athlete.ProfilePhotoUrl,
 
@@ -182,7 +182,7 @@ public async Task<IActionResult> UpdateMyProfile(
 
         yearLevel = athlete.YearLevel,
 
-        birthDate = athlete.BirthDate,
+        birthDate = athlete.BirthDate.HasValue ? athlete.BirthDate.Value.ToString("yyyy-MM-dd") : null,
 
         profilePhotoUrl = athlete.ProfilePhotoUrl,
 

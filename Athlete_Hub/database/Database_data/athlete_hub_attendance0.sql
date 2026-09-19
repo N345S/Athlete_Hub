@@ -33,7 +33,7 @@ CREATE TABLE `attendance` (
   KEY `fk_attendance_athlete` (`athlete_id`),
   CONSTRAINT `fk_attendance_athlete` FOREIGN KEY (`athlete_id`) REFERENCES `athlete_profiles` (`athlete_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_attendance_session` FOREIGN KEY (`training_session_id`) REFERENCES `training_sessions` (`training_session_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -54,4 +54,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03  0:48:06
+-- Dump completed on 2026-09-07  8:59:03

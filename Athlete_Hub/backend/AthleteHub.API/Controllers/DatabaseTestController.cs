@@ -20,14 +20,22 @@ public class DatabaseTestController : ControllerBase
     {
         try
         {
-            await _context.Database.OpenConnectionAsync();
-            await _context.Database.CloseConnectionAsync();
+            var connected = await _context.Database.CanConnectAsync();
 
-            return Ok(new
+            if (connected)
             {
-                connected = true,
-                database = "athlete_hub",
-                message = "Successfully connected to MySQL."
+                return Ok(new
+                {
+                    connected = true,
+                    database = "athlete_hub",
+                    message = "Successfully connected to MySQL."
+                });
+            }
+
+            return StatusCode(500, new
+            {
+                connected = false,
+                message = "Could not connect to MySQL."
             });
         }
         catch (Exception ex)
@@ -35,8 +43,7 @@ public class DatabaseTestController : ControllerBase
             return StatusCode(500, new
             {
                 connected = false,
-                message = ex.Message,
-                innerError = ex.InnerException?.Message
+                message = ex.Message
             });
         }
     }

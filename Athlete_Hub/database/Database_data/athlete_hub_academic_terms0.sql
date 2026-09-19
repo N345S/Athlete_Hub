@@ -30,7 +30,7 @@ CREATE TABLE `academic_terms` (
   `end_date` date DEFAULT NULL,
   PRIMARY KEY (`term_id`),
   UNIQUE KEY `academic_year` (`academic_year`,`semester`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -39,7 +39,7 @@ CREATE TABLE `academic_terms` (
 
 LOCK TABLES `academic_terms` WRITE;
 /*!40000 ALTER TABLE `academic_terms` DISABLE KEYS */;
-INSERT INTO `academic_terms` VALUES (1,'2026-2027','1st Semester',NULL,NULL),(2,'2026-2027','2nd Semester',NULL,NULL);
+INSERT INTO `academic_terms` VALUES (1,'2026-2027','1st Semester',NULL,NULL),(2,'2026-2027','2nd Semester',NULL,NULL),(15,'2026-2027','FIRST',NULL,NULL);
 /*!40000 ALTER TABLE `academic_terms` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -52,4 +52,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03  0:48:06
+-- Dump completed on 2026-09-07  8:59:02

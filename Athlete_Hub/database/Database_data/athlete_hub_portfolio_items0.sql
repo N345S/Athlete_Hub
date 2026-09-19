@@ -36,7 +36,7 @@ CREATE TABLE `portfolio_items` (
   KEY `fk_portfolio_achievement` (`achievement_id`),
   CONSTRAINT `fk_portfolio_achievement` FOREIGN KEY (`achievement_id`) REFERENCES `achievements` (`achievement_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_portfolio_athlete` FOREIGN KEY (`athlete_id`) REFERENCES `athlete_profiles` (`athlete_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -45,7 +45,7 @@ CREATE TABLE `portfolio_items` (
 
 LOCK TABLES `portfolio_items` WRITE;
 /*!40000 ALTER TABLE `portfolio_items` DISABLE KEYS */;
-INSERT INTO `portfolio_items` VALUES (1,1,NULL,'Regional Championship Portfolio Entry','A portfolio entry linked to an athletic achievement.',1,1,'2026-08-20 21:58:02'),(2,1,NULL,'Regional Championship Portfolio Entry','A portfolio entry linked to an athletic achievement.',1,1,'2026-08-20 21:58:14'),(3,1,NULL,'Regional Championship Portfolio Entry','A portfolio entry linked to an athletic achievement.',1,1,'2026-08-20 21:59:09'),(4,1,NULL,'Regional Championship Portfolio Entry','A portfolio entry linked to an athletic achievement.',1,1,'2026-08-20 22:52:49');
+INSERT INTO `portfolio_items` VALUES (7,1,7,'Prisaa','wasdwa',0,1,'2026-09-06 16:44:00'),(8,1,8,'Prisaa','wasdw',0,1,'2026-09-06 16:45:14'),(9,1,9,'wasdw','wasdw',0,1,'2026-09-06 16:56:49');
 /*!40000 ALTER TABLE `portfolio_items` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -58,4 +58,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03  0:48:06
+-- Dump completed on 2026-09-07  8:59:03

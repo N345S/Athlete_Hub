@@ -31,7 +31,7 @@ CREATE TABLE `performance_metric_definitions` (
   PRIMARY KEY (`metric_id`),
   KEY `fk_metric_sport` (`sport_id`),
   CONSTRAINT `fk_metric_sport` FOREIGN KEY (`sport_id`) REFERENCES `sports` (`sport_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -40,6 +40,7 @@ CREATE TABLE `performance_metric_definitions` (
 
 LOCK TABLES `performance_metric_definitions` WRITE;
 /*!40000 ALTER TABLE `performance_metric_definitions` DISABLE KEYS */;
+INSERT INTO `performance_metric_definitions` VALUES (1,3,'100 Meter Sprint','Time achieved in the 100-meter sprint','seconds');
 /*!40000 ALTER TABLE `performance_metric_definitions` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -52,4 +53,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-08-25 15:04:01
+-- Dump completed on 2026-09-05 14:25:52

@@ -35,7 +35,23 @@ public class TrainingController : ControllerBase
         }
         if (from.HasValue) query = query.Where(session => session.TrainingDate >= from.Value.Date);
         if (to.HasValue) query = query.Where(session => session.TrainingDate <= to.Value.Date);
-        return Ok(await query.OrderBy(session => session.TrainingDate).Select(session => new { session.TrainingSessionId, session.TeamId, teamName = session.Team.TeamName, session.Title, session.Description, session.TrainingDate, session.StartTime, session.EndTime, session.Location }).ToListAsync());
+        var sessions = await query
+            .OrderBy(session => session.TrainingDate)
+            .Select(session => new { session.TrainingSessionId, session.TeamId, teamName = session.Team.TeamName, session.Title, session.Description, session.TrainingDate, session.StartTime, session.EndTime, session.Location })
+            .ToListAsync();
+
+        return Ok(sessions.Select(session => new
+        {
+            session.TrainingSessionId,
+            session.TeamId,
+            session.teamName,
+            session.Title,
+            session.Description,
+            trainingDate = session.TrainingDate.ToString("yyyy-MM-dd"),
+            session.StartTime,
+            session.EndTime,
+            session.Location
+        }));
     }
 
     [HttpPost("sessions")]
@@ -49,6 +65,27 @@ public class TrainingController : ControllerBase
         _context.TrainingSessions.Add(session);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetSessions), new { id = session.TrainingSessionId }, new { session.TrainingSessionId });
+    }
+
+    [HttpDelete("sessions/{sessionId}")]
+    [Authorize(Roles = "ADMIN,DIRECTOR,COACH")]
+    public async Task<IActionResult> DeleteSession(int sessionId)
+    {
+        var session = await _context.TrainingSessions
+            .Include(item => item.Team)
+            .FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId);
+
+        if (session == null) return NotFound(new { message = "Training session not found." });
+
+        if (User.IsInRole("COACH"))
+        {
+            var coach = await GetCoachAsync();
+            if (coach == null || session.Team.CoachId != coach.CoachId) return Forbid();
+        }
+
+        _context.TrainingSessions.Remove(session);
+        await _context.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpGet("sessions/{sessionId}/attendance")]

@@ -33,7 +33,7 @@ CREATE TABLE `academic_import_batches` (
   PRIMARY KEY (`import_batch_id`),
   KEY `fk_import_user` (`imported_by`),
   CONSTRAINT `fk_import_user` FOREIGN KEY (`imported_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -42,6 +42,7 @@ CREATE TABLE `academic_import_batches` (
 
 LOCK TABLES `academic_import_batches` WRITE;
 /*!40000 ALTER TABLE `academic_import_batches` DISABLE KEYS */;
+INSERT INTO `academic_import_batches` VALUES (1,'REGISTRAR','API',NULL,5,'COMPLETED','2026-09-02 17:10:33');
 /*!40000 ALTER TABLE `academic_import_batches` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -54,4 +55,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03  0:48:06
+-- Dump completed on 2026-09-07  8:59:02

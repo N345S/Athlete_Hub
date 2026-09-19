@@ -34,7 +34,7 @@ CREATE TABLE `eligibility_records` (
   KEY `fk_eligibility_term` (`term_id`),
   CONSTRAINT `fk_eligibility_athlete` FOREIGN KEY (`athlete_id`) REFERENCES `athlete_profiles` (`athlete_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_eligibility_term` FOREIGN KEY (`term_id`) REFERENCES `academic_terms` (`term_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -43,6 +43,7 @@ CREATE TABLE `eligibility_records` (
 
 LOCK TABLES `eligibility_records` WRITE;
 /*!40000 ALTER TABLE `eligibility_records` DISABLE KEYS */;
+INSERT INTO `eligibility_records` VALUES (1,1,1,'ELIGIBLE','Approved for current term','2026-09-02 17:10:21');
 /*!40000 ALTER TABLE `eligibility_records` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -55,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03  0:48:05
+-- Dump completed on 2026-09-07  8:59:02

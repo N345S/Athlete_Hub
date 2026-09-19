@@ -46,9 +46,7 @@ public class AcademicRecordsController : ControllerBase
                 {
                     termId = a.Term.TermId,
                     academicYear = a.Term.AcademicYear,
-                    semester = a.Term.Semester,
-                    startDate = a.Term.StartDate,
-                    endDate = a.Term.EndDate
+                    semester = a.Term.Semester
                 },
 
                 subjectCode = a.SubjectCode,
@@ -76,8 +74,37 @@ public class AcademicRecordsController : ControllerBase
             access = "GRANTED",
             athleteId = athleteId,
             recordCount = records.Count,
-            records
+            records = records.Select(record => new
+            {
+                record.academicRecordId,
+                record.athleteId,
+                term = new
+                {
+                    record.term.termId,
+                    record.term.academicYear,
+                    record.term.semester
+                },
+                record.subjectCode,
+                record.subjectName,
+                record.units,
+                record.grade,
+                record.remarks,
+                record.sourceType,
+                record.importedAt
+            })
         });
+    }
+
+    [HttpDelete("{academicRecordId}")]
+    [Authorize(Roles = "ADMIN,DIRECTOR,REGISTRAR")]
+    public async Task<IActionResult> DeleteAcademicRecord(int academicRecordId)
+    {
+        var record = await _context.AcademicRecords.FindAsync(academicRecordId);
+        if (record == null) return NotFound(new { message = "Academic record not found." });
+
+        _context.AcademicRecords.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpGet("dashboard/{athleteId}")]

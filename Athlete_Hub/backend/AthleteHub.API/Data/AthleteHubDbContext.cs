@@ -331,8 +331,11 @@ public partial class AthleteHubDbContext : DbContext
 
             entity.HasIndex(e => e.AthleteId, "fk_document_athlete");
 
+            entity.HasIndex(e => e.AchievementId, "fk_document_achievement");
+
             entity.Property(e => e.DocumentId).HasColumnName("document_id");
             entity.Property(e => e.AthleteId).HasColumnName("athlete_id");
+            entity.Property(e => e.AchievementId).HasColumnName("achievement_id");
             entity.Property(e => e.DocumentName)
                 .HasMaxLength(255)
                 .HasColumnName("document_name");
@@ -354,6 +357,11 @@ public partial class AthleteHubDbContext : DbContext
             entity.HasOne(d => d.Athlete).WithMany(p => p.Documents)
                 .HasForeignKey(d => d.AthleteId)
                 .HasConstraintName("fk_document_athlete");
+
+            entity.HasOne(d => d.Achievement).WithMany()
+                .HasForeignKey(d => d.AchievementId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_document_achievement");
         });
 
         modelBuilder.Entity<EligibilityRecord>(entity =>
