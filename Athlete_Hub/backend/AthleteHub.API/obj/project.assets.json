@@ -3073,11 +3073,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+      "projectUniqueName": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
       "projectName": "AthleteHub.API",
-      "projectPath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+      "projectPath": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
       "packagesPath": "C:\\Users\\SMB\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\obj\\",
+      "outputPath": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\SMB\\AppData\\Roaming\\NuGet\\NuGet.Config"
