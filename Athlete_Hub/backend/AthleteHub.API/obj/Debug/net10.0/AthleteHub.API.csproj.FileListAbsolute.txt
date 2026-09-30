@@ -16,7 +16,6 @@ C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\obj
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\obj\Debug\net10.0\AthleteHub.API.csproj.CoreCompileInputs.cache
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\obj\Debug\net10.0\AthleteHub.API.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\obj\Debug\net10.0\AthleteHub.API.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\obj\Debug\net10.0\AthleteHub.API.sourcelink.json
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\obj\Debug\net10.0\rjimswa.dswa.cache.json
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\backend\AthleteHub.API\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
