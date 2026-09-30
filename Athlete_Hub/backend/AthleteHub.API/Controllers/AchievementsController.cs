@@ -42,6 +42,7 @@ public class AchievementsController : ControllerBase
                 a.AchievementDate,
                 a.Category,
                 a.VerificationStatus,
+                a.RejectionReason,
                 a.VerifiedAt,
                 a.CreatedAt
             })
@@ -55,6 +56,7 @@ public class AchievementsController : ControllerBase
             achievementDate = achievement.AchievementDate.HasValue ? achievement.AchievementDate.Value.ToString("yyyy-MM-dd") : null,
             achievement.Category,
             achievement.VerificationStatus,
+            achievement.RejectionReason,
             achievement.VerifiedAt,
             achievement.CreatedAt
         }));
@@ -134,16 +136,22 @@ public class AchievementsController : ControllerBase
     [HttpPut("{achievementId}/verify")]
     public async Task<IActionResult> VerifyAchievement(
         int achievementId,
-        [FromQuery] string status = "VERIFIED")
+        [FromBody] AchievementVerificationRequest request)
     {
-        var normalizedStatus = status.Trim().ToUpperInvariant();
+        var normalizedStatus = request.Status?.Trim().ToUpperInvariant() ?? "VERIFIED";
 
         if (normalizedStatus is not ("VERIFIED" or "REJECTED"))
         {
             return BadRequest(new { message = "Status must be VERIFIED or REJECTED." });
         }
 
+        if (normalizedStatus == "REJECTED" && string.IsNullOrWhiteSpace(request.RejectionReason))
+        {
+            return BadRequest(new { message = "Rejection reason is required when rejecting an achievement." });
+        }
+
         var achievement = await _context.Achievements
+            .Include(a => a.Athlete).ThenInclude(athlete => athlete.User)
             .FirstOrDefaultAsync(a => a.AchievementId == achievementId);
 
         if (achievement == null)
@@ -165,18 +173,63 @@ public class AchievementsController : ControllerBase
         achievement.VerifiedBy = userId;
         achievement.VerifiedAt = DateTime.UtcNow;
 
+        var evidenceDocuments = await _context.Documents
+            .Where(document => document.AchievementId == achievementId)
+            .ToListAsync();
+
         if (normalizedStatus == "REJECTED")
         {
             var portfolioItems = await _context.PortfolioItems
                 .Where(item => item.AchievementId == achievementId)
                 .ToListAsync();
-            var evidenceDocuments = await _context.Documents
-                .Where(document => document.AchievementId == achievementId)
+
+            foreach (var item in portfolioItems)
+            {
+                item.VerificationStatus = "REJECTED";
+                item.RejectionReason = request.RejectionReason?.Trim();
+                item.VerifiedBy = userId;
+                item.VerifiedAt = DateTime.UtcNow;
+            }
+
+            achievement.RejectionReason = request.RejectionReason?.Trim();
+
+            foreach (var document in evidenceDocuments)
+            {
+                document.Status = "REJECTED";
+            }
+        }
+        else if (normalizedStatus == "VERIFIED")
+        {
+            var portfolioItems = await _context.PortfolioItems
+                .Where(item => item.AchievementId == achievementId)
                 .ToListAsync();
 
-            _context.PortfolioItems.RemoveRange(portfolioItems);
-            _context.Documents.RemoveRange(evidenceDocuments);
+            foreach (var item in portfolioItems)
+            {
+                item.VerificationStatus = "VERIFIED";
+                item.VerifiedBy = userId;
+                item.VerifiedAt = DateTime.UtcNow;
+            }
+
+            achievement.RejectionReason = null;
+
+            foreach (var document in evidenceDocuments)
+            {
+                document.Status = "APPROVED";
+            }
         }
+
+        _context.Notifications.Add(new Notification
+        {
+            UserId = achievement.Athlete.UserId,
+            Title = normalizedStatus == "VERIFIED" ? "Portfolio verified" : "Portfolio rejected",
+            Message = normalizedStatus == "VERIFIED"
+                ? $"Your portfolio submission \"{achievement.Title}\" was verified by your coach."
+                : $"Your portfolio submission \"{achievement.Title}\" was rejected.{(string.IsNullOrWhiteSpace(achievement.RejectionReason) ? string.Empty : $" Reason: {achievement.RejectionReason}")}",
+            NotificationType = normalizedStatus == "VERIFIED" ? "PORTFOLIO_VERIFIED" : "PORTFOLIO_REJECTED",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        });
 
         await _context.SaveChangesAsync();
 

@@ -41,11 +41,28 @@ public class DirectorDashboardController : ControllerBase
             })
             .ToListAsync();
 
+        var portfolioItems = await _context.PortfolioItems
+            .AsNoTracking()
+            .Where(item => item.AthleteId != 0)
+            .Select(item => new
+            {
+                item.PortfolioItemId,
+                item.AthleteId,
+                item.Title,
+                item.CreatedAt,
+                item.VerificationStatus,
+                athleteName = item.Athlete.User.FirstName + " " + item.Athlete.User.LastName,
+                studentNumber = item.Athlete.StudentNumber
+            })
+            .OrderByDescending(item => item.CreatedAt)
+            .ToListAsync();
+
         return Ok(new
         {
             athleteCount = athletes.Count,
             teams = Array.Empty<object>(),
-            athletes
+            athletes,
+            portfolioItems
         });
     }
 }

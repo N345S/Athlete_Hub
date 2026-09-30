@@ -1,4 +1,6 @@
+using System.Net;
 using System.Text;
+using System.Text.Json;
 using AthleteHub.API.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +23,11 @@ builder.Services.AddDbContext<AthleteHubDbContext>(options =>
 // CONTROLLERS
 // ==========================================
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
 
 builder.Services.AddCors(options =>
 {
@@ -38,8 +44,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:5174",
                 "http://127.0.0.1:5174"
             )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+            .WithHeaders("Authorization", "Content-Type", "Accept", "X-Requested-With")
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");
     });
 });
 
@@ -104,6 +110,35 @@ var app = builder.Build();
 
 
 // ==========================================
+// GLOBAL EXCEPTION HANDLING
+// ==========================================
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        context.Response.ContentType = "application/json";
+        
+        var response = new
+        {
+            message = "An internal server error occurred",
+            detail = app.Environment.IsDevelopment() ? ex.Message : null
+        };
+        
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        }));
+    }
+});
+
+
+// ==========================================
 // DEVELOPMENT / OPENAPI
 // ==========================================
 
@@ -134,58 +169,15 @@ app.UseAuthorization();
 // Map controller routes
 app.MapControllers();
 
-
-// ==========================================
-// WEATHER FORECAST TEST ENDPOINT
-// ==========================================
-
-var summaries = new[]
+// Apply pending schema changes, including performance measurement units.
+using (var scope = app.Services.CreateScope())
 {
-    "Freezing",
-    "Bracing",
-    "Chilly",
-    "Cool",
-    "Mild",
-    "Warm",
-    "Balmy",
-    "Hot",
-    "Sweltering",
-    "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5)
-        .Select(index =>
-            new WeatherForecast
-            (
-                DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                Random.Shared.Next(-20, 55),
-                summaries[Random.Shared.Next(summaries.Length)]
-            ))
-        .ToArray();
-
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
+    var db = scope.ServiceProvider.GetRequiredService<AthleteHubDbContext>();
+    db.Database.Migrate();
+}
 
 // ==========================================
 // START APPLICATION
 // ==========================================
 
 app.Run();
-
-
-// ==========================================
-// WEATHER FORECAST MODEL
-// ==========================================
-
-record WeatherForecast(
-    DateOnly Date,
-    int TemperatureC,
-    string? Summary)
-{
-    public int TemperatureF =>
-        32 + (int)(TemperatureC / 0.5556);
-}

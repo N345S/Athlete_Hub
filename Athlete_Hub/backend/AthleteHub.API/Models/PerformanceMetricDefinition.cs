@@ -15,6 +15,9 @@ public partial class PerformanceMetricDefinition
 
     public string? Unit { get; set; }
 
+    // New field for universal metric tracking - coach-defined types like PUSH_UP, BALANCE, SPRINT
+    public string? DataType { get; set; }
+
     public virtual ICollection<PerformanceRecord> PerformanceRecords { get; set; } = new List<PerformanceRecord>();
 
     public virtual Sport Sport { get; set; } = null!;

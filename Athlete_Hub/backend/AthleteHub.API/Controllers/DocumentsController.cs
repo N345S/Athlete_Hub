@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AthleteHub.API.Controllers;
 
+/// <summary>
+/// Controller for managing athlete documents and file uploads.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -28,6 +31,13 @@ public class DocumentsController : ControllerBase
         _environment = environment;
     }
 
+    /// <summary>
+    /// Gets all documents for the currently authenticated athlete.
+    /// </summary>
+    /// <returns>List of documents ordered by upload date (newest first).</returns>
+    /// <response code="200">Returns the list of documents.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
+    /// <response code="404">Athlete profile not found.</response>
     [HttpGet("me")]
     public async Task<IActionResult> GetMyDocuments()
     {
@@ -58,6 +68,14 @@ public class DocumentsController : ControllerBase
         return Ok(documents);
     }
 
+    /// <summary>
+    /// Gets all documents for a specific athlete (coach/director/admin only).
+    /// </summary>
+    /// <param name="athleteId">The athlete ID to retrieve documents for.</param>
+    /// <returns>List of documents for the specified athlete.</returns>
+    /// <response code="200">Returns the list of documents.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
+    /// <response code="403">User not authorized to view this athlete's documents.</response>
     [HttpGet("athlete/{athleteId:int}")]
     [Authorize(Roles = "COACH,DIRECTOR,ADMIN")]
     public async Task<IActionResult> GetAthleteDocuments(int athleteId)
@@ -87,6 +105,19 @@ public class DocumentsController : ControllerBase
         return Ok(documents);
     }
 
+    /// <summary>
+    /// Uploads one or more documents for the current athlete.
+    /// </summary>
+    /// <param name="documentType">The type of document (e.g., "Medical Clearance", "Consent Form").</param>
+    /// <param name="title">Optional title for the document.</param>
+    /// <param name="description">Optional description of the document.</param>
+    /// <param name="achievementId">Optional achievement ID to link as evidence.</param>
+    /// <returns>Created document records with file URLs.</returns>
+    /// <response code="201">Documents uploaded successfully.</response>
+    /// <response code="400">Invalid document type, missing files, unsupported file type, or file too large.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
+    /// <response code="404">Athlete profile not found.</response>
+    /// <response code="413">File exceeds 10 MB limit.</response>
     [HttpPost]
     [Authorize(Roles = "ATHLETE,STUDENT")]
     [RequestSizeLimit(100_000_000)]
@@ -196,6 +227,14 @@ public class DocumentsController : ControllerBase
         }));
     }
 
+    /// <summary>
+    /// Deletes a document owned by the current athlete.
+    /// </summary>
+    /// <param name="documentId">The ID of the document to delete.</param>
+    /// <returns>No content on success.</returns>
+    /// <response code="204">Document deleted successfully.</response>
+    /// <response code="401">Invalid or missing JWT token.</response>
+    /// <response code="404">Document not found or not owned by the current athlete.</response>
     [HttpDelete("{documentId}")]
     public async Task<IActionResult> DeleteDocument(int documentId)
     {

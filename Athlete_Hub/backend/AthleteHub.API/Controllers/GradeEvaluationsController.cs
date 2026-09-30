@@ -42,11 +42,11 @@ public class GradeEvaluationsController : ControllerBase
             });
         }
 
-        if (request.Records.Any(record => record.Grade is < 0 or > 100))
+        if (request.Records.Any(record => record.Grade is < 1 or > 5))
         {
             return BadRequest(new
             {
-                message = "Grades must be between 0 and 100."
+                message = "Grades must be between 1.00 and 5.00."
             });
         }
 

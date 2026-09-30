@@ -14,7 +14,15 @@ public sealed class PerformanceRecordRequest
     public decimal RecordedValue { get; set; }
 
     public DateTime RecordedDate { get; set; } = DateTime.UtcNow.Date;
+
     public string? Notes { get; set; }
+
+    // New fields for universal performance tracking
+    public string DataType { get; set; } = "PUSH_UP";
+
+    public string Unit { get; set; } = "NUMBER";
+
+    public int SessionId { get; set; }
 }
 
 public sealed class TrainingSessionRequest
@@ -27,6 +35,7 @@ public sealed class TrainingSessionRequest
 
     public string? Description { get; set; }
     public DateTime TrainingDate { get; set; }
+    public List<DateTime>? TrainingDates { get; set; }
     public TimeSpan? StartTime { get; set; }
     public TimeSpan? EndTime { get; set; }
     public string? Location { get; set; }
@@ -78,6 +87,7 @@ public sealed class ScheduleRequest
     [Required]
     public TimeSpan? StartTime { get; set; }
 
+    public List<DateTime>? Dates { get; set; }
     public DateTime? EndDate { get; set; }
     public TimeSpan? EndTime { get; set; }
     public string? Location { get; set; }

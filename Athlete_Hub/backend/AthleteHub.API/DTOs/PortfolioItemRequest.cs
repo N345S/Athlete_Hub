@@ -12,3 +12,17 @@ public class PortfolioItemRequest
 
     public bool? IsVisible { get; set; }
 }
+
+public class PortfolioVerificationRequest
+{
+    public string Status { get; set; } = "VERIFIED";
+
+    public string? RejectionReason { get; set; }
+}
+
+public class AchievementVerificationRequest
+{
+    public string Status { get; set; } = "VERIFIED";
+
+    public string? RejectionReason { get; set; }
+}

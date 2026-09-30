@@ -33,6 +33,7 @@ public class CoachDashboardController : ControllerBase
                 attendance = Array.Empty<object>(),
                 eligibility = Array.Empty<object>(),
                 upcomingSessions = Array.Empty<object>(),
+                portfolioItems = Array.Empty<object>(),
                 message = "Coach account is valid, but no coach profile or assigned teams have been configured yet."
             });
         }
@@ -61,6 +62,35 @@ public class CoachDashboardController : ControllerBase
             .OrderBy(item => item.TrainingDate)
             .Take(10)
             .Select(item => new { item.TrainingSessionId, item.TeamId, item.Title, item.TrainingDate, item.StartTime, item.EndTime, item.Location })
+            .ToListAsync();
+
+        var portfolioItems = await _context.PortfolioItems
+            .Include(item => item.Athlete).ThenInclude(a => a.User)
+            .Include(item => item.Achievement)
+            .Where(item => athleteIds.Contains(item.AthleteId))
+            .OrderByDescending(item => item.CreatedAt)
+            .Select(item => new
+            {
+                item.PortfolioItemId,
+                item.AchievementId,
+                item.Title,
+                item.Description,
+                item.CreatedAt,
+                item.VerificationStatus,
+                item.RejectionReason,
+                item.VerifiedAt,
+                item.IsVisible,
+                athleteId = item.AthleteId,
+                athleteName = item.Athlete.User.FirstName + " " + item.Athlete.User.LastName,
+                studentNumber = item.Athlete.StudentNumber,
+                achievementDate = item.Achievement == null ? null : item.Achievement.AchievementDate,
+                achievementStatus = item.Achievement == null ? null : item.Achievement.VerificationStatus,
+                evidence = item.Achievement == null
+                    ? Array.Empty<object>()
+                    : _context.Documents.Where(document => document.AchievementId == item.AchievementId)
+                        .Select(document => new { document.DocumentId, document.DocumentName, document.FileUrl, document.Status })
+                        .ToArray()
+            })
             .ToListAsync();
 
         return Ok(new
@@ -93,7 +123,8 @@ public class CoachDashboardController : ControllerBase
                 session.StartTime,
                 session.EndTime,
                 session.Location
-            })
+            }),
+            portfolioItems
         });
     }
 }
