@@ -389,14 +389,32 @@ public partial class AthleteHubDbContext : DbContext
                 .HasColumnType("enum('ELIGIBLE','AT_RISK','INELIGIBLE','PENDING')")
                 .HasColumnName("academic_status");
             entity.Property(e => e.AthleteId).HasColumnName("athlete_id");
+            entity.Property(e => e.DocumentId).HasColumnName("document_id");
             entity.Property(e => e.EvaluatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp")
                 .HasColumnName("evaluated_at");
+            entity.Property(e => e.EligibilityReasons)
+                .HasColumnType("longtext")
+                .HasColumnName("eligibility_reasons");
+            entity.Property(e => e.RequestedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("requested_at");
+            entity.Property(e => e.RequestedBy).HasColumnName("requested_by");
+            entity.Property(e => e.ReviewedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("reviewed_at");
             entity.Property(e => e.Remarks)
                 .HasColumnType("text")
                 .HasColumnName("remarks");
             entity.Property(e => e.TermId).HasColumnName("term_id");
+            entity.Property(e => e.UploadedBy).HasColumnName("uploaded_by");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+
+            entity.HasIndex(e => e.DocumentId, "fk_eligibility_document");
+            entity.HasIndex(e => e.RequestedBy, "fk_eligibility_requested_by");
+            entity.HasIndex(e => e.UploadedBy, "fk_eligibility_uploaded_by");
+            entity.HasIndex(e => e.ReviewedBy, "fk_eligibility_reviewed_by");
 
             entity.HasOne(d => d.Athlete).WithMany(p => p.EligibilityRecords)
                 .HasForeignKey(d => d.AthleteId)
@@ -406,6 +424,26 @@ public partial class AthleteHubDbContext : DbContext
                 .HasForeignKey(d => d.TermId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_eligibility_term");
+
+            entity.HasOne<Document>().WithMany()
+                .HasForeignKey(d => d.DocumentId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_eligibility_document");
+
+            entity.HasOne<User>().WithMany()
+                .HasForeignKey(d => d.RequestedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_eligibility_requested_by");
+
+            entity.HasOne<User>().WithMany()
+                .HasForeignKey(d => d.UploadedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_eligibility_uploaded_by");
+
+            entity.HasOne<User>().WithMany()
+                .HasForeignKey(d => d.ReviewedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_eligibility_reviewed_by");
         });
 
         modelBuilder.Entity<Notification>(entity =>

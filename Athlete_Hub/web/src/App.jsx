@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, Component } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, Component } from 'react'
 import './App.css'
 import { apiPost, apiDelete, apiGet, apiUpload } from './api.js'
 import PerformanceTrendChart from './PerformanceTrendChart.jsx'
@@ -249,7 +249,7 @@ function DirectorScheduleModal({ session, onClose, onCreated }) {
       const response = await fetch(`${API_BASE_URL}/api/Schedules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
-        body: JSON.stringify({ ...form, title: form.title.trim(), dates: form.dates, endTime: form.endTime || null }),
+        body: JSON.stringify({ ...form, title: form.title.trim(), startDate: form.dates[0], dates: form.dates, endTime: form.endTime || null }),
       })
       const result = await response.json().catch(() => null)
       if (!response.ok) throw new Error(result?.message || 'Unable to add event.')
@@ -436,6 +436,79 @@ function CoachAthletesPage({ dashboard, onViewProfile, athletesOverride, observe
   )
 
   return <section className="coach-athletes-page"><div className="coach-list-header"><div><h2>{observer ? 'All Athletes' : 'All Student-Athletes'}</h2><p>Showing {filteredAthletes.length} of {athletes.length} {observer ? 'athletes available for observation' : 'athletes under your supervision'}</p></div><span className="role-chip">{athletes.length} Total</span></div><div className="athlete-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search athletes by name, sport, or ID..." /></div><div className="athlete-cards">{filteredAthletes.length ? filteredAthletes.map((athlete) => <article className="athlete-card" key={`${athlete.teamName || 'unassigned'}-${athlete.athleteId}`}><div className="athlete-card-top"><div className="athlete-avatar">{(athlete.firstName || 'A').slice(0, 1)}{(athlete.lastName || 'A').slice(0, 1)}</div><div><strong>{athlete.firstName} {athlete.lastName}</strong><small>{athlete.studentNumber}</small><span>🏆 {athlete.sport || 'Athlete'}</span></div></div><div className="athlete-card-meta"><div><strong>—</strong><small>GPA</small></div><div><strong>—</strong><small>Attendance</small></div></div><div className="athlete-card-footer"><span>{athlete.teamName || 'No team assigned'}</span><div><button type="button" onClick={() => onViewProfile(athlete)}>View Profile</button></div></div></article>) : <div className="dashboard-state"><p className="empty-copy">No athletes found.</p></div>}</div></section>
+}
+
+function AcademicEvaluationPanel({ athlete, session }) {
+  const [evaluations, setEvaluations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [showRequestForm, setShowRequestForm] = useState(false)
+  const [academicYear, setAcademicYear] = useState('')
+  const [semester, setSemester] = useState('')
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [previewUrl, setPreviewUrl] = useState('')
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/Eligibility/athlete/${athlete.athleteId}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    })
+      .then(async (response) => {
+        const result = await response.json().catch(() => null)
+        if (!response.ok) throw new Error(result?.message || 'Unable to load academic eligibility.')
+        setEvaluations(result.records || [])
+      })
+      .catch((err) => setError(err.message || 'Unable to load academic eligibility.'))
+      .finally(() => setLoading(false))
+  }, [athlete.athleteId, session.token])
+
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
+
+  const latest = evaluations[0]
+  const requestEvaluation = async (event) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setMessage('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Eligibility/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ athleteId: athlete.athleteId, academicYear, semester }),
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to request Grade Evaluation.')
+      if (result.evaluation) {
+        setEvaluations((current) => [result.evaluation, ...current.filter((item) => item.eligibilityId !== result.evaluation.eligibilityId)])
+      }
+      setMessage(result.message || 'Grade Evaluation request sent to the Registrar.')
+      setShowRequestForm(false)
+    } catch (err) {
+      setError(err.message || 'Unable to request Grade Evaluation.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openPdf = async (evaluation) => {
+    if (!evaluation.document?.fileUrl) return
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}${evaluation.document.fileUrl}`, {
+        headers: { Authorization: `Bearer ${session.token}` },
+      })
+      if (!response.ok) throw new Error('Grade Evaluation PDF is not available.')
+      const objectUrl = URL.createObjectURL(await response.blob())
+      setPreviewUrl((current) => {
+        if (current) URL.revokeObjectURL(current)
+        return objectUrl
+      })
+    } catch (err) {
+      setError(err.message || 'Unable to open Grade Evaluation PDF.')
+    }
+  }
+
+  return <><section className="coach-panel academic-evaluation-panel"><div className="panel-heading"><div><h3>Academic Eligibility</h3><p>Official Grade Evaluation and Registrar review</p></div>{!showRequestForm && latest?.academicStatus !== 'PENDING' && <button className="template-button" type="button" onClick={() => setShowRequestForm(true)}>Request Grade Evaluation</button>}</div>{loading ? <p>Loading eligibility information...</p> : error && !evaluations.length ? <p className="error-message">{error}</p> : evaluations.length ? <div className="evaluation-history">{evaluations.map((item) => <article className="evaluation-history-row" key={item.eligibilityId}><div className="evaluation-history-heading"><strong>{item.term.semester} {item.term.academicYear}</strong><span className={`admin-status ${String(item.academicStatus).toLowerCase()}`}>{item.academicStatus === 'AT_RISK' ? 'Monitored' : item.academicStatus === 'INELIGIBLE' ? 'Ineligible' : item.academicStatus === 'ELIGIBLE' ? 'Eligible' : 'Pending'}</span></div>{item.document ? <div className="evaluation-actions"><span>{item.document.documentName}</span>{item.academicStatus !== 'PENDING' && <button className="template-button" type="button" onClick={() => openPdf(item)}>View Grade Evaluation PDF</button>}</div> : <p className="empty-copy">Waiting for the Registrar to upload the official Grade Evaluation PDF.</p>}{item.reasons?.length > 0 && <div><strong>Reasons</strong><ul>{item.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>}{item.remarks && <p><strong>Registrar Remark:</strong> {item.remarks}</p>}{item.reviewedAt && <small>Reviewed {new Date(item.reviewedAt).toLocaleDateString()}</small>}</article>)}</div> : <p className="empty-copy">No Grade Evaluation or eligibility decision is available.</p>}{message && <p className="success-message">{message}</p>}{error && evaluations.length > 0 && <p className="form-error">{error}</p>}{showRequestForm && <form className="evaluation-request-form" onSubmit={requestEvaluation}><label>Academic year<input value={academicYear} onChange={(event) => setAcademicYear(event.target.value)} placeholder="e.g. 2026-2027" required /></label><label>Academic term<input value={semester} onChange={(event) => setSemester(event.target.value)} placeholder="e.g. 1st Semester" required /></label><div className="evaluation-actions"><button className="secondary-button" type="button" onClick={() => setShowRequestForm(false)}>Cancel</button><button className="coach-action" type="submit" disabled={saving}>{saving ? 'Sending...' : 'Send Request'}</button></div>{error && <p className="form-error">{error}</p>}</form>}</section>{previewUrl && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setPreviewUrl('')}><section className="modal-card evaluation-pdf-modal" role="dialog" aria-modal="true" aria-label="Grade Evaluation PDF"><div className="modal-heading"><h2>Grade Evaluation PDF</h2><button className="icon-button" type="button" onClick={() => setPreviewUrl('')} aria-label="Close PDF preview">×</button></div><iframe title="Grade Evaluation PDF" src={previewUrl} /></section></div>}</>
 }
 
 function AthleteProfilePage({ athlete, portfolio, loading, error, canReview, onBack, onReview, onReject }) {
@@ -846,102 +919,39 @@ function PerformancePage({ athletes = [], session, canEdit }) {
 function GradeEntryPage({ students, session }) {
   const [search, setSearch] = useState('')
   const [selectedStudent, setSelectedStudent] = useState(null)
-  const [showUploadForm, setShowUploadForm] = useState(false)
-  const [editingRecord, setEditingRecord] = useState(null)
-  const [form, setForm] = useState({ academicYear: '', semester: '', subjectCode: '', subjectName: '', units: '', grade: '', remarks: '' })
+  const [form, setForm] = useState({ academicYear: '', semester: '', academicStatus: 'ELIGIBLE', remarks: '' })
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const gradeFormRef = useRef(null)
-
-  useLayoutEffect(() => {
-    if (!showUploadForm) return
-    const frame = requestAnimationFrame(() => {
-      gradeFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [showUploadForm])
-
+  const [saving, setSaving] = useState(false)
   const filteredStudents = students.filter((student) => `${student.firstName} ${student.lastName} ${student.studentNumber} ${student.course || ''}`.toLowerCase().includes(search.toLowerCase()))
-  const gradeLabel = (grade) => grade == null ? 'Pending' : grade <= 1.25 ? 'Excellent' : grade <= 1.75 ? 'Very Good' : grade <= 2.25 ? 'Good' : grade <= 3 ? 'Passing' : 'Failed'
 
-  const handleUpload = async (event) => {
+  const saveReview = async (event) => {
     event.preventDefault()
-    if (!form.academicYear.trim() || !form.semester.trim() || !form.subjectCode.trim() || !form.subjectName.trim()) {
-      setError('Academic year, semester, subject code, and subject name are required.')
-      return
-    }
-    setUploading(true)
+    setSaving(true)
     setError('')
     setMessage('')
     try {
-      const response = await fetch(editingRecord
-        ? `${API_BASE_URL}/api/AcademicRecords/${editingRecord.academicRecordId}`
-        : `${API_BASE_URL}/api/GradeEvaluations`, {
-        method: editingRecord ? 'PUT' : 'POST',
+      const response = await fetch(`${API_BASE_URL}/api/Eligibility/review`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
-        body: JSON.stringify(editingRecord ? {
-          academicYear: form.academicYear.trim(),
-          semester: form.semester.trim(),
-          subjectCode: form.subjectCode.trim(),
-          subjectName: form.subjectName.trim(),
-          units: form.units ? Number(form.units) : null,
-          grade: form.grade ? Number(form.grade) : null,
-          remarks: form.remarks.trim() || null,
-        } : {
-          athleteId: selectedStudent.athleteId,
-          academicYear: form.academicYear.trim(),
-          semester: form.semester.trim(),
-          records: [{
-            subjectCode: form.subjectCode.trim(),
-            subjectName: form.subjectName.trim(),
-            units: form.units ? Number(form.units) : null,
-            grade: form.grade ? Number(form.grade) : null,
-            remarks: form.remarks.trim() || null,
-          }],
-        }),
+        body: JSON.stringify({ athleteId: selectedStudent.athleteId, academicYear: form.academicYear.trim(), semester: form.semester.trim(), academicStatus: form.academicStatus, remarks: form.remarks.trim() || null }),
       })
       const result = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(result?.message || 'Unable to upload grade.')
-      const recordsResponse = await fetch(`${API_BASE_URL}/api/AcademicRecords/athlete/${selectedStudent.athleteId}`, {
-        headers: { Authorization: `Bearer ${session.token}` },
-      })
-      const recordsResult = await recordsResponse.json().catch(() => null)
-      if (!recordsResponse.ok) throw new Error(recordsResult?.message || 'Grade saved, but records could not be refreshed.')
-      setSelectedStudent((current) => current ? { ...current, records: recordsResult.records || [] } : current)
-      setMessage(editingRecord ? 'Grade updated successfully.' : 'Grade uploaded successfully.')
-      setForm({ academicYear: '', semester: '', subjectCode: '', subjectName: '', units: '', grade: '', remarks: '' })
-      setEditingRecord(null)
-      setShowUploadForm(false)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setUploading(false)
-    }
+      if (!response.ok) throw new Error(result?.message || 'Unable to save eligibility review.')
+      setMessage('Eligibility remark saved successfully.')
+      setSelectedStudent(null)
+      setForm({ academicYear: '', semester: '', academicStatus: 'ELIGIBLE', remarks: '' })
+    } catch (err) { setError(err.message) } finally { setSaving(false) }
   }
 
-  const startEditing = (record) => {
-    setEditingRecord(record)
-    setForm({ academicYear: record.term?.academicYear || '', semester: record.term?.semester || '', subjectCode: record.subjectCode || '', subjectName: record.subjectName || '', units: record.units ?? '', grade: record.grade ?? '', remarks: record.remarks || '' })
-    setShowUploadForm(true)
-    setError('')
-    setMessage('')
-  }
+  if (selectedStudent) return <section className="grade-entry-page">
+    <div className="registrar-heading"><div><h2>Eligibility Review</h2><p>Record whether this athlete is eligible and leave a registrar remark</p></div></div>
+    <button className="schedule-more-button" type="button" onClick={() => setSelectedStudent(null)}>? Back to athletes</button>
+    <section className="athlete-profile-hero"><div className="portfolio-avatar">{(selectedStudent.firstName || 'A').slice(0, 1)}{(selectedStudent.lastName || 'A').slice(0, 1)}</div><div><h2>{selectedStudent.firstName} {selectedStudent.lastName}</h2><p>{selectedStudent.studentNumber || 'Student ID pending'} ? {selectedStudent.course || 'Program not set'} ? Year {selectedStudent.yearLevel || '?'}</p></div></section>
+    <section className="coach-panel"><div className="panel-heading"><div><h3>Eligibility decision</h3><p>Choose a status and add any supporting remark</p></div></div>{error && <p className="form-error">{error}</p>}<form className="portfolio-submit-form" onSubmit={saveReview}><div><label htmlFor="review-year">Academic year</label><input id="review-year" value={form.academicYear} onChange={(event) => setForm({ ...form, academicYear: event.target.value })} placeholder="e.g. 2026-2027" required /></div><div><label htmlFor="review-semester">Semester</label><input id="review-semester" value={form.semester} onChange={(event) => setForm({ ...form, semester: event.target.value })} placeholder="e.g. 1st Semester" required /></div><div><label htmlFor="review-status">Eligibility</label><select id="review-status" value={form.academicStatus} onChange={(event) => setForm({ ...form, academicStatus: event.target.value })}><option value="ELIGIBLE">Eligible</option><option value="INELIGIBLE">Not eligible</option></select></div><div><label htmlFor="review-remarks">Registrar remark</label><textarea id="review-remarks" rows="3" value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} placeholder="Add a note about this eligibility decision" /></div><button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Eligibility Remark'}</button></form></section>
+  </section>
 
-  if (selectedStudent) {
-    return <section className="grade-entry-page">
-      <div className="registrar-heading">
-        <div><h2>Grade Entry</h2><p>Encode and review student grades using the Philippine Grading System</p></div>
-        <button className="coach-action" type="button" onClick={() => { setEditingRecord(null); setForm({ academicYear: '', semester: '', subjectCode: '', subjectName: '', units: '', grade: '', remarks: '' }); setShowUploadForm(true); setError(''); setMessage('') }}>+ Upload Grade</button>
-      </div>
-      <button className="schedule-more-button" type="button" onClick={() => { setSelectedStudent(null); setShowUploadForm(false); setEditingRecord(null) }}>← Back to students</button>
-      <section className="athlete-profile-hero"><div className="portfolio-avatar">{(selectedStudent.firstName || 'A').slice(0, 1)}{(selectedStudent.lastName || 'A').slice(0, 1)}</div><div><h2>{selectedStudent.firstName} {selectedStudent.lastName}</h2><p>{selectedStudent.studentNumber || 'Student ID pending'} · {selectedStudent.course || 'Program not set'} · Year {selectedStudent.yearLevel || '—'}</p></div></section>
-      <section className="coach-panel"><div className="panel-heading"><div><h3>Grade Entries</h3><p>Academic records for this student</p></div><span className="role-chip">{selectedStudent.records?.length || 0} Records</span></div>{selectedStudent.records?.length ? <div className="data-list">{selectedStudent.records.map((record) => <div className="data-row grade-entry-row" key={record.academicRecordId}><div><strong>{record.subjectCode} · {record.subjectName}</strong><span>Grade: {record.grade ?? 'Pending'} · {record.units || 0} units</span><small>{gradeLabel(record.grade)}</small></div><button className="template-button" type="button" onClick={() => startEditing(record)}>Edit</button></div>)}</div> : <p className="empty-copy">No academic records encoded yet.</p>}</section>
-      {showUploadForm && <section ref={gradeFormRef} className="coach-panel grade-form-panel"><div className="panel-heading"><div><h3>{editingRecord ? 'Edit Grade' : 'Upload Grade'}</h3><p>{editingRecord ? 'Update this academic record' : 'Add a new grade entry for this student'}</p></div><button className="icon-button" type="button" onClick={() => { setShowUploadForm(false); setEditingRecord(null) }} aria-label="Close grade form">×</button></div>{error && <p className="form-error">{error}</p>}{message && <p className="success-message">{message}</p>}<form className="portfolio-submit-form" onSubmit={handleUpload}><div><label htmlFor="grade-academic-year">Academic year</label><input id="grade-academic-year" value={form.academicYear} onChange={(event) => setForm({ ...form, academicYear: event.target.value })} placeholder="e.g. 2025-2026" required /></div><div><label htmlFor="grade-semester">Semester</label><input id="grade-semester" value={form.semester} onChange={(event) => setForm({ ...form, semester: event.target.value })} placeholder="e.g. 1st Semester" required /></div><div><label htmlFor="grade-subject-code">Subject code</label><input id="grade-subject-code" value={form.subjectCode} onChange={(event) => setForm({ ...form, subjectCode: event.target.value })} placeholder="e.g. MATH 101" required /></div><div><label htmlFor="grade-subject-name">Subject name</label><input id="grade-subject-name" value={form.subjectName} onChange={(event) => setForm({ ...form, subjectName: event.target.value })} placeholder="e.g. College Algebra" required /></div><div className="form-grid"><div><label htmlFor="grade-units">Units</label><input id="grade-units" type="number" min="0" step="0.5" value={form.units} onChange={(event) => setForm({ ...form, units: event.target.value })} placeholder="3" /></div><div><label htmlFor="grade-value">Grade (1.00–5.00)</label><input id="grade-value" type="number" min="1" max="5" step="0.25" value={form.grade} onChange={(event) => setForm({ ...form, grade: event.target.value })} placeholder="1.75" /></div></div><div><label htmlFor="grade-remarks">Remarks</label><input id="grade-remarks" value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} placeholder="Optional remarks" /></div><button type="submit" disabled={uploading}>{uploading ? (editingRecord ? 'Saving...' : 'Uploading...') : (editingRecord ? 'Save Changes' : 'Upload Grade')}</button></form></section>}
-    </section>
-  }
-
-  return <section className="grade-entry-page"><div className="registrar-heading"><div><h2>Grade Entry</h2><p>Encode and review student grades using the Philippine Grading System</p></div></div><div className="grade-entry-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, student ID, or program..." /><button type="button" onClick={() => setSearch('')}>Clear</button></div><div className="athlete-cards">{filteredStudents.length ? filteredStudents.map((student) => <article className="athlete-card" key={student.athleteId}><div className="athlete-card-top"><div className="athlete-avatar">{(student.firstName || 'A').slice(0, 1)}{(student.lastName || 'A').slice(0, 1)}</div><div><strong>{student.firstName} {student.lastName}</strong><small>{student.studentNumber}</small><span>🎓 {student.course || 'Program not set'}</span></div></div><div className="athlete-card-meta"><div><strong>{student.averageGrade ?? '—'}</strong><small>GWA</small></div><div><strong>{student.records?.length || 0}</strong><small>Entries</small></div></div><div className="athlete-card-footer"><span className={student.eligibilityStatus === 'ELIGIBLE' ? 'eligible-label' : 'attention-label'}>{student.eligibilityStatus}</span><div><button type="button" onClick={() => setSelectedStudent(student)}>View Entries</button></div></div></article>) : <div className="dashboard-state"><p className="empty-copy">No students match your search.</p></div>}</div></section>
+  return <section className="grade-entry-page"><div className="registrar-heading"><div><h2>Eligibility Review</h2><p>Record an eligible or not eligible decision with a registrar remark</p></div></div>{message && <p className="success-message">{message}</p>}<div className="grade-entry-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, student ID, or program..." /><button type="button" onClick={() => setSearch('')}>Clear</button></div><div className="athlete-cards">{filteredStudents.length ? filteredStudents.map((student) => <article className="athlete-card" key={student.athleteId}><div className="athlete-card-top"><div className="athlete-avatar">{(student.firstName || 'A').slice(0, 1)}{(student.lastName || 'A').slice(0, 1)}</div><div><strong>{student.firstName} {student.lastName}</strong><small>{student.studentNumber}</small><span>{student.course || 'Program not set'}</span></div></div><div className="athlete-card-footer"><span className={student.eligibilityStatus === 'ELIGIBLE' ? 'eligible-label' : 'attention-label'}>{student.eligibilityStatus || 'PENDING'}</span><div><button type="button" onClick={() => { setSelectedStudent(student); setForm({ ...form, academicStatus: student.eligibilityStatus === 'ELIGIBLE' ? 'ELIGIBLE' : 'INELIGIBLE' }); setError(''); setMessage('') }}>Review eligibility</button></div></div></article>) : <div className="dashboard-state"><p className="empty-copy">No students match your search.</p></div>}</div></section>
 }
 
 function AcademicRecordsPage({ students }) {
@@ -959,10 +969,206 @@ function EligibilityPage({ students }) {
   return <section className="eligibility-page"><div className="registrar-heading"><div><h2>Eligibility Verification</h2><p>Verify athletic eligibility based on academic standing</p></div><button className="template-button" type="button">⟳ Refresh Status</button></div><div className="eligibility-rule"><strong>ⓘ Eligibility Rule:</strong> A student-athlete is eligible if their GPA is <b>3.00 or below</b> and they have <b>no failing grades (5.00)</b> in the current semester.</div><section className="eligibility-group eligible-group"><h3>✓ Eligible Athletes ({eligibleStudents.length})</h3>{eligibleStudents.length ? eligibleStudents.map((student) => personRow(student, true)) : <p className="empty-copy">No eligible athletes found.</p>}</section><section className="eligibility-group attention-group"><h3>⚠ At Risk ({attentionStudents.length}) — GPA 2.75–3.00</h3>{attentionStudents.length ? attentionStudents.map((student) => personRow(student, false)) : <p className="empty-copy">No students currently need attention.</p>}</section></section>
 }
 
+const ELIGIBILITY_REASONS = [
+  'Failing Grades',
+  'Academic Requirement Not Met',
+  'Incomplete Academic Requirement',
+  'Other',
+]
+
 function RegistrarDashboard({ session, onLogout }) {
+  const [students, setStudents] = useState([])
+  const [evaluations, setEvaluations] = useState([])
+  const [view, setView] = useState('dashboard')
+  const [selectedEvaluationId, setSelectedEvaluationId] = useState(null)
+  const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [reviewStatus, setReviewStatus] = useState('ELIGIBLE')
+  const [selectedReasons, setSelectedReasons] = useState([])
+  const [remarks, setRemarks] = useState('')
+  const [uploadFile, setUploadFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const headers = { Authorization: `Bearer ${session.token}` }
+      const [studentsResponse, evaluationsResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/RegistrarDashboard`, { headers }),
+        fetch(`${API_BASE_URL}/api/Eligibility/registrar`, { headers }),
+      ])
+      const studentsResult = await studentsResponse.json().catch(() => null)
+      const evaluationsResult = await evaluationsResponse.json().catch(() => null)
+      if (!studentsResponse.ok) throw new Error(studentsResult?.message || 'Unable to load students.')
+      if (!evaluationsResponse.ok) throw new Error(evaluationsResult?.message || 'Unable to load evaluations.')
+      setStudents(studentsResult.students || [])
+      setEvaluations(evaluationsResult.evaluations || [])
+    } catch (err) {
+      setError(err.message || 'Unable to load Registrar data.')
+    } finally {
+      setLoading(false)
+    }
+  }, [session.token])
+
+  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
+
+  const pendingEvaluations = evaluations.filter((item) => item.academicStatus === 'PENDING')
+  const awaitingReview = pendingEvaluations.filter((item) => item.document)
+  const gradeRequests = pendingEvaluations.filter((item) => !item.document)
+  const completedEvaluations = evaluations.filter((item) => item.academicStatus !== 'PENDING')
+  const selectedEvaluation = evaluations.find((item) => item.eligibilityId === selectedEvaluationId)
+  const filteredStudents = students.filter((student) =>
+    `${student.firstName} ${student.lastName} ${student.studentNumber} ${student.course || ''}`.toLowerCase().includes(search.toLowerCase())
+  )
+  const filteredRequests = gradeRequests.filter((item) =>
+    `${item.student.firstName} ${item.student.lastName} ${item.student.studentNumber}`.toLowerCase().includes(search.toLowerCase())
+  )
+  const filteredAwaiting = awaitingReview.filter((item) =>
+    `${item.student.firstName} ${item.student.lastName} ${item.student.studentNumber}`.toLowerCase().includes(search.toLowerCase())
+  )
+  const filteredCompleted = completedEvaluations.filter((item) =>
+    `${item.student.firstName} ${item.student.lastName} ${item.student.studentNumber}`.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const openReview = (item) => {
+    setSelectedEvaluationId(item.eligibilityId)
+    setReviewStatus(item.academicStatus === 'INELIGIBLE' ? 'INELIGIBLE' : 'ELIGIBLE')
+    setSelectedReasons(item.academicStatus === 'INELIGIBLE' ? item.reasons || [] : [])
+    setRemarks(item.remarks || '')
+    setUploadFile(null)
+    setError('')
+    setView('review')
+  }
+
+  const uploadEvaluation = async () => {
+    if (!selectedEvaluation || !uploadFile) return
+    setSaving(true)
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      const response = await fetch(`${API_BASE_URL}/api/Eligibility/${selectedEvaluation.eligibilityId}/document`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.token}` },
+        body: formData,
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to upload Grade Evaluation PDF.')
+      setEvaluations((current) => current.map((item) => item.eligibilityId === selectedEvaluation.eligibilityId
+        ? { ...item, document: result }
+        : item))
+      setUploadFile(null)
+    } catch (err) {
+      setError(err.message || 'Unable to upload Grade Evaluation PDF.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const submitReview = async (event) => {
+    event.preventDefault()
+    if (!selectedEvaluation) return
+    setSaving(true)
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Eligibility/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({
+          athleteId: selectedEvaluation.athleteId,
+          academicYear: selectedEvaluation.term.academicYear,
+          semester: selectedEvaluation.term.semester,
+          academicStatus: reviewStatus,
+          reasons: selectedReasons,
+          remarks,
+        }),
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to submit eligibility review.')
+      setEvaluations((current) => current.map((item) => item.eligibilityId === selectedEvaluation.eligibilityId
+        ? { ...item, academicStatus: result.academicStatus, reasons: result.reasons, remarks: result.remarks, reviewedAt: result.reviewedAt }
+        : item))
+      setView('evaluations')
+    } catch (err) {
+      setError(err.message || 'Unable to submit eligibility review.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openPdf = async (item) => {
+    if (!item?.document?.fileUrl) return
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}${item.document.fileUrl}`, {
+        headers: { Authorization: `Bearer ${session.token}` },
+      })
+      if (!response.ok) throw new Error('Unable to open Grade Evaluation PDF.')
+      const objectUrl = URL.createObjectURL(await response.blob())
+      setPreviewUrl((current) => {
+        if (current) URL.revokeObjectURL(current)
+        return objectUrl
+      })
+    } catch (err) {
+      setError(err.message || 'Unable to open Grade Evaluation PDF.')
+    }
+  }
+
+  const toggleReason = (reason) => setSelectedReasons((current) =>
+    current.includes(reason) ? current.filter((item) => item !== reason) : [...current, reason]
+  )
+
+  const formatStatus = (status) => status === 'AT_RISK' ? 'Monitored' : status === 'PENDING' ? 'Pending' : status === 'INELIGIBLE' ? 'Ineligible' : 'Eligible'
+  const navItems = [
+    ['dashboard', 'Dashboard'],
+    ['students', 'Students'],
+    ['requests', 'Eligibility Requests'],
+    ['evaluations', 'Evaluations'],
+  ]
+
+  let pageContent
+  if (view === 'review' && selectedEvaluation) {
+    pageContent = <>
+      <div className="registrar-heading"><div><h2>Academic Eligibility Review</h2><p>Review the official evaluation and record the Registrar decision.</p></div><button className="template-button" type="button" onClick={() => setView(selectedEvaluation.academicStatus === 'PENDING' ? 'requests' : 'evaluations')}>Back</button></div>
+      <section className="athlete-profile-hero"><div className="portfolio-avatar">{selectedEvaluation.student.firstName.slice(0, 1)}{selectedEvaluation.student.lastName.slice(0, 1)}</div><div><h2>{selectedEvaluation.student.firstName} {selectedEvaluation.student.lastName}</h2><p>Student ID: {selectedEvaluation.student.studentNumber} · {selectedEvaluation.student.course || 'Program not set'}</p></div></section>
+      <div className="evaluation-source-grid"><section className="admin-panel"><h3>Academic Evaluation</h3>{selectedEvaluation.document ? <><p>{selectedEvaluation.document.documentName}</p><small>Uploaded {selectedEvaluation.document.uploadedAt ? new Date(selectedEvaluation.document.uploadedAt).toLocaleString() : 'date unavailable'}</small><div className="evaluation-actions"><button className="template-button" type="button" onClick={() => openPdf(selectedEvaluation)}>View PDF</button></div></> : <><p>No Grade Evaluation PDF is attached to this request.</p><label className="evaluation-file-label">Upload official Grade Evaluation PDF<input type="file" accept="application/pdf,.pdf" onChange={(event) => setUploadFile(event.target.files?.[0] || null)} /></label><button className="coach-action" type="button" onClick={uploadEvaluation} disabled={!uploadFile || saving}>{saving ? 'Uploading...' : 'Upload PDF'}</button></>}</section><section className="admin-panel"><h3>Current Term</h3><strong>{selectedEvaluation.term.semester} {selectedEvaluation.term.academicYear}</strong><p>{selectedEvaluation.document ? 'Official record available for review.' : 'Waiting for the official evaluation document.'}</p><span className={`admin-status ${selectedEvaluation.academicStatus.toLowerCase()}`}>{formatStatus(selectedEvaluation.academicStatus)}</span></section></div>
+      <form className="admin-panel evaluation-review-form" onSubmit={submitReview}>
+        <div className="panel-heading"><div><h3>Eligibility Decision</h3><p>Record the result from the official academic record; do not enter individual grades.</p></div></div>
+        <fieldset className="evaluation-status-options">
+          <legend>Eligibility</legend>
+          <label><input type="radio" name="eligibility" value="ELIGIBLE" checked={reviewStatus === 'ELIGIBLE'} onChange={() => { setReviewStatus('ELIGIBLE'); setSelectedReasons([]) }} /> Eligible</label>
+          <label><input type="radio" name="eligibility" value="INELIGIBLE" checked={reviewStatus === 'INELIGIBLE'} onChange={() => setReviewStatus('INELIGIBLE')} /> Ineligible</label>
+        </fieldset>
+        {reviewStatus === 'INELIGIBLE' && <div className="evaluation-reasons"><strong>Eligibility reasons</strong><div className="evaluation-reason-options">{ELIGIBILITY_REASONS.map((reason) => <label key={reason}><input type="checkbox" checked={selectedReasons.includes(reason)} onChange={() => toggleReason(reason)} /> {reason}</label>)}</div>{selectedReasons.length > 0 && <div className="evaluation-reason-chips">{selectedReasons.map((reason) => <button type="button" key={reason} onClick={() => toggleReason(reason)} aria-label={`Remove ${reason}`}>{reason} <span aria-hidden="true">×</span></button>)}</div>}</div>}
+        {!selectedEvaluation.document && <p className="form-error">Upload the official Grade Evaluation PDF before submitting this review.</p>}
+        {reviewStatus === 'INELIGIBLE' && selectedReasons.length === 0 && <p className="form-error">Select at least one eligibility reason for an Ineligible decision.</p>}
+        <label className="evaluation-remarks">Additional Registrar Remark<textarea value={remarks} onChange={(event) => setRemarks(event.target.value)} rows="4" placeholder="Add optional context for the Coach and Sports Director." /></label>
+        {error && <p className="form-error">{error}</p>}
+        <div className="evaluation-actions"><button className="primary-button" type="submit" disabled={saving || !selectedEvaluation.document || (reviewStatus === 'INELIGIBLE' && selectedReasons.length === 0)}>{saving ? 'Submitting...' : 'Submit Review'}</button></div>
+      </form>
+    </>
+  } else if (view === 'students') {
+    pageContent = <><div className="registrar-heading"><div><h2>Students</h2><p>Student-athlete roster</p></div><input className="admin-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search student..." /></div><section className="admin-panel evaluation-table-wrap"><table className="evaluation-table"><thead><tr><th>Student</th><th>Student ID</th><th>Program</th><th>Academic Evaluation</th></tr></thead><tbody>{filteredStudents.map((student) => { const latest = evaluations.find((item) => item.athleteId === student.athleteId); return <tr key={student.athleteId}><td>{student.firstName} {student.lastName}</td><td>{student.studentNumber}</td><td>{student.course || '—'}</td><td>{latest ? <button className="template-button" type="button" onClick={() => openReview(latest)}>{formatStatus(latest.academicStatus)}</button> : <span>Not requested</span>}</td></tr> })}</tbody></table>{!loading && filteredStudents.length === 0 && <p className="empty-copy">No students found.</p>}</section></>
+  } else if (view === 'requests') {
+    pageContent = <><div className="registrar-heading"><div><h2>Eligibility Requests</h2><p>Coach and Director requests awaiting an official academic evaluation document.</p></div><input className="admin-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search student..." /></div><section className="admin-panel evaluation-table-wrap"><table className="evaluation-table"><thead><tr><th>Student</th><th>Student ID</th><th>Term</th><th>Academic Evaluation</th><th>Action</th></tr></thead><tbody>{filteredRequests.map((item) => <tr key={item.eligibilityId}><td>{item.student.firstName} {item.student.lastName}</td><td>{item.student.studentNumber}</td><td>{item.term.semester} {item.term.academicYear}</td><td>{item.document ? 'Available' : 'Requested'}</td><td><button className="template-button" type="button" onClick={() => openReview(item)}>{item.document ? 'Review' : 'Upload PDF'}</button></td></tr>)}</tbody></table>{!loading && filteredRequests.length === 0 && <p className="empty-copy">No pending eligibility requests.</p>}</section></>
+  } else if (view === 'evaluations') {
+    pageContent = <><div className="registrar-heading"><div><h2>Evaluations</h2><p>Registrar eligibility decisions</p></div><input className="admin-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search student..." /></div><section className="admin-panel evaluation-table-wrap"><table className="evaluation-table"><thead><tr><th>Student</th><th>Student ID</th><th>Term</th><th>Status</th><th>Reasons</th><th>Action</th></tr></thead><tbody>{filteredCompleted.map((item) => <tr key={item.eligibilityId}><td>{item.student.firstName} {item.student.lastName}</td><td>{item.student.studentNumber}</td><td>{item.term.semester} {item.term.academicYear}</td><td><span className={`admin-status ${item.academicStatus.toLowerCase()}`}>{formatStatus(item.academicStatus)}</span></td><td>{(item.reasons || []).join(', ') || '—'}</td><td><button className="template-button" type="button" onClick={() => openReview(item)}>View</button></td></tr>)}</tbody></table>{!loading && filteredCompleted.length === 0 && <p className="empty-copy">No completed evaluations yet.</p>}</section></>
+  } else {
+    pageContent = <><div className="registrar-heading"><div><h2>Registrar Dashboard</h2><p>Academic eligibility and evaluation</p></div><button className="coach-action" type="button" onClick={loadData} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh data'}</button></div><section className="evaluation-stats"><article className="evaluation-stat"><span>Ready for Eligibility Review</span><strong>{awaitingReview.length}</strong></article><article className="evaluation-stat request-accent"><span>Pending Eligibility Requests</span><strong>{gradeRequests.length}</strong></article><article className="evaluation-stat reviewed-accent"><span>Evaluated</span><strong>{completedEvaluations.length}</strong></article></section><section className="admin-panel evaluation-table-wrap"><div className="panel-heading"><div><h3>Evaluations Ready for Review</h3><p>Official academic evaluation PDF received</p></div><input className="admin-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search student..." /></div><table className="evaluation-table"><thead><tr><th>Student</th><th>Student ID</th><th>Term</th><th>Academic Evaluation</th><th>Action</th></tr></thead><tbody>{filteredAwaiting.map((item) => <tr key={item.eligibilityId}><td>{item.student.firstName} {item.student.lastName}</td><td>{item.student.studentNumber}</td><td>{item.term.semester} {item.term.academicYear}</td><td>PDF received</td><td><button className="primary-button compact-button" type="button" onClick={() => openReview(item)}>Review eligibility</button></td></tr>)}</tbody></table>{!loading && filteredAwaiting.length === 0 && <p className="empty-copy">No evaluations are ready for review. Requests without a PDF are listed under Eligibility Requests.</p>}</section></>
+  }
+
+  const activeNav = view === 'review' ? (selectedEvaluation?.academicStatus === 'PENDING' ? 'requests' : 'evaluations') : view
+  return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Registrar Portal</small></div></div><div className="profile-block"><div className="avatar">{(session.firstName || 'R').slice(0, 1)}{(session.lastName || 'G').slice(0, 1)}</div><div className="profile-meta"><strong>{session.firstName} {session.lastName}</strong><span>Registrar</span></div></div><nav className="main-nav" aria-label="Registrar navigation">{navItems.map(([key, label]) => <button className={`nav-item ${activeNav === key ? 'active' : ''}`} type="button" key={key} onClick={() => { setView(key); setSearch(''); setError('') }}>{label}</button>)}</nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>{view === 'review' ? 'Evaluation Review' : navItems.find(([key]) => key === view)?.[1] || 'Dashboard'}</strong></div><span className="role-chip">Registrar</span></header>{loading && <div className="dashboard-state">Loading Registrar data...</div>}{error && view !== 'review' && <div className="dashboard-state error-message">{error}</div>}{!loading && pageContent}</div>{previewUrl && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setPreviewUrl('')}><section className="modal-card evaluation-pdf-modal" role="dialog" aria-modal="true" aria-label="Grade Evaluation PDF"><div className="modal-heading"><h2>Grade Evaluation PDF</h2><button className="icon-button" type="button" onClick={() => setPreviewUrl('')} aria-label="Close PDF preview">×</button></div><iframe title="Grade Evaluation PDF" src={previewUrl} /></section></div>}</main>
+}
+
+function LegacyRegistrarDashboard({ session, onLogout }) {
   const [dashboard, setDashboard] = useState(null)
   const [search, setSearch] = useState('')
-  const [view, setView] = useState('dashboard')
+  const [view, setView] = useState('athletes')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -981,7 +1187,7 @@ function RegistrarDashboard({ session, onLogout }) {
 
   useEffect(() => {
     const navButtons = Array.from(document.querySelectorAll('.registrar-app .nav-item'))
-    const gradeEntryButton = navButtons.find((button) => button.textContent.trim() === 'Grade Entry')
+    const gradeEntryButton = navButtons.find((button) => button.textContent.trim() === 'Eligibility Review')
     const academicRecordsButton = navButtons.find((button) => button.textContent.trim() === 'Academic Records')
     const eligibilityButton = navButtons.find((button) => button.textContent.trim() === 'Eligibility')
     if (!gradeEntryButton && !academicRecordsButton && !eligibilityButton) return undefined
@@ -998,19 +1204,23 @@ function RegistrarDashboard({ session, onLogout }) {
     }
   }, [dashboard, view])
 
+  if (view === 'athletes') {
+    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><div className="profile-block"><div className="avatar">{(session.firstName || 'R').slice(0, 1)}{(session.lastName || 'G').slice(0, 1)}</div><div className="profile-meta"><strong>{session.firstName} {session.lastName}</strong><span>Registrar</span></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item active" type="button">Athletes</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Athletes</strong></div><span className="role-chip">Registrar</span></header><section className="registrar-heading"><div><h2>Athletes</h2><p>{students.length} athletes</p></div></section><input className="admin-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, student ID, or program..." />{loading && <div className="dashboard-state">Loading athletes...</div>}{error && <div className="dashboard-state error-message">{error}</div>}{!loading && !error && <div className="data-list">{students.length ? students.map((student) => <article className="data-row" key={student.athleteId}><strong>{student.firstName} {student.lastName}</strong><span>{student.studentNumber || 'Student ID pending'} · {student.course || 'Program not set'}</span><small>Year {student.yearLevel || '—'}</small></article>) : <p className="empty-copy">No athletes found.</p>}</div>}</div></main>
+  }
+
   if (view === 'grades' && dashboard) {
-    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item active" type="button">Grade Entry</button><button className="nav-item" type="button" onClick={() => setView('academic-records')}>Academic Records</button><button className="nav-item" type="button" onClick={() => setView('eligibility')}>Eligibility</button><button className="nav-item" type="button" disabled>Reports</button><button className="nav-item" type="button" disabled>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Grade Entry</strong></div><span className="role-chip">Registrar</span></header><GradeEntryPage students={dashboard.students || []} session={session} /></div></main>
+    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item active" type="button">Eligibility Review</button><button className="nav-item" type="button" onClick={() => setView('academic-records')}>Academic Records</button><button className="nav-item" type="button" onClick={() => setView('eligibility')}>Eligibility</button><button className="nav-item" type="button" disabled>Reports</button><button className="nav-item" type="button" disabled>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Eligibility Review</strong></div><span className="role-chip">Registrar</span></header><GradeEntryPage students={dashboard.students || []} session={session} /></div></main>
   }
 
   if (view === 'academic-records' && dashboard) {
-    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item" type="button" onClick={() => setView('grades')}>Grade Entry</button><button className="nav-item active" type="button">Academic Records</button><button className="nav-item" type="button" onClick={() => setView('eligibility')}>Eligibility</button><button className="nav-item" type="button" disabled>Reports</button><button className="nav-item" type="button" disabled>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Academic Records</strong></div><span className="role-chip">Registrar</span></header><AcademicRecordsPage students={dashboard.students || []} /></div></main>
+    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item" type="button" onClick={() => setView('grades')}>Eligibility Review</button><button className="nav-item active" type="button">Academic Records</button><button className="nav-item" type="button" onClick={() => setView('eligibility')}>Eligibility</button><button className="nav-item" type="button" disabled>Reports</button><button className="nav-item" type="button" disabled>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Academic Records</strong></div><span className="role-chip">Registrar</span></header><AcademicRecordsPage students={dashboard.students || []} /></div></main>
   }
 
   if (view === 'eligibility' && dashboard) {
-    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item" type="button" onClick={() => setView('grades')}>Grade Entry</button><button className="nav-item" type="button" onClick={() => setView('academic-records')}>Academic Records</button><button className="nav-item active" type="button">Eligibility</button><button className="nav-item" type="button" disabled>Reports</button><button className="nav-item" type="button" disabled>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Eligibility Verification</strong></div><span className="role-chip">Registrar</span></header><EligibilityPage students={dashboard.students || []} /></div></main>
+    return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item" type="button" onClick={() => setView('grades')}>Eligibility Review</button><button className="nav-item" type="button" onClick={() => setView('academic-records')}>Academic Records</button><button className="nav-item active" type="button">Eligibility</button><button className="nav-item" type="button" disabled>Reports</button><button className="nav-item" type="button" disabled>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Eligibility Verification</strong></div><span className="role-chip">Registrar</span></header><EligibilityPage students={dashboard.students || []} /></div></main>
   }
 
-  return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><div className="profile-block"><div className="avatar">{(session.firstName || 'R').slice(0, 1)}{(session.lastName || 'G').slice(0, 1)}</div><div className="profile-meta"><strong>{session.firstName} {session.lastName}</strong><span>Registrar</span></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item active" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item" type="button" onClick={() => setView('grades')}>Grade Entry</button><button className="nav-item" type="button" onClick={() => setView('academic-records')}>Academic Records</button><button className="nav-item" type="button" onClick={() => setView('eligibility')}>Eligibility</button><button className="nav-item" type="button" disabled>Reports</button><button className="nav-item" type="button" disabled>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Registrar Dashboard</strong></div><span className="role-chip">Registrar</span></header><section className="registrar-heading"><div><h2>Academic Records Overview</h2><p>Philippine Grading System (1.00–5.00) · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div><button className="coach-action" type="button" onClick={() => setView('grades')}>Encode Grades</button></section>{loading && <div className="dashboard-state">Loading academic records from the database...</div>}{error && <div className="dashboard-state error-message">{error}</div>}{!loading && !error && <><section className="registrar-stats"><article className="registrar-stat red-accent"><span>Total Students</span><strong>{dashboard.totalStudents}</strong><small>Registered athletes</small></article><article className="registrar-stat purple-accent"><span>Avg GPA</span><strong>{dashboard.averageGpa ?? '—'}</strong><small>Overall average</small></article><article className="registrar-stat green-accent"><span>Eligible</span><strong>{dashboard.eligibleCount}</strong><small>GPA ≤ 3.00</small></article><article className="registrar-stat orange-accent"><span>Need Attention</span><strong>{dashboard.attentionCount}</strong><small>At risk / ineligible</small></article></section><section className="grading-reference"><strong>ⓘ Philippine Grading System — Registrar Reference</strong><div><span>1.00–1.25 = Excellent</span><span>1.50–1.75 = Very Good</span><span>2.00–2.25 = Good</span><span>2.50–3.00 = Passing</span><span>5.00 = Failed</span></div></section><section className="registrar-alerts"><div className="section-title"><strong>⚠ Academic Alerts — Students Needing Attention</strong></div>{dashboard.attentionStudents.length ? dashboard.attentionStudents.map((student) => <div className="registrar-student-row" key={student.athleteId}><div><strong>{student.firstName} {student.lastName}</strong><small>{student.studentNumber} · {student.course || 'Program not set'}</small></div><span>{student.averageGrade ?? '—'}</span><em>{student.eligibilityStatus}</em><button type="button">Edit Grades</button></div>) : <p className="empty-copy">No students currently need attention.</p>}</section><section className="registrar-panel"><div className="panel-heading"><div><h3>All Academic Records</h3><p>Student records loaded from Athlete-Hub database</p></div><span className="role-chip">{students.length} shown</span></div><input className="registrar-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search students by name, course, or ID..." /><div className="registrar-table">{students.map((student) => <div className="registrar-table-row" key={student.athleteId}><strong>{student.firstName} {student.lastName}</strong><span>{student.studentNumber}</span><span>{student.course || '—'}</span><span>{student.averageGrade ?? '—'}</span><span className={student.eligibilityStatus === 'ELIGIBLE' ? 'eligible-label' : 'attention-label'}>{student.eligibilityStatus}</span></div>)}</div></section></>}</div></main>
+  return <main className="registrar-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>Monitoring System</small></div></div><div className="profile-block"><div className="avatar">{(session.firstName || 'R').slice(0, 1)}{(session.lastName || 'G').slice(0, 1)}</div><div className="profile-meta"><strong>{session.firstName} {session.lastName}</strong><span>Registrar</span></div></div><nav className="main-nav" aria-label="Registrar navigation"><button className="nav-item active" type="button" onClick={() => setView('dashboard')}>Dashboard</button><button className="nav-item" type="button" onClick={() => setView('grades')}>Eligibility Review</button><button className="nav-item" type="button" onClick={() => setView('academic-records')}>Academic Records</button><button className="nav-item" type="button" onClick={() => setView('eligibility')}>Eligibility</button><button className="nav-item" type="button" disabled>Reports</button><button className="nav-item" type="button" disabled>Profile</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="registrar-content"><header className="topbar"><div className="crumbs"><span>Registrar Portal</span><span className="sep">›</span><strong>Registrar Dashboard</strong></div><span className="role-chip">Registrar</span></header><section className="registrar-heading"><div><h2>Academic Records Overview</h2><p>Philippine Grading System (1.00–5.00) · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div><button className="coach-action" type="button" onClick={() => setView('grades')}>Review Eligibility</button></section>{loading && <div className="dashboard-state">Loading academic records from the database...</div>}{error && <div className="dashboard-state error-message">{error}</div>}{!loading && !error && <><section className="registrar-stats"><article className="registrar-stat red-accent"><span>Total Students</span><strong>{dashboard.totalStudents}</strong><small>Registered athletes</small></article><article className="registrar-stat purple-accent"><span>Avg GPA</span><strong>{dashboard.averageGpa ?? '—'}</strong><small>Overall average</small></article><article className="registrar-stat green-accent"><span>Eligible</span><strong>{dashboard.eligibleCount}</strong><small>GPA ≤ 3.00</small></article><article className="registrar-stat orange-accent"><span>Need Attention</span><strong>{dashboard.attentionCount}</strong><small>At risk / ineligible</small></article></section><section className="grading-reference"><strong>ⓘ Philippine Grading System — Registrar Reference</strong><div><span>1.00–1.25 = Excellent</span><span>1.50–1.75 = Very Good</span><span>2.00–2.25 = Good</span><span>2.50–3.00 = Passing</span><span>5.00 = Failed</span></div></section><section className="registrar-alerts"><div className="section-title"><strong>⚠ Academic Alerts — Students Needing Attention</strong></div>{dashboard.attentionStudents.length ? dashboard.attentionStudents.map((student) => <div className="registrar-student-row" key={student.athleteId}><div><strong>{student.firstName} {student.lastName}</strong><small>{student.studentNumber} · {student.course || 'Program not set'}</small></div><span>{student.averageGrade ?? '—'}</span><em>{student.eligibilityStatus}</em><button type="button">Edit Grades</button></div>) : <p className="empty-copy">No students currently need attention.</p>}</section><section className="registrar-panel"><div className="panel-heading"><div><h3>All Academic Records</h3><p>Student records loaded from Athlete-Hub database</p></div><span className="role-chip">{students.length} shown</span></div><input className="registrar-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search students by name, course, or ID..." /><div className="registrar-table">{students.map((student) => <div className="registrar-table-row" key={student.athleteId}><strong>{student.firstName} {student.lastName}</strong><span>{student.studentNumber}</span><span>{student.course || '—'}</span><span>{student.averageGrade ?? '—'}</span><span className={student.eligibilityStatus === 'ELIGIBLE' ? 'eligible-label' : 'attention-label'}>{student.eligibilityStatus}</span></div>)}</div></section></>}</div></main>
 }
 
 function PortfolioPage({ fullName, session, profile, records, loading, actionLoading, title, description, evidenceFiles, onTitleChange, onDescriptionChange, onFilesChange, onSubmit, onDelete }) {
@@ -1281,7 +1491,7 @@ function CoachDashboard({ session, onLogout }) {
   }, [isDirector, session.token, refreshKey])
 
   const eligibleCount = dashboard?.eligibility?.find((item) =>
-    String(item.status).toUpperCase().includes('ELIG')
+    String(item.status).toUpperCase() === 'ELIGIBLE'
   )?.count || 0
   const attentionCount = Math.max((dashboard?.athleteCount || 0) - eligibleCount, 0)
   const coachName = `${session.firstName || (isDirector ? 'Director' : 'Coach')} ${session.lastName || ''}`.trim()
@@ -1309,9 +1519,6 @@ function CoachDashboard({ session, onLogout }) {
           <button className={`nav-item ${view === 'schedule' ? 'active' : ''}`} type="button" onClick={() => setView('schedule')}>Schedule</button>
           {!isDirector && <button className={`nav-item ${view === 'attendance' ? 'active' : ''}`} type="button" onClick={() => setView('attendance')}>Attendance</button>}
           <button className={`nav-item ${view === 'performance' ? 'active' : ''}`} type="button" onClick={() => setView('performance')}>Performance</button>
-          <a className="nav-item" href="#">Messages <span className="dot-badge">1</span></a>
-          <a className="nav-item" href="#">Reports</a>
-          <a className="nav-item" href="#">Profile</a>
         </nav>
 
         <button className="logout-button" type="button" onClick={onLogout}>Logout</button>
@@ -1319,6 +1526,7 @@ function CoachDashboard({ session, onLogout }) {
 
       <div className="coach-content">
         <header className="topbar"><div className="crumbs"><span>{isDirector ? 'Director Portal' : 'Coach Portal'}</span><span className="sep">›</span><strong>{view === 'athletes' ? 'All Athletes' : view === 'schedule' ? 'Schedule' : view === 'attendance' ? 'Attendance' : view === 'performance' ? 'Performance' : `${isDirector ? 'Director' : 'Coach'} Dashboard`}</strong></div><span className="role-chip">{session.role}</span></header>
+        {view === 'profile' && <AcademicEvaluationPanel athlete={selectedAthlete} session={session} />}
         {view === 'athletes' ? <CoachAthletesPage dashboard={dashboard} athletesOverride={isDirector ? directorAthletes : undefined} observer={isDirector} onViewProfile={viewProfile} /> : view === 'profile' ? <AthleteProfilePage athlete={selectedAthlete} portfolio={portfolio} loading={portfolioLoading} error={portfolioError} canReview={!isDirector} onBack={() => { setSelectedAthlete(null); setPortfolio(null); setView('athletes') }} onReview={reviewAchievement} onReject={(item) => { setRejectItem(item); setRejectReason(''); setShowRejectModal(true); }} /> : view === 'attendance' ? <AttendancePage teams={dashboard?.teams || []} session={session} /> : view === 'performance' ? <ErrorBoundary><PerformancePage athletes={isDirector ? (directorAthletes || []) : (dashboard?.teams || []).flatMap((team) => (team.athletes || []).map((athlete) => ({ ...athlete, teamName: team.teamName, sport: team.sport })))} session={session} canEdit={!isDirector} /></ErrorBoundary> : view === 'schedule' ? <div className="coach-schedule-page"><section className="coach-heading"><div><h2>Schedule</h2><p>{isDirector ? 'Sports events for all athletes' : 'Training, sports events, and competitions for your assigned teams'}</p></div>{isDirector ? <button className="coach-action" type="button" onClick={() => setShowDirectorScheduleModal(true)}>+ Add Sports Event</button> : <button className="coach-action" type="button" onClick={() => setShowScheduleModal(true)}>+ Add Training Schedule</button>}</section>{scheduleError && <div className="dashboard-state error-message">{scheduleError}</div>}<CalendarPage records={scheduleRecords} loading={scheduleLoading} /></div> : <>
         <section className="coach-heading"><div><h2>Good morning, {session.firstName || 'Coach'}! <span>👋</span></h2><p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div>{!isDirector && <button className="coach-action" type="button" onClick={() => setShowScheduleModal(true)}>+ Add Training Schedule</button>}</section>
 
@@ -1329,7 +1537,7 @@ function CoachDashboard({ session, onLogout }) {
           <section className="coach-stats-grid">
             <article className="coach-stat red-accent"><span>Total Athletes</span><strong>{dashboard?.athleteCount || 0}</strong><small>Under supervision</small></article>
             <article className="coach-stat green-accent"><span>Eligible</span><strong>{eligibleCount}</strong><small>GPA ≤ 3.00</small></article>
-            <article className="coach-stat alert-accent"><span>Need Attention</span><strong>{attentionCount}</strong><small>At risk / ineligible</small></article>
+            <article className="coach-stat alert-accent"><span>Need Attention</span><strong>{attentionCount}</strong><small>Pending / at risk / ineligible</small></article>
           </section>
 
           {isDirector && pendingTrainingError && <div className="dashboard-state error-message">{pendingTrainingError}</div>}
@@ -1347,7 +1555,7 @@ function CoachDashboard({ session, onLogout }) {
 
           <section className="coach-panel upcoming-schedules-panel">
             <div className="panel-heading schedule-panel-heading"><div><h3>Upcoming Schedules</h3><p>Upcoming schedule in the next two weeks</p></div><button className="schedule-more-button" type="button" onClick={() => setView('schedule')} aria-label="See full schedule">See more <span aria-hidden="true">→</span></button></div>
-            <div className="session-list">{upcomingScheduleRecords.length ? upcomingScheduleRecords.map((sessionItem) => <div className="session-row" key={sessionItem.id}><strong>{sessionItem.title}</strong><small>{formatEventDate(sessionItem.startDate)} · {formatEventTime(sessionItem.startTime)}{sessionItem.endTime ? `–${formatEventTime(sessionItem.endTime)}` : ''}</small><span>{sessionItem.location || 'Location TBA'}</span></div>) : <p className="empty-copy">No upcoming training schedules in the next two weeks.</p>}</div>
+            <div className="session-list">{upcomingScheduleRecords.length ? upcomingScheduleRecords.map((sessionItem) => <div className="session-row" key={sessionItem.id}><strong>{sessionItem.title}</strong>{sessionItem.approvalStatus && sessionItem.approvalStatus !== 'APPROVED' && <span className={`session-approval-status ${sessionItem.approvalStatus.toLowerCase()}`}>{sessionItem.approvalStatus === 'PENDING' ? 'Awaiting approval' : 'Rejected'}</span>}<small>{formatEventDate(sessionItem.startDate)} · {formatEventTime(sessionItem.startTime)}{sessionItem.endTime ? `–${formatEventTime(sessionItem.endTime)}` : ''}</small><span>{sessionItem.location || 'Location TBA'}</span>{sessionItem.rejectionReason && <small>Reason: {sessionItem.rejectionReason}</small>}</div>) : <p className="empty-copy">No upcoming training schedules in the next two weeks.</p>}</div>
           </section>
 
           <section className="coach-lower-grid">
@@ -1536,7 +1744,7 @@ function PageSection({ title, subtitle, children }) {
 
 function AdminDashboard({ session, onLogout }) {
   const emptyForm = { roleId: '1', universityId: '', email: '', password: '', firstName: '', middleName: '', lastName: '', phone: '', accountStatus: 'ACTIVE' }
-  const [dashboard, setDashboard] = useState(null)
+  const [dashboard] = useState(null)
   const [users, setUsers] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [editingUser, setEditingUser] = useState(null)
@@ -1544,31 +1752,26 @@ function AdminDashboard({ session, onLogout }) {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deletingUserId, setDeletingUserId] = useState(null)
   const [error, setError] = useState('')
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const headers = { Authorization: `Bearer ${session.token}` }
-      const [dashboardResponse, usersResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/AdminDashboard`, { headers }),
-        fetch(`${API_BASE_URL}/api/Admin/users`, { headers }),
-      ])
-      const dashboardResult = await dashboardResponse.json().catch(() => null)
+      const usersResponse = await fetch(`${API_BASE_URL}/api/Admin/users`, { headers })
       const usersResult = await usersResponse.json().catch(() => null)
-      if (!dashboardResponse.ok) throw new Error(dashboardResult?.message || 'Unable to load admin dashboard.')
       if (!usersResponse.ok) throw new Error(usersResult?.message || 'Unable to load users.')
-      setDashboard(dashboardResult)
       setUsers(usersResult.users || [])
     } catch (err) {
-      setError(err.message || 'Unable to load admin dashboard.')
+      setError(err.message || 'Unable to load users.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [session.token])
 
-  useEffect(() => { loadData() }, [session.token])
+  useEffect(() => { loadData() }, [loadData])
 
   const openCreate = () => { setEditingUser(null); setForm(emptyForm); setError(''); setShowForm(true) }
   const openEdit = (user) => {
@@ -1599,7 +1802,30 @@ function AdminDashboard({ session, onLogout }) {
     }
   }
 
+  const deleteUser = async (user) => {
+    if (!window.confirm(`Delete the account for ${user.firstName} ${user.lastName}?`)) return
+    setDeletingUserId(user.userId)
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Admin/users/${user.userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.token}` },
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(result?.message || 'Unable to delete user.')
+      setUsers((current) => current.filter((item) => item.userId !== user.userId))
+    } catch (err) {
+      setError(err.message || 'Unable to delete user.')
+    } finally {
+      setDeletingUserId(null)
+    }
+  }
+
   const filteredUsers = users.filter((user) => `${user.firstName} ${user.lastName} ${user.email} ${user.universityId} ${user.role}`.toLowerCase().includes(search.toLowerCase()))
+
+  if (String(session.role || '').toUpperCase() === 'ADMIN') {
+    return <main className="admin-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>System Administration</small></div></div><div className="profile-block"><div className="avatar">{(session.firstName || 'A').slice(0, 1)}{(session.lastName || 'D').slice(0, 1)}</div><div className="profile-meta"><strong>{session.firstName} {session.lastName}</strong><span>Administrator</span></div></div><nav className="main-nav" aria-label="Admin navigation"><button className="nav-item active" type="button">Accounts</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="admin-content"><header className="topbar"><div className="crumbs"><span>Admin Portal</span><span className="sep">›</span><strong>Accounts</strong></div><span className="role-chip">ADMIN</span></header><section className="admin-heading"><div><h2>User Accounts</h2><p>Monitor and manage platform accounts.</p></div><button className="coach-action" type="button" onClick={openCreate}>+ Create User</button></section>{error && <div className="dashboard-state error-message">{error}</div>}{loading ? <div className="dashboard-state">Loading accounts...</div> : <section className="admin-panel"><div className="panel-heading"><div><h3>Accounts</h3><p>Search, edit, create, or delete user accounts.</p></div><span className="role-chip">{filteredUsers.length} shown</span></div><input className="admin-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search users by name, email, ID, or role..." /><div className="admin-user-list">{filteredUsers.length ? filteredUsers.map((user) => <div className="admin-user-row" key={user.userId}><div><strong>{user.firstName} {user.lastName}</strong><small>{user.email} · {user.universityId}</small></div><span className={`admin-role ${String(user.role).toLowerCase()}`}>{user.role}</span><span className={`admin-status ${String(user.accountStatus).toLowerCase()}`}>{user.accountStatus}</span><div><button className="template-button" type="button" onClick={() => openEdit(user)}>Edit</button><button className="template-button" type="button" onClick={() => deleteUser(user)} disabled={deletingUserId === user.userId}>{deletingUserId === user.userId ? 'Deleting...' : 'Delete'}</button></div></div>) : <p className="empty-copy">No accounts found.</p>}</div></section>}</div>{showForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setShowForm(false)}><section className="modal-card admin-user-modal" role="dialog" aria-modal="true" aria-labelledby="admin-user-title"><div className="modal-heading"><div><h2 id="admin-user-title">{editingUser ? 'Edit User' : 'Create User'}</h2><p>{editingUser ? 'Update this account.' : 'Add a platform account.'}</p></div><button className="icon-button" type="button" onClick={() => setShowForm(false)} aria-label="Close">×</button></div><form className="admin-user-form" onSubmit={saveUser}><label>First name<input value={form.firstName} onChange={(event) => setForm({ ...form, firstName: event.target.value })} required /></label><label>Last name<input value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} required /></label><label>Email<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required /></label><label>University ID<input value={form.universityId} onChange={(event) => setForm({ ...form, universityId: event.target.value })} required /></label><label>Role<select value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}><option value="1">ATHLETE</option><option value="2">COACH</option><option value="3">DIRECTOR</option><option value="4">ADMIN</option><option value="5">REGISTRAR</option></select></label><label>Status<select value={form.accountStatus} onChange={(event) => setForm({ ...form, accountStatus: event.target.value })}><option>ACTIVE</option><option>INACTIVE</option><option>SUSPENDED</option></select></label><label className="full-width">Password{editingUser && <small> Leave blank to keep the current password.</small>}<input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required={!editingUser} minLength="8" /></label><div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setShowForm(false)}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User'}</button></div></form></section></div>}</main>
+  }
   const overview = dashboard?.overview || {}
 
   return <main className="admin-app"><aside className="sidebar"><div className="brand-block"><img className="brand-logo" src="/athletehub-logo.png" alt="Athlete-Hub logo" /><div><h1>Athlete-Hub</h1><small>System Administration</small></div></div><div className="profile-block"><div className="avatar">{(session.firstName || 'A').slice(0, 1)}{(session.lastName || 'D').slice(0, 1)}</div><div className="profile-meta"><strong>{session.firstName} {session.lastName}</strong><span>Administrator</span></div></div><nav className="main-nav" aria-label="Admin navigation"><button className="nav-item active" type="button">Dashboard</button></nav><button className="logout-button" type="button" onClick={onLogout}>Logout</button></aside><div className="admin-content"><header className="topbar"><div className="crumbs"><span>Admin Portal</span><span className="sep">›</span><strong>Dashboard</strong></div><span className="role-chip">ADMIN</span></header><section className="admin-heading"><div><h2>System Administration</h2><p>Manage platform users and monitor system activity.</p></div><button className="coach-action" type="button" onClick={openCreate}>+ Create User</button></section>{error && <div className="dashboard-state error-message">{error}</div>}{loading ? <div className="dashboard-state">Loading administration data...</div> : <><section className="admin-stats"><article><span>Athletes</span><strong>{overview.totalAthletes || 0}</strong></article><article><span>Coaches</span><strong>{overview.totalCoaches || 0}</strong></article><article><span>Teams</span><strong>{overview.totalTeams || 0}</strong></article><article><span>Documents</span><strong>{overview.totalDocuments || 0}</strong></article><article><span>Achievements</span><strong>{overview.totalAchievements || 0}</strong></article></section><section className="admin-grid"><section className="admin-panel"><div className="panel-heading"><div><h3>User Accounts</h3><p>Manage roles, contact details, and account status.</p></div><span className="role-chip">{filteredUsers.length} shown</span></div><input className="admin-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search users by name, email, ID, or role..." /><div className="admin-user-list">{filteredUsers.map((user) => <div className="admin-user-row" key={user.userId}><div><strong>{user.firstName} {user.lastName}</strong><small>{user.email} · {user.universityId}</small></div><span className={`admin-role ${String(user.role).toLowerCase()}`}>{user.role}</span><span className={`admin-status ${String(user.accountStatus).toLowerCase()}`}>{user.accountStatus}</span><button className="template-button" type="button" onClick={() => openEdit(user)}>Edit</button></div>)}</div></section><section className="admin-panel"><div className="panel-heading"><div><h3>Recent Activity</h3><p>Latest portfolio and achievement updates.</p></div></div><div className="admin-activity-list">{(dashboard?.recentActivities || []).map((item) => <div key={item.portfolioItemId}><strong>{item.title}</strong><span>{item.athleteName} · {item.achievementStatus}</span></div>)}</div></section></section></>}</div>{showForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setShowForm(false)}><section className="modal-card admin-user-modal" role="dialog" aria-modal="true" aria-labelledby="admin-user-title"><div className="modal-heading"><div><h2 id="admin-user-title">{editingUser ? 'Edit User' : 'Create User'}</h2><p>{editingUser ? 'Update this account.' : 'Add a platform account.'}</p></div><button className="icon-button" type="button" onClick={() => setShowForm(false)} aria-label="Close">×</button></div><form className="admin-user-form" onSubmit={saveUser}><label>First name<input value={form.firstName} onChange={(event) => setForm({ ...form, firstName: event.target.value })} required /></label><label>Last name<input value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} required /></label><label>Email<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required /></label><label>University ID<input value={form.universityId} onChange={(event) => setForm({ ...form, universityId: event.target.value })} required /></label><label>Role<select value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}><option value="1">ATHLETE</option><option value="2">COACH</option><option value="3">DIRECTOR</option><option value="4">ADMIN</option><option value="5">REGISTRAR</option></select></label><label>Status<select value={form.accountStatus} onChange={(event) => setForm({ ...form, accountStatus: event.target.value })}><option>ACTIVE</option><option>INACTIVE</option><option>SUSPENDED</option></select></label><label className="full-width">Password{editingUser && <small> Leave blank to keep the current password.</small>}<input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required={!editingUser} minLength="8" /></label><div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setShowForm(false)}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User'}</button></div></form></section></div>}</main>
@@ -1984,6 +2210,7 @@ function DirectorDashboard({ session, onLogout }) {
       </aside>
       <div className="coach-content">
         <header className="topbar"><div className="crumbs"><span>Director Portal</span><span className="sep">›</span><strong>{view === 'athletes' ? 'All Athletes' : view === 'profile' ? 'Athlete Profile' : view === 'coach-profile' ? 'Coach Profile' : view === 'schedule' ? 'Schedule' : view === 'performance' ? 'Performance' : 'Dashboard'}</strong></div><span className="role-chip">{session.role}</span></header>
+        {view === 'profile' && <AcademicEvaluationPanel athlete={selectedAthlete} session={session} />}
         {view === 'athletes' ? <CoachAthletesPage dashboard={dashboard} athletesOverride={directorAthletes} observer onViewProfile={viewProfile} /> : view === 'profile' ? <AthleteProfilePage athlete={selectedAthlete} portfolio={portfolio} loading={portfolioLoading} error={portfolioError} canReview={false} onBack={() => { setSelectedAthlete(null); setPortfolio(null); setView('athletes') }} /> : view === 'coach-profile' ? <CoachProfilePage coach={selectedCoach} profile={coachProfile} loading={coachProfileLoading} error={coachProfileError} onBack={() => { setSelectedCoach(null); setCoachProfile(null); setView('coaches') }} onAssign={() => setShowAssignModal(true)} /> : view === 'schedule' ? <div className="coach-schedule-page"><section className="coach-heading"><div><h2>Schedule</h2><p>Sports events, competitions, and approved training sessions</p></div><button className="coach-action" type="button" onClick={() => setShowDirectorScheduleModal(true)}>+ Add Sports Event</button></section>{scheduleError && <div className="dashboard-state error-message">{scheduleError}</div>}<DirectorTrainingReviewPanel sessions={pendingTrainingSessions} session={session} onReviewed={() => setRefreshKey((value) => value + 1)} /><CalendarPage records={scheduleRecords} loading={scheduleLoading} /></div> : view === 'performance' ? <ErrorBoundary><PerformancePage athletes={directorAthletes} session={session} canEdit={false} /></ErrorBoundary> : view === 'dashboard' ? <><section className="coach-heading"><div><h2>Director Dashboard</h2><p>Monitor athletes, schedules, coaches, and training approvals.</p></div></section><section className="coach-stats-grid"><article className="coach-stat red-accent"><span>Total Athletes</span><strong>{dashboard?.athleteCount || 0}</strong><small>Across all teams</small></article><article className="coach-stat green-accent"><span>Coaches</span><strong>{coaches.length}</strong><small>Coach accounts</small></article><article className="coach-stat alert-accent"><span>Training Approvals</span><strong>{pendingTrainingSessions.length}</strong><small>Awaiting review</small></article></section><section className="coach-panel"><div className="panel-heading"><div><h3>Training approvals</h3><p>Coach-submitted sessions must be approved before athletes can see them.</p></div></div><DirectorTrainingReviewPanel sessions={pendingTrainingSessions} session={session} onReviewed={() => setRefreshKey((value) => value + 1)} /></section></> : <><section className="coach-list-header"><div><h2>Coaches</h2><p>Manage coach accounts and view their assigned athletes</p></div><span className="role-chip">{coaches.length} Total</span></section>
         {loading ? <p>Loading coaches...</p> : error ? <p className="error-message">{error}</p> : <div className="athlete-cards">{coaches.length ? coaches.map(coach => <article className="athlete-card" key={coach.coachId}><div className="athlete-card-top"><div className="athlete-avatar">{(coach.firstName || 'C').slice(0, 1)}{(coach.lastName || 'A').slice(0, 1)}</div><div><strong>{coach.firstName} {coach.lastName}</strong><small>{coach.email || 'Email unavailable'}</small><span>🏆 {coach.specialization || 'Coach'}</span></div></div><div className="athlete-card-meta"><div><strong>{coach.assignedAthletesCount || 0}</strong><small>Assigned athletes</small></div><div><strong>{coach.teams?.length || 0}</strong><small>Teams</small></div></div><div className="athlete-card-footer"><span>{coach.teams?.[0]?.teamName || 'No team assigned'}</span><div><button type="button" onClick={() => viewCoachProfile(coach)}>View Profile</button></div></div></article>) : <div className="dashboard-state"><p className="empty-copy">No coach accounts found.</p></div>}</div>}
         </>}

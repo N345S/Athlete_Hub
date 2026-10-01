@@ -49,7 +49,7 @@ public class DocumentsController : ControllerBase
         }
 
         var documents = await _context.Documents
-            .Where(document => document.AthleteId == athlete.AthleteId)
+            .Where(document => document.AthleteId == athlete.AthleteId && document.DocumentType != "GRADE_EVALUATION")
             .OrderByDescending(document => document.UploadedAt)
             .Select(document => new
             {
@@ -130,6 +130,10 @@ public class DocumentsController : ControllerBase
         if (string.IsNullOrWhiteSpace(documentType))
         {
             return BadRequest(new { message = "Document type is required." });
+        }
+        if (string.Equals(documentType.Trim(), "GRADE_EVALUATION", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Grade Evaluation PDFs must be uploaded by the Registrar." });
         }
 
         var files = Request.Form.Files
@@ -247,6 +251,10 @@ public class DocumentsController : ControllerBase
         if (document == null)
         {
             return NotFound(new { message = "Document not found." });
+        }
+        if (string.Equals(document.DocumentType, "GRADE_EVALUATION", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Grade Evaluation PDFs cannot be deleted from the athlete document portal." });
         }
 
         var relativePath = document.FileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);

@@ -52,16 +52,23 @@ public class CoachDashboardController : ControllerBase
             .GroupBy(item => item.AttendanceStatus)
             .Select(group => new { status = group.Key, count = group.Count() })
             .ToListAsync();
-        var eligibility = await _context.EligibilityRecords
+        var eligibilityRecords = await _context.EligibilityRecords
             .Where(item => athleteIds.Contains(item.AthleteId))
+            .OrderByDescending(item => item.EvaluatedAt)
+            .ThenByDescending(item => item.EligibilityId)
+            .Select(item => new { item.AthleteId, item.AcademicStatus, item.EvaluatedAt, item.EligibilityId })
+            .ToListAsync();
+        var eligibility = eligibilityRecords
+            .GroupBy(item => item.AthleteId)
+            .Select(group => group.First())
             .GroupBy(item => item.AcademicStatus)
             .Select(group => new { status = group.Key, count = group.Count() })
-            .ToListAsync();
+            .ToList();
         var upcomingSessions = await _context.TrainingSessions
             .Where(item => teamIds.Contains(item.TeamId) && item.TrainingDate >= DateTime.UtcNow.Date)
             .OrderBy(item => item.TrainingDate)
             .Take(10)
-            .Select(item => new { item.TrainingSessionId, item.TeamId, item.Title, item.TrainingDate, item.StartTime, item.EndTime, item.Location })
+            .Select(item => new { item.TrainingSessionId, item.TeamId, item.Title, item.TrainingDate, item.StartTime, item.EndTime, item.Location, item.ApprovalStatus })
             .ToListAsync();
 
         var portfolioItems = await _context.PortfolioItems
@@ -122,7 +129,8 @@ public class CoachDashboardController : ControllerBase
                 trainingDate = session.TrainingDate.ToString("yyyy-MM-dd"),
                 session.StartTime,
                 session.EndTime,
-                session.Location
+                session.Location,
+                session.ApprovalStatus
             }),
             portfolioItems
         });

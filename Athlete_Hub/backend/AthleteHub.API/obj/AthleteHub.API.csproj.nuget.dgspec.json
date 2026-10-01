@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj": {}
+    "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj": {}
   },
   "projects": {
-    "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj": {
+    "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+        "projectUniqueName": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
         "projectName": "AthleteHub.API",
-        "projectPath": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+        "projectPath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
         "packagesPath": "C:\\Users\\SMB\\.nuget\\packages\\",
-        "outputPath": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\obj\\",
+        "outputPath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\SMB\\AppData\\Roaming\\NuGet\\NuGet.Config"

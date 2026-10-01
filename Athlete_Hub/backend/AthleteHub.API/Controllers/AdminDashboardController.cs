@@ -77,14 +77,14 @@ public class AdminDashboardController : ControllerBase
         // Recent teams
         var teams = _context.Teams
             .Include(t => t.Sport)
-            .Include(t => t.Coach).ThenInclude(c => c.User)
+            .Include(t => t.Coach).ThenInclude(c => c!.User)
             .Take(10)
             .Select(t => new
             {
                 t.TeamId,
                 t.TeamName,
-                sport = t.Sport.SportName,
-                coachName = t.Coach.User != null ? t.Coach.User.FirstName + " " + t.Coach.User.LastName : "Unknown",
+                sport = t.Sport != null ? t.Sport.SportName : "Unassigned",
+                coachName = t.Coach != null && t.Coach.User != null ? t.Coach.User.FirstName + " " + t.Coach.User.LastName : "Unassigned",
                 t.Status
             })
             .ToList();

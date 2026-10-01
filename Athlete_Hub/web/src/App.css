@@ -2063,6 +2063,53 @@
 .eligible-label { color: #009968; font-weight: 700; }
 .attention-label { color: #e87500; font-weight: 700; }
 
+.evaluation-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.evaluation-stat { min-height: 100px; padding: 18px; border: 1px solid #e4e5e8; border-left: 4px solid #980819; border-radius: 12px; background: white; box-shadow: 0 5px 18px rgba(56, 36, 37, 0.05); }
+.evaluation-stat span { display: block; color: #7d8798; font-size: 0.82rem; }
+.evaluation-stat strong { display: block; margin-top: 9px; color: #172033; font-size: 1.7rem; }
+.evaluation-stat.request-accent { border-left-color: #d99a2b; }
+.evaluation-stat.reviewed-accent { border-left-color: #009968; }
+.evaluation-table-wrap { min-width: 0; overflow-x: auto; }
+.evaluation-table { width: 100%; min-width: 680px; border-collapse: collapse; text-align: left; }
+.evaluation-table th, .evaluation-table td { padding: 13px 14px; border-bottom: 1px solid #edf0f2; vertical-align: middle; }
+.evaluation-table th { color: #7d8798; font-size: 0.76rem; font-weight: 700; }
+.evaluation-table td { color: #172033; font-size: 0.86rem; }
+.evaluation-table tr:last-child td { border-bottom: 0; }
+.evaluation-table .template-button { white-space: nowrap; }
+.admin-status.ineligible { color: #980819; background: #fbe8ea; }
+.admin-status.pending, .admin-status.at_risk { color: #9a5b00; background: #fff1d8; }
+.evaluation-source-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+.evaluation-source-grid h3 { margin: 0 0 12px; color: #172033; }
+.evaluation-source-grid p { margin: 8px 0; color: #7d8798; }
+.evaluation-source-grid small { color: #929aaa; }
+.evaluation-file-label { display: grid; gap: 8px; margin: 12px 0; color: #5e6877; font-size: 0.82rem; font-weight: 700; }
+.evaluation-file-label input { max-width: 100%; }
+.evaluation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.evaluation-review-form { display: grid; gap: 18px; margin-top: 18px; }
+.evaluation-review-form .panel-heading { margin: 0; }
+.evaluation-review-form fieldset { display: flex; flex-wrap: wrap; gap: 18px; margin: 0; padding: 0; border: 0; }
+.evaluation-review-form legend { width: 100%; margin-bottom: 10px; color: #172033; font-weight: 700; }
+.evaluation-status-options label, .evaluation-reason-options label { display: flex; align-items: center; gap: 8px; color: #5e6877; font-size: 0.86rem; }
+.evaluation-status-options input, .evaluation-reason-options input { accent-color: #980819; }
+.evaluation-reasons > strong { display: block; margin-bottom: 12px; color: #172033; }
+.evaluation-reason-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+.evaluation-reason-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.evaluation-reason-chips button { border: 1px solid #ead1d3; border-radius: 999px; padding: 7px 10px; color: #980819; background: #fffafa; font: inherit; font-size: 0.78rem; cursor: pointer; }
+.evaluation-remarks { display: grid; gap: 8px; color: #172033; font-size: 0.88rem; font-weight: 700; }
+.evaluation-remarks textarea { width: 100%; resize: vertical; padding: 12px; border: 1px solid #e1e5e9; border-radius: 9px; color: #172033; background: #fafbfc; font: inherit; font-weight: 400; }
+.evaluation-history { display: grid; gap: 12px; }
+.evaluation-history-row { display: grid; gap: 10px; padding: 14px 0; border-bottom: 1px solid #edf0f2; }
+.evaluation-history-row:last-child { border-bottom: 0; }
+.evaluation-history-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.evaluation-history-row p { margin: 0; color: #5e6877; }
+.evaluation-history-row ul { margin: 8px 0 0; padding-left: 20px; color: #5e6877; }
+.evaluation-request-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.evaluation-request-form label { display: grid; gap: 7px; color: #5e6877; font-size: 0.82rem; font-weight: 700; }
+.evaluation-request-form input { min-width: 0; padding: 10px 12px; border: 1px solid #e1e5e9; border-radius: 9px; background: #fafbfc; font: inherit; font-weight: 400; }
+.evaluation-request-form .evaluation-actions, .evaluation-request-form .form-error { grid-column: 1 / -1; }
+.evaluation-pdf-modal { width: min(100%, 1000px); }
+.evaluation-pdf-modal iframe { width: 100%; height: min(75vh, 820px); border: 1px solid #e4e5e8; border-radius: 8px; background: #f3f1f1; }
+
 .grade-entry-page { display: grid; gap: 18px; }
 .grade-entry-search { display: flex; gap: 10px; padding: 14px; border: 1px solid #e4e5e8; border-radius: 14px; background: white; box-shadow: 0 5px 18px rgba(56, 36, 37, 0.05); }
 .grade-entry-search input { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid #e6e8eb; border-radius: 10px; background: #fafbfc; }
@@ -2157,6 +2204,9 @@
   .profile-details { grid-template-columns: 1fr; }
   .registrar-content { padding: 16px; }
   .registrar-heading { flex-direction: column; }
+  .evaluation-stats, .evaluation-source-grid, .evaluation-reason-options, .evaluation-request-form { grid-template-columns: 1fr; }
+  .evaluation-request-form .evaluation-actions, .evaluation-request-form .form-error { grid-column: auto; }
+  .evaluation-review-form fieldset { display: grid; gap: 12px; }
   .registrar-student-row { grid-template-columns: 1fr auto; }
   .registrar-table-row { grid-template-columns: 1fr 1fr; }
   .form-grid, .calendar-weekdays, .calendar-days { grid-template-columns: 1fr; }
@@ -2169,6 +2219,113 @@
   .portfolio-info-grid, .portfolio-summary { grid-template-columns: 1fr; }
   .portfolio-achievement { flex-wrap: wrap; }
   .achievement-delete { margin-left: 44px; }
+}
+
+/* Shared layout refinements for narrow screens and page actions. */
+.coach-content,
+.registrar-content,
+.admin-content {
+  min-width: 0;
+}
+
+.registrar-heading {
+  align-items: center;
+}
+
+.registrar-heading > :first-child {
+  min-width: 0;
+}
+
+.registrar-heading > input,
+.registrar-heading .admin-search {
+  width: min(100%, 360px);
+}
+
+.session-approval-status {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #785600;
+  background: #fff3cd;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.session-approval-status.rejected {
+  color: #9f2533;
+  background: #fde7e9;
+}
+
+.session-row > span.session-approval-status {
+  color: #785600;
+}
+
+.session-row > span.session-approval-status.rejected {
+  color: #9f2533;
+}
+
+@media (max-width: 760px) {
+  .student-app,
+  .coach-app,
+  .registrar-app,
+  .admin-app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .student-app > .sidebar,
+  .coach-app > .sidebar,
+  .registrar-app > .sidebar,
+  .admin-app > .sidebar {
+    position: static;
+    padding: 12px 16px;
+  }
+
+  .sidebar .brand-block {
+    margin-bottom: 10px;
+  }
+
+  .sidebar .profile-block {
+    margin-bottom: 10px;
+  }
+
+  .sidebar .main-nav {
+    display: flex;
+    gap: 6px;
+    margin: 0 -4px;
+    padding: 2px 4px 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .sidebar .main-nav .nav-item {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .sidebar .logout-button {
+    width: auto;
+    margin: 4px 0 0 auto;
+  }
+
+  .registrar-content,
+  .coach-content,
+  .admin-content,
+  .student-content {
+    padding: 16px;
+  }
+
+  .registrar-heading {
+    align-items: stretch;
+  }
+
+  .registrar-heading > input,
+  .registrar-heading .admin-search {
+    width: 100%;
+  }
 }
 
 /* Performance Page Styles */

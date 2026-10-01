@@ -17,68 +17,21 @@ public class RegistrarDashboardController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetDashboard()
     {
-        var athletes = await _context.AthleteProfiles
+        var students = await _context.AthleteProfiles
             .AsNoTracking()
-            .Include(athlete => athlete.User)
-            .Include(athlete => athlete.AcademicRecords)
-                .ThenInclude(record => record.Term)
-            .Include(athlete => athlete.EligibilityRecords)
-            .ToListAsync();
-
-        var students = athletes.Select(athlete =>
-        {
-            var grades = athlete.AcademicRecords
-                .Where(record => record.Grade.HasValue)
-                .Select(record => record.Grade!.Value)
-                .ToList();
-            var latestEligibility = athlete.EligibilityRecords
-                .OrderByDescending(record => record.EvaluatedAt)
-                .FirstOrDefault();
-            var averageGrade = grades.Count == 0 ? (decimal?)null : Math.Round(grades.Average(), 2);
-            var status = latestEligibility?.AcademicStatus
-                ?? (averageGrade.HasValue && averageGrade.Value <= 3.00m ? "ELIGIBLE" : "NEEDS_REVIEW");
-
-            return new
+            .Select(athlete => new
             {
                 athleteId = athlete.AthleteId,
                 studentNumber = athlete.StudentNumber,
                 firstName = athlete.User.FirstName,
                 lastName = athlete.User.LastName,
                 course = athlete.Course,
-                yearLevel = athlete.YearLevel,
-                averageGrade,
-                eligibilityStatus = status,
-                eligibilityRemarks = latestEligibility?.Remarks,
-                records = athlete.AcademicRecords.Select(record => new
-                {
-                    record.AcademicRecordId,
-                    record.SubjectCode,
-                    record.SubjectName,
-                    record.Units,
-                    record.Grade,
-                    record.Remarks,
-                    term = new
-                    {
-                        record.Term.TermId,
-                        record.Term.AcademicYear,
-                        record.Term.Semester
-                    }
-                }).ToList()
-            };
-        }).ToList();
+                yearLevel = athlete.YearLevel
+            })
+            .OrderBy(athlete => athlete.lastName)
+            .ThenBy(athlete => athlete.firstName)
+            .ToListAsync();
 
-        var eligibleCount = students.Count(student => student.eligibilityStatus.Equals("ELIGIBLE", StringComparison.OrdinalIgnoreCase));
-        var averageGpa = students.Where(student => student.averageGrade.HasValue).Select(student => student.averageGrade!.Value).DefaultIfEmpty().Average();
-        var attentionStudents = students.Where(student => !student.eligibilityStatus.Equals("ELIGIBLE", StringComparison.OrdinalIgnoreCase)).ToList();
-
-        return Ok(new
-        {
-            totalStudents = students.Count,
-            averageGpa = students.Any(student => student.averageGrade.HasValue) ? Math.Round(averageGpa, 2) : (decimal?)null,
-            eligibleCount,
-            attentionCount = attentionStudents.Count,
-            students,
-            attentionStudents
-        });
+        return Ok(new { students });
     }
 }

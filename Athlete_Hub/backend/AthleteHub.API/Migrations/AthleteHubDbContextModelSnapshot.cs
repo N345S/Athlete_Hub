@@ -467,19 +467,47 @@ namespace AthleteHub.API.Migrations
                         .HasColumnType("int")
                         .HasColumnName("athlete_id");
 
+                    b.Property<int?>("DocumentId")
+                        .HasColumnType("int")
+                        .HasColumnName("document_id");
+
                     b.Property<DateTime?>("EvaluatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp")
                         .HasColumnName("evaluated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<string>("EligibilityReasons")
+                        .HasColumnType("longtext")
+                        .HasColumnName("eligibility_reasons");
+
                     b.Property<string>("Remarks")
                         .HasColumnType("text")
                         .HasColumnName("remarks");
 
+                    b.Property<DateTime?>("RequestedAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("requested_at");
+
+                    b.Property<int?>("RequestedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("requested_by");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<int?>("ReviewedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("reviewed_by");
+
                     b.Property<int>("TermId")
                         .HasColumnType("int")
                         .HasColumnName("term_id");
+
+                    b.Property<int?>("UploadedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("uploaded_by");
 
                     b.HasKey("EligibilityId")
                         .HasName("PRIMARY");
@@ -487,7 +515,15 @@ namespace AthleteHub.API.Migrations
                     b.HasIndex(new[] { "AthleteId", "TermId" }, "athlete_id")
                         .IsUnique();
 
+                    b.HasIndex(new[] { "DocumentId" }, "fk_eligibility_document");
+
+                    b.HasIndex(new[] { "RequestedBy" }, "fk_eligibility_requested_by");
+
+                    b.HasIndex(new[] { "ReviewedBy" }, "fk_eligibility_reviewed_by");
+
                     b.HasIndex(new[] { "TermId" }, "fk_eligibility_term");
+
+                    b.HasIndex(new[] { "UploadedBy" }, "fk_eligibility_uploaded_by");
 
                     b.ToTable("eligibility_records", (string)null);
                 });
@@ -1200,6 +1236,30 @@ namespace AthleteHub.API.Migrations
                         .HasForeignKey("TermId")
                         .IsRequired()
                         .HasConstraintName("fk_eligibility_term");
+
+                    b.HasOne("AthleteHub.API.Models.Document", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_eligibility_document");
+
+                    b.HasOne("AthleteHub.API.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_eligibility_requested_by");
+
+                    b.HasOne("AthleteHub.API.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_eligibility_uploaded_by");
+
+                    b.HasOne("AthleteHub.API.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_eligibility_reviewed_by");
 
                     b.Navigation("Athlete");
 

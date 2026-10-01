@@ -108,13 +108,17 @@ public class SchedulesController : ControllerBase
     {
         var trainingQuery = _context.TrainingSessions
             .Include(session => session.Team)
-            .Where(session => session.ApprovalStatus == "APPROVED" || session.ApprovalStatus == null);
+            .AsQueryable();
 
         if (User.IsInRole("COACH"))
         {
             var coach = await _context.CoachProfiles.FirstOrDefaultAsync(item => item.UserId == GetUserId());
             if (coach == null) return Forbid();
             trainingQuery = trainingQuery.Where(session => session.Team.CoachId == coach.CoachId || session.CoachId == coach.CoachId);
+        }
+        else
+        {
+            trainingQuery = trainingQuery.Where(session => session.ApprovalStatus == "APPROVED" || session.ApprovalStatus == null);
         }
 
         if (from.HasValue) trainingQuery = trainingQuery.Where(session => session.TrainingDate >= from.Value.Date);
@@ -133,6 +137,8 @@ public class SchedulesController : ControllerBase
                 endDate = session.TrainingDate.ToString("yyyy-MM-dd"),
                 endTime = session.EndTime.HasValue ? session.EndTime.Value.ToString() : null,
                 session.Location,
+                session.ApprovalStatus,
+                session.RejectionReason,
                 teamName = session.Team.TeamName
             })
             .ToListAsync();

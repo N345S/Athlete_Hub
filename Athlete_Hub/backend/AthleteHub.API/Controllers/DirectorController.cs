@@ -95,8 +95,8 @@ public class DirectorController : ControllerBase
         // Get all assigned athletes across all teams (distinct)
         var assignedAthletes = coach.Teams
             .SelectMany(t => t.TeamMembers
-                .Where(tm => tm.DateLeft == null)
-                .Select(tm => new
+                    .Where(tm => tm.DateLeft == null)
+                    .Select(tm => new
                 {
                     tm.Athlete.AthleteId,
                     studentNumber = tm.Athlete.StudentNumber,
@@ -352,9 +352,9 @@ public class DirectorController : ControllerBase
         var athletes = await _context.AthleteProfiles
             .Include(a => a.User)
             .Include(a => a.TeamMembers.Where(tm => tm.DateLeft == null))
-                .ThenInclude(tm => tm.Team)
+                    .ThenInclude(tm => tm.Team)
                     .ThenInclude(t => t.Coach)
-                        .ThenInclude(c => c.User)
+                        .ThenInclude(c => c!.User)
             .Select(a => new
             {
                 a.AthleteId,
@@ -366,11 +366,11 @@ public class DirectorController : ControllerBase
                 a.Course,
                 a.YearLevel,
                 currentCoach = a.TeamMembers
-                    .Where(tm => tm.DateLeft == null)
+                    .Where(tm => tm.DateLeft == null && tm.Team.Coach != null && tm.Team.Coach.User != null)
                     .Select(tm => new
                     {
-                        coachId = tm.Team.Coach.CoachId,
-                        coachName = tm.Team.Coach.User.FirstName + " " + tm.Team.Coach.User.LastName,
+                        coachId = tm.Team.Coach!.CoachId,
+                        coachName = tm.Team.Coach!.User!.FirstName + " " + tm.Team.Coach!.User!.LastName,
                         teamName = tm.Team.TeamName,
                         tm.DateJoined
                     })

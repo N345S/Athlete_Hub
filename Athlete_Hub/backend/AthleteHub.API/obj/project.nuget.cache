@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "ujuxoPkOono=",
+  "dgSpecHash": "bxclIaAS16g=",
   "success": true,
-  "projectFilePath": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+  "projectFilePath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\SMB\\.nuget\\packages\\bcrypt.net-next\\4.2.0\\bcrypt.net-next.4.2.0.nupkg.sha512",
     "C:\\Users\\SMB\\.nuget\\packages\\bouncycastle.cryptography\\2.6.2\\bouncycastle.cryptography.2.6.2.nupkg.sha512",
@@ -58,9 +58,9 @@
       "code": "NU1903",
       "level": "Warning",
       "message": "Package 'Microsoft.OpenApi' 2.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-v5pm-xwqc-g5wc",
-      "projectPath": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+      "projectPath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
+      "filePath": "C:\\Users\\SMB\\Documents\\GitHub\\Athlete_Hub\\Athlete_Hub\\backend\\AthleteHub.API\\AthleteHub.API.csproj",
       "libraryId": "Microsoft.OpenApi",
       "targetGraphs": [
         "net10.0"

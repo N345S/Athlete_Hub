@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AthleteHub.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6369a8d2faa13fba9e1d6c49883999da0e205110")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
 [assembly: System.Reflection.AssemblyProductAttribute("AthleteHub.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AthleteHub.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
