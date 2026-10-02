@@ -1333,3 +1333,11 @@ C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\build-audit-backend\Athlet
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\build-audit-backend\AthleteHub.API.runtimeconfig.json
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\build-audit-backend\AthleteHub.API.dll
 C:\Users\SMB\Documents\GitHub\Athlete_Hub\Athlete_Hub\build-audit-backend\AthleteHub.API.pdb
+C:\Users\SMB\AppData\Local\Temp\AthleteHub-Dto-Rename-Validation\appsettings.Development.json
+C:\Users\SMB\AppData\Local\Temp\AthleteHub-Dto-Rename-Validation\appsettings.json
+C:\Users\SMB\AppData\Local\Temp\AthleteHub-Dto-Rename-Validation\AthleteHub.API.staticwebassets.runtime.json
+C:\Users\SMB\AppData\Local\Temp\AthleteHub-Dto-Rename-Validation\AthleteHub.API.staticwebassets.endpoints.json
+C:\Users\SMB\AppData\Local\Temp\AthleteHub-Dto-Rename-Validation\AthleteHub.API.deps.json
+C:\Users\SMB\AppData\Local\Temp\AthleteHub-Dto-Rename-Validation\AthleteHub.API.runtimeconfig.json
+C:\Users\SMB\AppData\Local\Temp\AthleteHub-Dto-Rename-Validation\AthleteHub.API.dll
+C:\Users\SMB\AppData\Local\Temp\AthleteHub-Dto-Rename-Validation\AthleteHub.API.pdb
