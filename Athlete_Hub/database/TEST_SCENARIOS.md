@@ -13,17 +13,33 @@ identified by the `@seed.athletehub.test` email domain and the `[Seed]` prefix o
 removal never touches real data. Placeholder PDFs are written to `private-uploads/` with a `seed-` prefix.
 
 Every seeded account uses the password **`Seed123!`**. Emails are `first.last@seed.athletehub.test`.
+The seeder creates **100 accounts** — 1 director, 5 admins, 5 registrars, 10 coaches, 79 athletes — and writes
+the complete list with each account's status and scenario to [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md).
+
+## Staff
+
+| Account | Role | Scenario |
+|---|---|---|
+| `elena.navarro` | Director | The only director; approves training, assigns athletes, requests evaluations |
+| `victor.lopez`, `carmen.dizon`, `oscar.salazar`, `irene.manalo` | Admin | Active administrators |
+| `felix.ong` | Admin | **Inactive** — sign-in refused |
+| `grace.tan` | Registrar | Uploaded and decided the seeded evaluations |
+| `rosa.velasco`, `edwin.pascual`, `lyn.domingo` | Registrar | Active registrars |
+| `noel.castro` | Registrar | **Suspended** — sign-in refused |
 
 ## Coaches
 
 | Account | Scenario |
 |---|---|
 | `maria.santos` | Coaches **[Seed] Blue Eagles Basketball**; has a pending and a rejected training request |
-| `ramon.cruz` | Coaches **[Seed] Lady Spikers Volleyball** |
+| `ramon.cruz`, `arnel.gonzales`, `joy.ramirez`, `dennis.yap`, `cris.lacson`, `rhea.soriano` | Coach volleyball, football, badminton, table tennis, taekwondo, and swimming teams |
+| `ben.alvarez` | **Suspended**; his **[Seed] Thunder Futsal** team stays active but gets no new sessions |
 | `paolo.reyes` | **Inactive** account; his **[Seed] Sharks Swimming** team is disbanded (inactive) |
 | `liza.mendoza` | Active coach with **no team** (assigning athletes to her is refused) |
 
-## Athletes
+## Hand-made athlete scenarios
+
+The other 69 athletes are generated across all eight teams with a mix of the same situations (see TEST_ACCOUNTS.md).
 
 | Account | Scenario | What to check |
 |---|---|---|
