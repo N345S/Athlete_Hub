@@ -41,9 +41,26 @@ public class DirectorDashboardController : ControllerBase
             })
             .ToListAsync();
 
+        var attendanceByAthlete = await _context.Attendances
+            .GroupBy(item => item.AthleteId)
+            .Select(group => new
+            {
+                AthleteId = group.Key,
+                Total = group.Count(),
+                Attended = group.Count(item => item.AttendanceStatus == "PRESENT" || item.AttendanceStatus == "LATE")
+            })
+            .ToDictionaryAsync(item => item.AthleteId);
+        var latestEligibility = (await _context.EligibilityRecords
+                .AsNoTracking()
+                .OrderByDescending(item => item.EvaluatedAt)
+                .ThenByDescending(item => item.EligibilityId)
+                .Select(item => new { item.AthleteId, item.AcademicStatus })
+                .ToListAsync())
+            .GroupBy(item => item.AthleteId)
+            .ToDictionary(group => group.Key, group => group.First().AcademicStatus);
+
         var portfolioItems = await _context.PortfolioItems
             .AsNoTracking()
-            .Where(item => item.AthleteId != 0)
             .Select(item => new
             {
                 item.PortfolioItemId,
@@ -55,13 +72,28 @@ public class DirectorDashboardController : ControllerBase
                 studentNumber = item.Athlete.StudentNumber
             })
             .OrderByDescending(item => item.CreatedAt)
+            .Take(50)
             .ToListAsync();
 
         return Ok(new
         {
             athleteCount = athletes.Count,
-            teams = Array.Empty<object>(),
-            athletes,
+            athletes = athletes.Select(athlete =>
+            {
+                attendanceByAthlete.TryGetValue(athlete.AthleteId, out var attendance);
+                return new
+                {
+                    athlete.AthleteId,
+                    athlete.StudentNumber,
+                    athlete.firstName,
+                    athlete.lastName,
+                    athlete.Course,
+                    athlete.YearLevel,
+                    athlete.teams,
+                    eligibilityStatus = latestEligibility.GetValueOrDefault(athlete.AthleteId),
+                    attendanceRate = CoachDashboardController.AttendanceRate(attendance?.Attended, attendance?.Total)
+                };
+            }),
             portfolioItems
         });
     }

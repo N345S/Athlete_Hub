@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AthleteHub.API.Data;
 using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,12 +18,19 @@ namespace AthleteHub.API.Controllers;
 public class PerformanceController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
+    private readonly AthleteAccessService _access;
+    private readonly AppClock _clock;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PerformanceController"/> class.
     /// </summary>
     /// <param name="context">The database context.</param>
-    public PerformanceController(AthleteHubDbContext context) => _context = context;
+    public PerformanceController(AthleteHubDbContext context, AthleteAccessService access, AppClock clock)
+    {
+        _context = context;
+        _access = access;
+        _clock = clock;
+    }
 
     /// <summary>
     /// Gets all performance metric definitions grouped by sport.
@@ -66,7 +74,7 @@ public class PerformanceController : ControllerBase
             .Include(record => record.Metric).ThenInclude(metric => metric.Sport)
             .Where(record => record.AthleteId == athleteId)
             .OrderByDescending(record => record.RecordedDate)
-            .Select(record => new { record.PerformanceRecordId, record.AthleteId, record.RecordedValue, record.RecordedDate, record.Notes, record.DataType, record.Unit, metric = new { record.Metric.MetricId, record.Metric.MetricName, record.Metric.Unit, sport = record.Metric.Sport.SportName } })
+            .Select(record => new { record.PerformanceRecordId, record.AthleteId, record.RecordedValue, record.RecordedDate, record.Notes, record.DataType, record.Unit, record.SessionId, sessionTitle = record.Session != null ? record.Session.Title : null, metric = new { record.Metric.MetricId, record.Metric.MetricName, record.Metric.Unit, sport = record.Metric.Sport.SportName } })
             .ToListAsync();
         return Ok(new
         {
@@ -81,6 +89,8 @@ public class PerformanceController : ControllerBase
                 record.Notes,
                 record.DataType,
                 record.Unit,
+                record.SessionId,
+                record.sessionTitle,
                 metric = record.metric
             })
         });
@@ -139,12 +149,13 @@ public class PerformanceController : ControllerBase
             sessionEnd = session.TrainingDate.Date.Add(session.EndTime.Value);
         }
 
-        if (DateTime.UtcNow < sessionEnd)
+        // Training dates and times are local wall-clock values, so compare against local time.
+        if (_clock.LocalNow < sessionEnd)
         {
             return BadRequest(new { message = "Performance can only be recorded after the training session has ended." });
         }
 
-        if (request.RecordedDate.Date < session.TrainingDate.Date || request.RecordedDate.Date > DateTime.UtcNow.Date)
+        if (request.RecordedDate.Date < session.TrainingDate.Date || request.RecordedDate.Date > _clock.LocalToday)
         {
             return BadRequest(new { message = "The performance date must be between the training session date and today." });
         }
@@ -188,7 +199,7 @@ public class PerformanceController : ControllerBase
             .AsQueryable();
 
         // Apply time range filter
-        var now = DateTime.UtcNow;
+        var now = _clock.LocalToday;
         switch (timeRange.ToLower())
         {
             case "weekly":
@@ -216,8 +227,11 @@ public class PerformanceController : ControllerBase
             })
             .ToListAsync();
 
-        // Group by DataType to create datasets
-        var dataTypes = records.Select(r => r.DataType).Distinct().Where(dt => !string.IsNullOrEmpty(dt)).ToList();
+        // Group by DataType (ignoring case and spacing, so "Push Ups" and "push ups" chart as one series).
+        static string? WorkoutKey(string? dataType) => string.IsNullOrWhiteSpace(dataType)
+            ? null
+            : string.Join(' ', dataType.Trim().ToUpperInvariant().Replace('_', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        var dataTypes = records.Select(r => WorkoutKey(r.DataType)).Distinct().Where(dt => dt != null).ToList();
         
         var datasets = new List<object>();
         
@@ -244,7 +258,8 @@ public class PerformanceController : ControllerBase
 
         foreach (var dataType in dataTypes)
         {
-            var typeRecords = records.Where(r => r.DataType == dataType).ToList();
+            var typeRecords = records.Where(r => WorkoutKey(r.DataType) == dataType).ToList();
+            var displayName = typeRecords[0].DataType;
             var data = new List<decimal?>();
             
             // Map values to session order
@@ -264,9 +279,9 @@ public class PerformanceController : ControllerBase
 
             datasets.Add(new
             {
-                label = FormatDataTypeLabel(dataType) + (records.FirstOrDefault(record => record.DataType == dataType)?.Unit is { Length: > 0 } unit ? $" ({unit.ToLowerInvariant()})" : string.Empty),
+                label = FormatDataTypeLabel(displayName) + (typeRecords[0].Unit is { Length: > 0 } unit ? $" ({unit.ToLowerInvariant().Replace('_', ' ')})" : string.Empty),
                 data = data,
-                borderColor = GetColorForDataType(dataType),
+                borderColor = GetColorForDataType(displayName),
                 tension = 0.1,
                 fill = false
             });
@@ -313,12 +328,5 @@ public class PerformanceController : ControllerBase
 
     private async Task<bool> CoachHasAthleteAsync(int coachId, int athleteId) => await _context.TeamMembers.AnyAsync(member => member.AthleteId == athleteId && member.Team.CoachId == coachId && member.DateLeft == null);
 
-    private async Task<bool> CanViewAthleteAsync(int athleteId)
-    {
-        var role = User.FindFirstValue(ClaimTypes.Role);
-        if (role is "ADMIN" or "DIRECTOR" or "REGISTRAR") return await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == athleteId);
-        if (role == "ATHLETE" && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == athleteId && athlete.UserId == userId);
-        var coach = await GetCoachAsync();
-        return coach != null && await CoachHasAthleteAsync(coach.CoachId, athleteId);
-    }
+    private Task<bool> CanViewAthleteAsync(int athleteId) => _access.CanViewAthleteAsync(User, athleteId);
 }

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AthleteHub.API.Data;
 using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,20 @@ namespace AthleteHub.API.Controllers;
 public class PortfolioController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
+    private readonly AthleteAccessService _access;
+    private readonly DocumentStorage _storage;
+    private readonly AchievementReviewService _review;
 
-    public PortfolioController(AthleteHubDbContext context)
+    public PortfolioController(
+        AthleteHubDbContext context,
+        AthleteAccessService access,
+        DocumentStorage storage,
+        AchievementReviewService review)
     {
         _context = context;
+        _access = access;
+        _storage = storage;
+        _review = review;
     }
 
     [HttpGet("me")]
@@ -31,43 +42,14 @@ public class PortfolioController : ControllerBase
             return NotFound(new { message = "Athlete profile not found." });
         }
 
-        var items = await _context.PortfolioItems
-            .Where(item => item.AthleteId == athlete.AthleteId)
-            .Include(item => item.Achievement)
-            .OrderBy(item => item.DisplayOrder)
-            .ThenByDescending(item => item.CreatedAt)
-            .Select(item => new
-            {
-                item.PortfolioItemId,
-                item.AchievementId,
-                item.Title,
-                item.Description,
-                item.DisplayOrder,
-                item.IsVisible,
-                item.CreatedAt,
-                item.VerificationStatus,
-                item.RejectionReason,
-                item.VerifiedAt,
-                achievementDate = item.Achievement == null ? null : item.Achievement.AchievementDate,
-                achievementStatus = item.Achievement == null
-                    ? null
-                    : item.Achievement.VerificationStatus,
-                evidence = item.Achievement == null
-                    ? Array.Empty<object>()
-                    : _context.Documents.Where(document => document.AchievementId == item.AchievementId)
-                        .Select(document => new { document.DocumentId, document.DocumentName, document.FileUrl, document.Status })
-                        .ToArray()
-            })
-            .ToListAsync();
-
-        return Ok(items);
+        return Ok(await GetPortfolioItemsAsync(athlete.AthleteId));
     }
 
     [HttpGet("athlete/{athleteId:int}")]
-    [Authorize(Roles = "COACH,DIRECTOR")]
+    [Authorize(Roles = "COACH,DIRECTOR,ADMIN")]
     public async Task<IActionResult> GetAthletePortfolio(int athleteId)
     {
-        if (!await CanAccessAthleteAsync(athleteId))
+        if (!await _access.CanViewAthleteAsync(User, athleteId, includeRegistrar: false))
         {
             return Forbid();
         }
@@ -81,40 +63,102 @@ public class PortfolioController : ControllerBase
             return NotFound(new { message = "Athlete profile not found." });
         }
 
-        var items = await _context.PortfolioItems
-            .Where(item => item.AthleteId == athleteId)
-            .Include(item => item.Achievement)
-            .OrderBy(item => item.DisplayOrder)
-            .ThenByDescending(item => item.CreatedAt)
-            .Select(item => new
-            {
-                item.PortfolioItemId,
-                item.AchievementId,
-                item.Title,
-                item.Description,
-                item.DisplayOrder,
-                item.CreatedAt,
-                item.VerificationStatus,
-                item.RejectionReason,
-                item.VerifiedAt,
-                achievementDate = item.Achievement == null ? null : item.Achievement.AchievementDate,
-                achievementStatus = item.Achievement == null ? null : item.Achievement.VerificationStatus,
-                evidence = item.Achievement == null
-                    ? Array.Empty<object>()
-                    : _context.Documents.Where(document => document.AchievementId == item.AchievementId)
-                        .Select(document => new { document.DocumentId, document.DocumentName, document.FileUrl, document.Status })
-                        .ToArray()
-            })
-            .ToListAsync();
-
         return Ok(new
         {
             athleteId = athlete.AthleteId,
             firstName = athlete.User.FirstName,
             lastName = athlete.User.LastName,
             studentNumber = athlete.StudentNumber,
-            items
+            course = athlete.Course,
+            yearLevel = athlete.YearLevel,
+            items = await GetPortfolioItemsAsync(athleteId)
         });
+    }
+
+    /// <summary>
+    /// Submits an achievement with its evidence files as one portfolio entry, all or nothing.
+    /// </summary>
+    /// <response code="201">The achievement, evidence, and portfolio entry were created.</response>
+    /// <response code="400">Missing title, invalid date/category, or invalid evidence files.</response>
+    [HttpPost("submit")]
+    [Authorize(Roles = "ATHLETE,STUDENT")]
+    [RequestSizeLimit(60_000_000)]
+    public async Task<IActionResult> SubmitAchievement(
+        [FromForm] string title,
+        [FromForm] string? description,
+        [FromForm] DateTime? achievementDate,
+        [FromForm] string? category)
+    {
+        if (string.IsNullOrWhiteSpace(title) || title.Trim().Length > 200)
+        {
+            return BadRequest(new { message = "A title of up to 200 characters is required." });
+        }
+        if (category?.Trim().Length > 100)
+        {
+            return BadRequest(new { message = "Category must be 100 characters or fewer." });
+        }
+        if (achievementDate.HasValue && achievementDate.Value.Date > DateTime.UtcNow.Date.AddDays(1))
+        {
+            return BadRequest(new { message = "The achievement date cannot be in the future." });
+        }
+
+        var files = DocumentsController.GetUploadedFiles(Request.Form.Files);
+        var fileError = DocumentsController.ValidateFiles(files);
+        if (fileError != null)
+        {
+            return BadRequest(new { message = fileError });
+        }
+
+        var athlete = await GetCurrentAthleteAsync();
+        if (athlete == null)
+        {
+            return NotFound(new { message = "Athlete profile not found." });
+        }
+
+        var savedDocuments = new List<Document>();
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var achievement = new Achievement
+            {
+                AthleteId = athlete.AthleteId,
+                Title = title.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                AchievementDate = achievementDate?.Date,
+                Category = string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
+                VerificationStatus = "PENDING",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Achievements.Add(achievement);
+            await _context.SaveChangesAsync();
+
+            savedDocuments = await _storage.CreateDocumentsAsync(
+                files, athlete.AthleteId, "Achievement Evidence", achievement.Title, null, achievement.AchievementId);
+            _context.Documents.AddRange(savedDocuments);
+
+            var item = new PortfolioItem
+            {
+                AthleteId = athlete.AthleteId,
+                AchievementId = achievement.AchievementId,
+                Title = achievement.Title,
+                Description = achievement.Description,
+                DisplayOrder = 0,
+                IsVisible = true,
+                VerificationStatus = "PENDING",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.PortfolioItems.Add(item);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return CreatedAtAction(nameof(GetMyPortfolio), null, ToResponse(item));
+        }
+        catch
+        {
+            // Nothing was committed, so remove any files already written for this submission.
+            foreach (var document in savedDocuments) _storage.Delete(document.FileUrl);
+            throw;
+        }
     }
 
     [HttpPost]
@@ -133,9 +177,14 @@ public class PortfolioController : ControllerBase
             return NotFound(new { message = "Athlete profile not found." });
         }
 
-        if (request.AchievementId == null || !await AchievementBelongsToAthleteAsync(request.AchievementId, athlete.AthleteId))
+        if (request.AchievementId == null || !await AchievementBelongsToAthleteAsync(request.AchievementId.Value, athlete.AthleteId))
         {
             return BadRequest(new { message = "A linked achievement belonging to this athlete is required." });
+        }
+
+        if (await _context.PortfolioItems.AnyAsync(item => item.AchievementId == request.AchievementId))
+        {
+            return Conflict(new { message = "This achievement is already in your portfolio." });
         }
 
         if (!await _context.Documents.AnyAsync(document =>
@@ -153,6 +202,7 @@ public class PortfolioController : ControllerBase
             Description = request.Description,
             DisplayOrder = request.DisplayOrder ?? 0,
             IsVisible = true,
+            VerificationStatus = "PENDING",
             CreatedAt = DateTime.UtcNow
         };
 
@@ -165,7 +215,7 @@ public class PortfolioController : ControllerBase
             ToResponse(item));
     }
 
-    [HttpPut("{portfolioItemId}")]
+    [HttpPut("{portfolioItemId:int}")]
     [Authorize(Roles = "ATHLETE,STUDENT")]
     public async Task<IActionResult> UpdatePortfolioItem(
         int portfolioItemId,
@@ -193,7 +243,7 @@ public class PortfolioController : ControllerBase
             return Conflict(new { message = "Verified portfolio entries require staff approval before changes." });
         }
 
-        if (request.AchievementId == null || !await AchievementBelongsToAthleteAsync(request.AchievementId, item.AthleteId))
+        if (request.AchievementId == null || !await AchievementBelongsToAthleteAsync(request.AchievementId.Value, item.AthleteId))
         {
             return BadRequest(new { message = "A linked achievement belonging to this athlete is required." });
         }
@@ -209,15 +259,19 @@ public class PortfolioController : ControllerBase
         return Ok(ToResponse(item));
     }
 
-    [HttpDelete("{portfolioItemId}")]
+    /// <summary>
+    /// Removes an unverified portfolio entry together with its achievement and evidence files.
+    /// </summary>
+    [HttpDelete("{portfolioItemId:int}")]
     [Authorize(Roles = "ATHLETE,STUDENT")]
     public async Task<IActionResult> DeletePortfolioItem(int portfolioItemId)
     {
         var athlete = await GetCurrentAthleteAsync();
         var item = athlete == null
             ? null
-            : await _context.PortfolioItems.FirstOrDefaultAsync(
-                portfolioItem => portfolioItem.PortfolioItemId == portfolioItemId
+            : await _context.PortfolioItems
+                .Include(portfolioItem => portfolioItem.Achievement)
+                .FirstOrDefaultAsync(portfolioItem => portfolioItem.PortfolioItemId == portfolioItemId
                     && portfolioItem.AthleteId == athlete.AthleteId);
 
         if (item == null)
@@ -225,26 +279,39 @@ public class PortfolioController : ControllerBase
             return NotFound(new { message = "Portfolio item not found." });
         }
 
-        if (string.Equals(await GetAchievementStatusAsync(item.AchievementId), "VERIFIED", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(item.Achievement?.VerificationStatus, "VERIFIED", StringComparison.OrdinalIgnoreCase))
         {
             return Conflict(new { message = "Verified portfolio entries require staff approval before removal." });
         }
 
+        var evidence = item.AchievementId == null
+            ? []
+            : await _context.Documents.Where(document => document.AchievementId == item.AchievementId).ToListAsync();
+
+        _context.Documents.RemoveRange(evidence);
         _context.PortfolioItems.Remove(item);
+        if (item.Achievement != null)
+        {
+            var otherEntries = await _context.PortfolioItems.AnyAsync(other =>
+                other.AchievementId == item.AchievementId && other.PortfolioItemId != item.PortfolioItemId);
+            if (!otherEntries) _context.Achievements.Remove(item.Achievement);
+        }
+
         await _context.SaveChangesAsync();
+        foreach (var document in evidence) _storage.Delete(document.FileUrl);
 
         return NoContent();
     }
 
-    [HttpPut("{portfolioItemId}/verify")]
+    [HttpPut("{portfolioItemId:int}/verify")]
     [Authorize(Roles = "COACH,DIRECTOR,ADMIN")]
     public async Task<IActionResult> VerifyPortfolioItem(
         int portfolioItemId,
         [FromBody] PortfolioVerificationRequest request)
     {
-        var normalizedStatus = request.Status?.Trim().ToUpperInvariant() ?? "VERIFIED";
+        var normalizedStatus = AchievementReviewService.NormalizeStatus(request.Status);
 
-        if (normalizedStatus is not ("VERIFIED" or "REJECTED"))
+        if (normalizedStatus == null)
         {
             return BadRequest(new { message = "Status must be VERIFIED or REJECTED." });
         }
@@ -255,8 +322,8 @@ public class PortfolioController : ControllerBase
         }
 
         var item = await _context.PortfolioItems
-            .Include(i => i.Achievement)
-            .Include(i => i.Athlete).ThenInclude(athlete => athlete.User)
+            .Include(i => i.Achievement).ThenInclude(achievement => achievement!.Athlete)
+            .Include(i => i.Athlete)
             .FirstOrDefaultAsync(i => i.PortfolioItemId == portfolioItemId);
 
         if (item == null)
@@ -264,58 +331,28 @@ public class PortfolioController : ControllerBase
             return NotFound(new { message = "Portfolio item not found." });
         }
 
-        if (!await CanAccessAthleteAsync(item.AthleteId))
+        if (!await _access.CanViewAthleteAsync(User, item.AthleteId, includeRegistrar: false))
         {
             return Forbid();
         }
 
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        var userId = AthleteAccessService.GetUserId(User);
+        if (userId == null)
         {
             return Unauthorized(new { message = "User ID was not found in the JWT." });
         }
 
-        item.VerificationStatus = normalizedStatus;
-        item.VerifiedBy = userId;
-        item.VerifiedAt = DateTime.UtcNow;
-        item.RejectionReason = normalizedStatus == "REJECTED" ? request.RejectionReason?.Trim() : null;
-
         if (item.Achievement != null)
         {
-            item.Achievement.VerificationStatus = normalizedStatus;
-            item.Achievement.VerifiedBy = userId;
-            item.Achievement.VerifiedAt = DateTime.UtcNow;
-
-            var evidenceDocuments = await _context.Documents
-                .Where(document => document.AchievementId == item.AchievementId)
-                .ToListAsync();
-
-            if (normalizedStatus == "REJECTED")
-            {
-                foreach (var document in evidenceDocuments)
-                {
-                    document.Status = "REJECTED";
-                }
-            }
-            else if (normalizedStatus == "VERIFIED")
-            {
-                foreach (var document in evidenceDocuments)
-                {
-                    document.Status = "APPROVED";
-                }
-            }
+            await _review.ApplyAsync(item.Achievement, normalizedStatus, request.RejectionReason, userId.Value, User.FindFirstValue(ClaimTypes.Role) ?? "");
         }
-
-        _context.Notifications.Add(new Notification
+        else
         {
-            UserId = item.Athlete.UserId,
-            Title = normalizedStatus == "VERIFIED" ? "Portfolio verified" : "Portfolio rejected",
-            Message = normalizedStatus == "VERIFIED"
-                ? $"Your portfolio submission \"{item.Title}\" was verified by your coach."
-                : $"Your portfolio submission \"{item.Title}\" was rejected.{(string.IsNullOrWhiteSpace(item.RejectionReason) ? string.Empty : $" Reason: {item.RejectionReason}")}",
-            NotificationType = normalizedStatus == "VERIFIED" ? "PORTFOLIO_VERIFIED" : "PORTFOLIO_REJECTED",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
+            item.VerificationStatus = normalizedStatus;
+            item.VerifiedBy = userId;
+            item.VerifiedAt = DateTime.UtcNow;
+            item.RejectionReason = normalizedStatus == "REJECTED" ? request.RejectionReason?.Trim() : null;
+        }
 
         await _context.SaveChangesAsync();
 
@@ -329,43 +366,70 @@ public class PortfolioController : ControllerBase
         });
     }
 
+    private async Task<List<object>> GetPortfolioItemsAsync(int athleteId)
+    {
+        var items = await _context.PortfolioItems
+            .AsNoTracking()
+            .Where(item => item.AthleteId == athleteId)
+            .OrderBy(item => item.DisplayOrder)
+            .ThenByDescending(item => item.CreatedAt)
+            .Select(item => new
+            {
+                item.PortfolioItemId,
+                item.AchievementId,
+                item.Title,
+                item.Description,
+                item.DisplayOrder,
+                item.IsVisible,
+                item.CreatedAt,
+                item.VerificationStatus,
+                RejectionReason = item.Achievement != null && item.Achievement.RejectionReason != null
+                    ? item.Achievement.RejectionReason
+                    : item.RejectionReason,
+                item.VerifiedAt,
+                AchievementDate = item.Achievement == null ? null : item.Achievement.AchievementDate,
+                Category = item.Achievement == null ? null : item.Achievement.Category,
+                AchievementStatus = item.Achievement == null ? null : item.Achievement.VerificationStatus,
+                Evidence = _context.Documents
+                    .Where(document => item.AchievementId != null && document.AchievementId == item.AchievementId)
+                    .Select(document => new { document.DocumentId, document.DocumentName, document.Status })
+                    .ToList()
+            })
+            .ToListAsync();
+
+        return items.Select(item => (object)new
+        {
+            item.PortfolioItemId,
+            item.AchievementId,
+            item.Title,
+            item.Description,
+            item.DisplayOrder,
+            item.IsVisible,
+            item.CreatedAt,
+            item.VerificationStatus,
+            item.RejectionReason,
+            item.VerifiedAt,
+            achievementDate = item.AchievementDate?.ToString("yyyy-MM-dd"),
+            item.Category,
+            item.AchievementStatus,
+            evidence = item.Evidence.Select(document => new
+            {
+                document.DocumentId,
+                document.DocumentName,
+                fileUrl = DocumentStorage.DownloadUrl(document.DocumentId),
+                document.Status
+            })
+        }).ToList();
+    }
+
     private async Task<AthleteProfile?> GetCurrentAthleteAsync()
     {
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-        {
-            return null;
-        }
-
-        return await _context.AthleteProfiles.FirstOrDefaultAsync(a => a.UserId == userId);
+        var userId = AthleteAccessService.GetUserId(User);
+        return userId == null ? null : await _context.AthleteProfiles.FirstOrDefaultAsync(a => a.UserId == userId);
     }
 
-    private Task<bool> AchievementBelongsToAthleteAsync(int? achievementId, int athleteId)
-    {
-        return achievementId == null
-            ? Task.FromResult(true)
-            : _context.Achievements.AnyAsync(
-                achievement => achievement.AchievementId == achievementId
-                    && achievement.AthleteId == athleteId);
-    }
-
-    private async Task<bool> CanAccessAthleteAsync(int athleteId)
-    {
-        if (User.IsInRole("DIRECTOR"))
-        {
-            return await _context.AthleteProfiles.AnyAsync(item => item.AthleteId == athleteId);
-        }
-
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-        {
-            return false;
-        }
-
-        var coach = await _context.CoachProfiles.FirstOrDefaultAsync(item => item.UserId == userId);
-        return coach != null && await _context.TeamMembers.AnyAsync(member =>
-            member.AthleteId == athleteId
-            && member.DateLeft == null
-            && member.Team.CoachId == coach.CoachId);
-    }
+    private Task<bool> AchievementBelongsToAthleteAsync(int achievementId, int athleteId) =>
+        _context.Achievements.AnyAsync(achievement => achievement.AchievementId == achievementId && achievement.AthleteId == athleteId);
 
     private Task<string?> GetAchievementStatusAsync(int? achievementId)
     {

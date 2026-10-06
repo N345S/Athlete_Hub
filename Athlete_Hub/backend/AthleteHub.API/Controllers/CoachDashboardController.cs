@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AthleteHub.API.Data;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,8 +14,13 @@ namespace AthleteHub.API.Controllers;
 public class CoachDashboardController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
+    private readonly AppClock _clock;
 
-    public CoachDashboardController(AthleteHubDbContext context) => _context = context;
+    public CoachDashboardController(AthleteHubDbContext context, AppClock clock)
+    {
+        _context = context;
+        _clock = clock;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetDashboard()
@@ -58,6 +64,19 @@ public class CoachDashboardController : ControllerBase
             .ThenByDescending(item => item.EligibilityId)
             .Select(item => new { item.AthleteId, item.AcademicStatus, item.EvaluatedAt, item.EligibilityId })
             .ToListAsync();
+        var latestEligibility = eligibilityRecords
+            .GroupBy(item => item.AthleteId)
+            .ToDictionary(group => group.Key, group => group.First().AcademicStatus);
+        var attendanceByAthlete = await _context.Attendances
+            .Where(item => athleteIds.Contains(item.AthleteId) && teamIds.Contains(item.TrainingSession.TeamId))
+            .GroupBy(item => item.AthleteId)
+            .Select(group => new
+            {
+                AthleteId = group.Key,
+                Total = group.Count(),
+                Attended = group.Count(item => item.AttendanceStatus == "PRESENT" || item.AttendanceStatus == "LATE")
+            })
+            .ToDictionaryAsync(item => item.AthleteId);
         var eligibility = eligibilityRecords
             .GroupBy(item => item.AthleteId)
             .Select(group => group.First())
@@ -65,7 +84,7 @@ public class CoachDashboardController : ControllerBase
             .Select(group => new { status = group.Key, count = group.Count() })
             .ToList();
         var upcomingSessions = await _context.TrainingSessions
-            .Where(item => teamIds.Contains(item.TeamId) && item.TrainingDate >= DateTime.UtcNow.Date)
+            .Where(item => teamIds.Contains(item.TeamId) && item.TrainingDate >= _clock.LocalToday)
             .OrderBy(item => item.TrainingDate)
             .Take(10)
             .Select(item => new { item.TrainingSessionId, item.TeamId, item.Title, item.TrainingDate, item.StartTime, item.EndTime, item.Location, item.ApprovalStatus })
@@ -116,7 +135,11 @@ public class CoachDashboardController : ControllerBase
                     member.AthleteId,
                     member.Athlete.User.FirstName,
                     member.Athlete.User.LastName,
-                    member.Athlete.StudentNumber
+                    member.Athlete.StudentNumber,
+                    member.Athlete.Course,
+                    member.Athlete.YearLevel,
+                    eligibilityStatus = latestEligibility.GetValueOrDefault(member.AthleteId),
+                    attendanceRate = AttendanceRate(attendanceByAthlete.GetValueOrDefault(member.AthleteId)?.Attended, attendanceByAthlete.GetValueOrDefault(member.AthleteId)?.Total)
                 })
             }),
             attendance,
@@ -135,4 +158,10 @@ public class CoachDashboardController : ControllerBase
             portfolioItems
         });
     }
+
+    /// <summary>
+    /// Percentage of recorded sessions attended (present or late), or null when nothing is recorded.
+    /// </summary>
+    internal static int? AttendanceRate(int? attended, int? total) =>
+        total is > 0 ? (int)Math.Round(100.0 * (attended ?? 0) / total.Value) : null;
 }

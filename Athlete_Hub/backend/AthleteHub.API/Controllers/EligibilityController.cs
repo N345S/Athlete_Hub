@@ -4,6 +4,7 @@ using System.Text.Json;
 using AthleteHub.API.Data;
 using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,11 +26,13 @@ public class EligibilityController : ControllerBase
     };
     private readonly AthleteHubDbContext _context;
     private readonly IWebHostEnvironment _environment;
+    private readonly AthleteAccessService _access;
 
-    public EligibilityController(AthleteHubDbContext context, IWebHostEnvironment environment)
+    public EligibilityController(AthleteHubDbContext context, IWebHostEnvironment environment, AthleteAccessService access)
     {
         _context = context;
         _environment = environment;
+        _access = access;
     }
 
     [HttpGet("athlete/{athleteId}")]
@@ -229,6 +232,8 @@ public class EligibilityController : ControllerBase
         if (!ValidStatuses.Contains(request.AcademicStatus.Trim().ToUpperInvariant())) return BadRequest(new { message = "Academic status must be ELIGIBLE, AT_RISK, INELIGIBLE, or PENDING." });
         if (!await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == request.AthleteId)) return NotFound(new { message = "Athlete profile not found." });
         if (!await _context.AcademicTerms.AnyAsync(term => term.TermId == request.TermId)) return NotFound(new { message = "Academic term not found." });
+        if (await _context.EligibilityRecords.AnyAsync(item => item.AthleteId == request.AthleteId && item.TermId == request.TermId))
+            return Conflict(new { message = "An eligibility record already exists for this athlete and term." });
         var record = new EligibilityRecord { AthleteId = request.AthleteId, TermId = request.TermId, AcademicStatus = request.AcademicStatus.Trim().ToUpperInvariant(), Remarks = request.Remarks, EvaluatedAt = DateTime.UtcNow };
         _context.EligibilityRecords.Add(record);
         await _context.SaveChangesAsync();
@@ -347,14 +352,7 @@ public class EligibilityController : ControllerBase
     private int? GetCurrentUserId() =>
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
 
-    private async Task<bool> CanViewAthleteAsync(int athleteId)
-    {
-        var role = User.FindFirstValue(ClaimTypes.Role);
-        if (role is "ADMIN" or "DIRECTOR" or "REGISTRAR") return await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == athleteId);
-        if (role == "ATHLETE" && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == athleteId && athlete.UserId == userId);
-        if (role == "COACH" && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var coachUserId)) return await _context.TeamMembers.AnyAsync(member => member.AthleteId == athleteId && member.Team.Coach != null && member.Team.Coach.UserId == coachUserId && member.DateLeft == null);
-        return false;
-    }
+    private Task<bool> CanViewAthleteAsync(int athleteId) => _access.CanViewAthleteAsync(User, athleteId);
 }
 
 public sealed class EligibilityReviewRequest

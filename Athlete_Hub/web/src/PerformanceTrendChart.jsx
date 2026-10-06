@@ -15,6 +15,20 @@ import './PerformanceTrendChart.css';
 
 ChartJS.register(CategoryScale, Filler, Legend, LineElement, LinearScale, PointElement, Title, Tooltip);
 
+// Distinct, readable series colours; the API's colour is kept unless it is its neutral grey fallback.
+const SERIES_COLORS = ['#b3172b', '#1d4ed8', '#0f766e', '#c2410c', '#6d28d9', '#a16207', '#be185d']
+const API_FALLBACK_COLOR = 'rgb(201, 203, 207)'
+
+function withSeriesStyle(data) {
+  return {
+    ...data,
+    datasets: (data.datasets || []).map((dataset, index) => {
+      const color = dataset.borderColor && dataset.borderColor !== API_FALLBACK_COLOR ? dataset.borderColor : SERIES_COLORS[index % SERIES_COLORS.length]
+      return { ...dataset, borderColor: color, backgroundColor: color, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, spanGaps: true }
+    }),
+  }
+}
+
 function PerformanceTrendChart({ data, title = 'Performance Progress' }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
@@ -24,8 +38,8 @@ function PerformanceTrendChart({ data, title = 'Performance Progress' }) {
     maintainAspectRatio: false,
     animation: false,
     plugins: {
-      title: { 
-        display: true, 
+      title: {
+        display: Boolean(title),
         text: title,
         font: { size: 16 }
       },
@@ -76,7 +90,7 @@ function PerformanceTrendChart({ data, title = 'Performance Progress' }) {
   }, []);
 
   if (!data || !data.labels || data.labels.length === 0) {
-    return <div className="performance-trend-chart empty">No performance data available for the selected time range.</div>;
+    return <p className="muted">No performance data available for the selected time range.</p>;
   }
 
   return (
@@ -84,7 +98,7 @@ function PerformanceTrendChart({ data, title = 'Performance Progress' }) {
       <div className="chart-container" ref={canvasRef}>
         <Line
           key={dataKey}
-          data={data}
+          data={withSeriesStyle(data)}
           options={chartOptions}
           ref={(chart) => { chartRef.current = chart; }}
         />

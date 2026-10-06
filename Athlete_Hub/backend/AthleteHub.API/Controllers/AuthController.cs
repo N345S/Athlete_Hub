@@ -6,6 +6,7 @@ using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -18,6 +19,9 @@ namespace AthleteHub.API.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    // Verified when the email is unknown so failed sign-ins take the same time either way.
+    private static readonly string UnknownUserPasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString());
+
     private readonly AthleteHubDbContext _context;
     private readonly IConfiguration _configuration;
 
@@ -44,8 +48,12 @@ public class AuthController : ControllerBase
     /// <response code="400">University ID or email already exists, or ATHLETE role not found.</response>
     /// <response code="500">Internal server error.</response>
     [HttpPost("register")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
+        request.Email = request.Email.Trim().ToLowerInvariant();
+        request.UniversityId = request.UniversityId.Trim();
+
         // Check if University ID already exists
         var existingUniversityId = await _context.Users
             .AnyAsync(u => u.UniversityId == request.UniversityId);
@@ -72,7 +80,7 @@ public class AuthController : ControllerBase
 
         // Find ATHLETE role
         var athleteRole = await _context.Roles
-            .FirstOrDefaultAsync(r => r.RoleId == 1);
+            .FirstOrDefaultAsync(r => r.RoleName == "ATHLETE");
 
         if (athleteRole == null)
         {
@@ -96,11 +104,11 @@ public class AuthController : ControllerBase
                 request.Password
             ),
 
-            FirstName = request.FirstName,
+            FirstName = request.FirstName.Trim(),
 
             MiddleName = request.MiddleName,
 
-            LastName = request.LastName,
+            LastName = request.LastName.Trim(),
 
             Phone = request.Phone,
 
@@ -141,6 +149,7 @@ public class AuthController : ControllerBase
     /// <response code="401">Invalid email, password, or inactive account.</response>
     /// <response code="500">JWT key not configured.</response>
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {
         // Find user by email
@@ -149,8 +158,13 @@ public class AuthController : ControllerBase
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
 
-        // User does not exist
-        if (user == null)
+        // Always verify a hash so unknown emails and wrong passwords are indistinguishable.
+        var passwordValid = BCrypt.Net.BCrypt.Verify(
+            request.Password,
+            user?.PasswordHash ?? UnknownUserPasswordHash
+        );
+
+        if (user == null || !passwordValid)
         {
             return Unauthorized(new
             {
@@ -158,7 +172,7 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Check account status
+        // Account status is only revealed once the password has been proven.
         if (user.AccountStatus != "ACTIVE")
         {
             return Unauthorized(new
@@ -170,20 +184,6 @@ public class AuthController : ControllerBase
         if (user.Role == null)
         {
             return StatusCode(500, new { message = "This account is missing a valid role assignment." });
-        }
-
-        // Verify password
-        bool passwordValid = BCrypt.Net.BCrypt.Verify(
-            request.Password,
-            user.PasswordHash
-        );
-
-        if (!passwordValid)
-        {
-            return Unauthorized(new
-            {
-                message = "Invalid email or password."
-            });
         }
 
 

@@ -153,14 +153,29 @@ public async Task<IActionResult> UpdateMyProfile(
 
 
     // Update athlete profile
-    athlete.Course = request.Course;
+    if (!string.IsNullOrWhiteSpace(request.ProfilePhotoUrl)
+        && !(Uri.TryCreate(request.ProfilePhotoUrl.Trim(), UriKind.Absolute, out var photoUri)
+            && (photoUri.Scheme == Uri.UriSchemeHttps || photoUri.Scheme == Uri.UriSchemeHttp)))
+    {
+        return BadRequest(new { message = "Profile photo must be an http(s) URL." });
+    }
+
+    if (request.BirthDate.HasValue && request.BirthDate.Value.Date >= DateTime.UtcNow.Date)
+    {
+        return BadRequest(new { message = "Birth date must be in the past." });
+    }
+
+    athlete.Course = string.IsNullOrWhiteSpace(request.Course) ? null : request.Course.Trim();
     athlete.YearLevel = request.YearLevel;
-    athlete.BirthDate = request.BirthDate;
-    athlete.ProfilePhotoUrl = request.ProfilePhotoUrl;
+    athlete.BirthDate = request.BirthDate?.Date;
+    if (request.ProfilePhotoUrl != null)
+    {
+        athlete.ProfilePhotoUrl = string.IsNullOrWhiteSpace(request.ProfilePhotoUrl) ? null : request.ProfilePhotoUrl.Trim();
+    }
 
 
     // Update phone number in Users table
-    athlete.User.Phone = request.Phone;
+    athlete.User.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
 
     // Save changes
     await _context.SaveChangesAsync();

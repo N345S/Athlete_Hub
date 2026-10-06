@@ -5,6 +5,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using AthleteHub.API.Services;
 
 namespace AthleteHub.API.Controllers;
 
@@ -14,10 +15,12 @@ namespace AthleteHub.API.Controllers;
 public class AcademicRecordsController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
+    private readonly AthleteAccessService _access;
 
-    public AcademicRecordsController(AthleteHubDbContext context)
+    public AcademicRecordsController(AthleteHubDbContext context, AthleteAccessService access)
     {
         _context = context;
+        _access = access;
     }
 
     // ==========================================
@@ -61,19 +64,8 @@ public class AcademicRecordsController : ControllerBase
             })
             .ToListAsync();
 
-        if (records.Count == 0)
-        {
-            return NotFound(new
-            {
-                message = "No academic records found for this athlete.",
-                athleteId = athleteId
-            });
-        }
-
         return Ok(new
         {
-            endpoint = $"GET /api/AcademicRecords/athlete/{athleteId}",
-            access = "GRANTED",
             athleteId = athleteId,
             recordCount = records.Count,
             records = records.Select(record => new
@@ -228,31 +220,5 @@ public class AcademicRecordsController : ControllerBase
         });
     }
 
-    private async Task<bool> CanViewAthleteAsync(int athleteId)
-    {
-        var role = User.FindFirstValue(ClaimTypes.Role);
-        if (role is "ADMIN" or "DIRECTOR" or "REGISTRAR")
-        {
-            return await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == athleteId);
-        }
-
-        if (role == "ATHLETE")
-        {
-            return int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
-                && await _context.AthleteProfiles.AnyAsync(athlete =>
-                    athlete.AthleteId == athleteId && athlete.UserId == userId);
-        }
-
-        if (role == "COACH"
-            && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var coachUserId))
-        {
-            return await _context.TeamMembers
-                .AnyAsync(member => member.AthleteId == athleteId
-                    && member.Team.Coach != null
-                    && member.Team.Coach.UserId == coachUserId
-                    && member.DateLeft == null);
-        }
-
-        return false;
-    }
+    private Task<bool> CanViewAthleteAsync(int athleteId) => _access.CanViewAthleteAsync(User, athleteId);
 }

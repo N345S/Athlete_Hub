@@ -1,1 +1,33 @@
 # ==========================================
+# .NET build output
+# ==========================================
+bin/
+obj/
+*.user
+.vs/
+
+# Local validation builds
+build-validation*/
+
+# ==========================================
+# Uploaded files (contain student personal data)
+# ==========================================
+**/wwwroot/uploads/
+**/private-uploads/
+
+# ==========================================
+# Logs and local secrets
+# ==========================================
+*.log
+.env
+.env.local
+
+# ==========================================
+# Node / frontend tooling
+# ==========================================
+node_modules/
+dist/
+.expo/
+
+# Generated knowledge graph output
+graphify-out/

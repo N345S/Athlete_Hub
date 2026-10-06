@@ -50,5 +50,23 @@ public class NotificationsController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("me/unread-count")]
+    public async Task<IActionResult> GetUnreadCount()
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        var count = await _context.Notifications.CountAsync(item => item.UserId == userId && item.IsRead != true);
+        return Ok(new { count });
+    }
+
+    [HttpPut("me/read-all")]
+    public async Task<IActionResult> MarkAllAsRead()
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        await _context.Notifications
+            .Where(item => item.UserId == userId && item.IsRead != true)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.IsRead, true));
+        return NoContent();
+    }
+
     private bool TryGetUserId(out int userId) => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 }

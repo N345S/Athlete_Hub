@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AthleteHub.API.Data;
 using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,20 @@ namespace AthleteHub.API.Controllers;
 public class AchievementsController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
+    private readonly AthleteAccessService _access;
+    private readonly AchievementReviewService _review;
+    private readonly DocumentStorage _storage;
 
-    public AchievementsController(AthleteHubDbContext context)
+    public AchievementsController(
+        AthleteHubDbContext context,
+        AthleteAccessService access,
+        AchievementReviewService review,
+        DocumentStorage storage)
     {
         _context = context;
+        _access = access;
+        _review = review;
+        _storage = storage;
     }
 
     [Authorize(Roles = "ATHLETE")]
@@ -66,9 +77,9 @@ public class AchievementsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateAchievement(CreateAchievementRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Title))
+        if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 200)
         {
-            return BadRequest(new { message = "Title is required." });
+            return BadRequest(new { message = "A title of up to 200 characters is required." });
         }
 
         var athlete = await GetCurrentAthleteAsync();
@@ -127,8 +138,12 @@ public class AchievementsController : ControllerBase
             return Conflict(new { message = "Verified achievements require staff approval before removal." });
         }
 
+        var evidence = await _context.Documents.Where(document => document.AchievementId == achievementId).ToListAsync();
+        _context.Documents.RemoveRange(evidence);
+        _context.PortfolioItems.RemoveRange(_context.PortfolioItems.Where(item => item.AchievementId == achievementId));
         _context.Achievements.Remove(achievement);
         await _context.SaveChangesAsync();
+        foreach (var document in evidence) _storage.Delete(document.FileUrl);
         return NoContent();
     }
 
@@ -138,9 +153,9 @@ public class AchievementsController : ControllerBase
         int achievementId,
         [FromBody] AchievementVerificationRequest request)
     {
-        var normalizedStatus = request.Status?.Trim().ToUpperInvariant() ?? "VERIFIED";
+        var normalizedStatus = AchievementReviewService.NormalizeStatus(request.Status);
 
-        if (normalizedStatus is not ("VERIFIED" or "REJECTED"))
+        if (normalizedStatus == null)
         {
             return BadRequest(new { message = "Status must be VERIFIED or REJECTED." });
         }
@@ -151,7 +166,7 @@ public class AchievementsController : ControllerBase
         }
 
         var achievement = await _context.Achievements
-            .Include(a => a.Athlete).ThenInclude(athlete => athlete.User)
+            .Include(a => a.Athlete)
             .FirstOrDefaultAsync(a => a.AchievementId == achievementId);
 
         if (achievement == null)
@@ -159,78 +174,18 @@ public class AchievementsController : ControllerBase
             return NotFound(new { message = "Achievement not found." });
         }
 
-        if (!await CanReviewAchievementAsync(achievement.AthleteId))
+        if (!await _access.CanViewAthleteAsync(User, achievement.AthleteId, includeRegistrar: false))
         {
             return Forbid();
         }
 
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        var userId = AthleteAccessService.GetUserId(User);
+        if (userId == null)
         {
             return Unauthorized(new { message = "User ID was not found in the JWT." });
         }
 
-        achievement.VerificationStatus = normalizedStatus;
-        achievement.VerifiedBy = userId;
-        achievement.VerifiedAt = DateTime.UtcNow;
-
-        var evidenceDocuments = await _context.Documents
-            .Where(document => document.AchievementId == achievementId)
-            .ToListAsync();
-
-        if (normalizedStatus == "REJECTED")
-        {
-            var portfolioItems = await _context.PortfolioItems
-                .Where(item => item.AchievementId == achievementId)
-                .ToListAsync();
-
-            foreach (var item in portfolioItems)
-            {
-                item.VerificationStatus = "REJECTED";
-                item.RejectionReason = request.RejectionReason?.Trim();
-                item.VerifiedBy = userId;
-                item.VerifiedAt = DateTime.UtcNow;
-            }
-
-            achievement.RejectionReason = request.RejectionReason?.Trim();
-
-            foreach (var document in evidenceDocuments)
-            {
-                document.Status = "REJECTED";
-            }
-        }
-        else if (normalizedStatus == "VERIFIED")
-        {
-            var portfolioItems = await _context.PortfolioItems
-                .Where(item => item.AchievementId == achievementId)
-                .ToListAsync();
-
-            foreach (var item in portfolioItems)
-            {
-                item.VerificationStatus = "VERIFIED";
-                item.VerifiedBy = userId;
-                item.VerifiedAt = DateTime.UtcNow;
-            }
-
-            achievement.RejectionReason = null;
-
-            foreach (var document in evidenceDocuments)
-            {
-                document.Status = "APPROVED";
-            }
-        }
-
-        _context.Notifications.Add(new Notification
-        {
-            UserId = achievement.Athlete.UserId,
-            Title = normalizedStatus == "VERIFIED" ? "Portfolio verified" : "Portfolio rejected",
-            Message = normalizedStatus == "VERIFIED"
-                ? $"Your portfolio submission \"{achievement.Title}\" was verified by your coach."
-                : $"Your portfolio submission \"{achievement.Title}\" was rejected.{(string.IsNullOrWhiteSpace(achievement.RejectionReason) ? string.Empty : $" Reason: {achievement.RejectionReason}")}",
-            NotificationType = normalizedStatus == "VERIFIED" ? "PORTFOLIO_VERIFIED" : "PORTFOLIO_REJECTED",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
-
+        await _review.ApplyAsync(achievement, normalizedStatus, request.RejectionReason, userId.Value, User.FindFirstValue(ClaimTypes.Role) ?? "");
         await _context.SaveChangesAsync();
 
         return Ok(new
@@ -240,25 +195,6 @@ public class AchievementsController : ControllerBase
             achievement.VerifiedBy,
             achievement.VerifiedAt
         });
-    }
-
-    private async Task<bool> CanReviewAchievementAsync(int athleteId)
-    {
-        if (User.IsInRole("ADMIN") || User.IsInRole("DIRECTOR"))
-        {
-            return true;
-        }
-
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-        {
-            return false;
-        }
-
-        var coach = await _context.CoachProfiles.FirstOrDefaultAsync(item => item.UserId == userId);
-        return coach != null && await _context.TeamMembers.AnyAsync(member =>
-            member.AthleteId == athleteId
-            && member.DateLeft == null
-            && member.Team.CoachId == coach.CoachId);
     }
 
     private async Task<AthleteProfile?> GetCurrentAthleteAsync()
@@ -276,8 +212,9 @@ public class AchievementsController : ControllerBase
             return athlete;
         }
 
+        // Older athlete accounts may predate automatic profile creation.
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.UserId == userId && u.RoleId == 1);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.Role.RoleName == "ATHLETE");
 
         if (user == null)
         {

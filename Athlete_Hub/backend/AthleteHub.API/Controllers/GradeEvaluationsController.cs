@@ -94,6 +94,10 @@ public class GradeEvaluationsController : ControllerBase
         _context.AcademicImportBatches.Add(batch);
         await _context.SaveChangesAsync();
 
+        // A resubmission for the same term replaces the earlier grades instead of duplicating them.
+        _context.AcademicRecords.RemoveRange(_context.AcademicRecords.Where(record =>
+            record.AthleteId == request.AthleteId && record.TermId == term.TermId));
+
         var records = request.Records.Select(record => new AcademicRecord
         {
             AthleteId = request.AthleteId,

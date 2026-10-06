@@ -1,7 +1,9 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 using AthleteHub.API.Data;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -28,6 +30,20 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
+
+builder.Services.AddScoped<AthleteAccessService>();
+builder.Services.AddScoped<AchievementReviewService>();
+builder.Services.AddSingleton<DocumentStorage>();
+builder.Services.AddSingleton<AppClock>();
+
+// Limit repeated sign-in attempts per client to slow down password guessing.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+});
 
 builder.Services.AddCors(options =>
 {
@@ -121,6 +137,7 @@ app.Use(async (context, next) =>
     }
     catch (Exception ex)
     {
+        app.Logger.LogError(ex, "Unhandled exception for {Method} {Path}", context.Request.Method, context.Request.Path);
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
         context.Response.ContentType = "application/json";
         
@@ -157,8 +174,8 @@ app.UseHttpsRedirection();
 
 app.UseCors("FrontendPolicy");
 
-// Serve uploaded document files
-app.UseStaticFiles();
+// Uploaded files are never served statically; they go through authorized API endpoints.
+app.UseRateLimiter();
 
 // JWT authentication
 app.UseAuthentication();
@@ -175,6 +192,8 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AthleteHubDbContext>();
     db.Database.Migrate();
 }
+
+app.Services.GetRequiredService<DocumentStorage>().MoveLegacyFilesToPrivateStorage();
 
 // ==========================================
 // START APPLICATION
