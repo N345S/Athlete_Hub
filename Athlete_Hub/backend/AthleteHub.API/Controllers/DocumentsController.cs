@@ -63,7 +63,7 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets all documents for a specific athlete (coach/director/admin only).
+    /// Gets all documents for a specific athlete (their coach or the director).
     /// </summary>
     /// <param name="athleteId">The athlete ID to retrieve documents for.</param>
     /// <returns>List of documents for the specified athlete.</returns>
@@ -71,7 +71,7 @@ public class DocumentsController : ControllerBase
     /// <response code="401">Invalid or missing JWT token.</response>
     /// <response code="403">User not authorized to view this athlete's documents.</response>
     [HttpGet("athlete/{athleteId:int}")]
-    [Authorize(Roles = "COACH,DIRECTOR,ADMIN")]
+    [Authorize(Roles = "COACH,DIRECTOR")]
     public async Task<IActionResult> GetAthleteDocuments(int athleteId)
     {
         if (!await _access.CanViewAthleteAsync(User, athleteId, includeRegistrar: false))

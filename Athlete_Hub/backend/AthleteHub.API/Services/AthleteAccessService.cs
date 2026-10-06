@@ -17,12 +17,13 @@ public class AthleteAccessService
         int.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
 
     /// <summary>
-    /// Admins and directors see every athlete, registrars too when <paramref name="includeRegistrar"/> is set,
-    /// athletes see only themselves, and coaches see active members of the teams they coach.
+    /// The director sees every athlete, registrars only when <paramref name="includeRegistrar"/> is set
+    /// (eligibility), athletes see only themselves, and coaches see active members of the teams they coach.
+    /// Administrators manage accounts only and never see athlete records.
     /// </summary>
-    public async Task<bool> CanViewAthleteAsync(ClaimsPrincipal user, int athleteId, bool includeRegistrar = true)
+    public async Task<bool> CanViewAthleteAsync(ClaimsPrincipal user, int athleteId, bool includeRegistrar = false)
     {
-        if (user.IsInRole("ADMIN") || user.IsInRole("DIRECTOR") || (includeRegistrar && user.IsInRole("REGISTRAR")))
+        if (user.IsInRole("DIRECTOR") || (includeRegistrar && user.IsInRole("REGISTRAR")))
         {
             return await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == athleteId);
         }

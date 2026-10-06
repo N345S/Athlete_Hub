@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday, statusLabel } from '../../lib/format.js'
+import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday, statusLabel, timeAgo } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
@@ -63,6 +63,7 @@ function StudentDashboard({ session, profile, onNavigate }) {
   const upcoming = useApiData(`/api/Schedules/athlete?from=${localDateISO()}`, session.token, { initialData: [] })
   const portfolio = useApiData('/api/Portfolio/me', session.token, { initialData: [] })
   const documents = useApiData('/api/Documents/me', session.token, { initialData: [] })
+  const updates = useApiData('/api/Notifications/me', session.token, { initialData: [] })
   const nextEvents = [...(upcoming.data || [])]
     .filter((item) => item.startDate >= localDateISO())
     .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`))
@@ -83,14 +84,15 @@ function StudentDashboard({ session, profile, onNavigate }) {
       )}
       <div className="stat-grid">
         <StatCard
+          icon="check"
           label="Academic eligibility"
           value={latestDecision ? statusLabel(latestDecision.academicStatus) : pendingRequest ? 'Under review' : 'Not evaluated'}
           hint={latestDecision ? `Registrar decision · ${termOf(latestDecision)}` : pendingRequest ? `Requested for ${termOf(pendingRequest)}` : 'No Grade Evaluation requested yet'}
           tone={latestDecision?.academicStatus === 'ELIGIBLE' ? 'success' : latestDecision?.academicStatus === 'INELIGIBLE' ? 'danger' : 'info'}
         />
-        <StatCard label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" />
-        <StatCard label="Verified achievements" value={verified} hint={`${(portfolio.data || []).length} submitted`} tone="warning" />
-        <StatCard label="Documents in review" value={pendingDocuments} hint="Awaiting staff approval" tone="info" />
+        <StatCard icon="calendar" label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" />
+        <StatCard icon="trophy" label="Verified achievements" value={verified} hint={`${(portfolio.data || []).length} submitted`} tone="warning" />
+        <StatCard icon="file" label="Documents in review" value={pendingDocuments} hint="Awaiting staff approval" tone="info" />
       </div>
       <div className="dashboard-grid">
         <Card title="Coming up" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('schedule')}>Full schedule →</button>}>
@@ -107,7 +109,22 @@ function StudentDashboard({ session, profile, onNavigate }) {
                 </li>
               ))}
             </ul>
-          ) : <EmptyState title="Nothing scheduled" message="Approved training and events will appear here." />}
+          ) : <EmptyState icon="calendar" title="Nothing scheduled" message="Approved training and events will appear here." />}
+        </Card>
+        <Card title="Latest updates" subtitle="Portfolio reviews, new events, and approved training" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('notifications')}>All notifications →</button>}>
+          {(updates.data || []).length ? (
+            <ul className="row-list">
+              {updates.data.slice(0, 5).map((item) => (
+                <li className="row" key={item.notificationId}>
+                  <div className="row-main">
+                    <strong className={item.isRead ? '' : 'text-brand'}>{item.title}</strong>
+                    <span>{item.message}</span>
+                    <small>{timeAgo(item.createdAt)}</small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : <EmptyState icon="bell" title="No updates yet" message="You'll be notified when your portfolio is reviewed or new events are scheduled." />}
         </Card>
         <Card title="Academic eligibility" subtitle="Registrar decisions from your official Grade Evaluation">
           <Alert>{evaluations.error}</Alert>
@@ -125,7 +142,7 @@ function StudentDashboard({ session, profile, onNavigate }) {
                 </li>
               ))}
             </ul>
-          ) : <EmptyState title="No decision yet" message="Your coach requests a Grade Evaluation from the Registrar each term." />}
+          ) : <EmptyState icon="check" title="No decision yet" message="Your coach requests a Grade Evaluation from the Registrar each term." />}
         </Card>
       </div>
     </>
@@ -439,12 +456,12 @@ export default function StudentPortal({ session, onLogout }) {
       roleLabel="Student-athlete"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard' },
-        { key: 'schedule', label: 'Schedule' },
-        { key: 'documents', label: 'Documents' },
-        { key: 'portfolio', label: 'Portfolio' },
-        { key: 'profile', label: 'Profile' },
-        { key: 'notifications', label: 'Notifications', badge: unread },
+        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+        { key: 'schedule', label: 'Schedule', icon: 'calendar' },
+        { key: 'documents', label: 'Documents', icon: 'file' },
+        { key: 'portfolio', label: 'Portfolio', icon: 'trophy' },
+        { key: 'profile', label: 'Profile', icon: 'user' },
+        { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}
       pageTitle={TITLES[view]}

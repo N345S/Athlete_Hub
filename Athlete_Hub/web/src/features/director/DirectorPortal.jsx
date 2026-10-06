@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { accountLabel, formatDate, fullName, isActiveAccount, longToday, matchesSearch, mergeAthleteTeams } from '../../lib/format.js'
+import { accountLabel, average, eventTypeLabel, formatDate, formatTimeRange, fullName, isActiveAccount, localDateISO, longToday, matchesSearch, mergeAthleteTeams } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
-import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, Modal, PageHeader, SearchInput, StatCard, StatusBadge } from '../../components/ui.jsx'
+import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, Modal, PageHeader, ProgressBar, SearchInput, StatCard, StatusBadge } from '../../components/ui.jsx'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
@@ -61,13 +61,15 @@ function AssignAthleteModal({ coach, session, onClose, onAssigned }) {
   )
 }
 
-function CoachProfile({ coach, session, onBack }) {
+/** One coach's teams and athletes, with each athlete's attendance and eligibility. */
+function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
   const profile = useApiData(`/api/Director/coaches/${coach.coachId}`, session.token)
   const [showAssign, setShowAssign] = useState(false)
   const [unassigning, setUnassigning] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const data = profile.data
+  const roster = (data?.assignedAthletes || []).map((athlete) => ({ ...athlete, ...athleteIndex.get(athlete.athleteId), teamName: athlete.teamName }))
 
   const unassign = async () => {
     setBusy(true)
@@ -93,6 +95,7 @@ function CoachProfile({ coach, session, onBack }) {
           <h1>{fullName(coach)}</h1>
           <p>{coach.specialization || 'Coach'} · {coach.email || 'Email unavailable'}</p>
         </div>
+        {!isActiveAccount(coach) && <StatusBadge status={coach.accountStatus} label={accountLabel(coach)} />}
         <button className="btn btn-primary hero-action" type="button" onClick={() => setShowAssign(true)}>+ Assign athlete</button>
       </section>
       <Alert>{profile.error || error}</Alert>
@@ -101,7 +104,7 @@ function CoachProfile({ coach, session, onBack }) {
           <div><dt>Specialization</dt><dd>{data?.specialization || '—'}</dd></div>
           <div><dt>Phone</dt><dd>{data?.phone || '—'}</dd></div>
           <div><dt>Assigned athletes</dt><dd>{data?.totalAssignedAthletes ?? 0}</dd></div>
-          <div><dt>Teams</dt><dd>{data?.teams?.length || 0}</dd></div>
+          <div><dt>Avg. attendance</dt><dd><ProgressBar value={average(roster.map((athlete) => athlete.attendanceRate))} /></dd></div>
         </dl>
         <div className="stack">
           <Card title="Teams">
@@ -114,23 +117,31 @@ function CoachProfile({ coach, session, onBack }) {
                   </li>
                 ))}
               </ul>
-            ) : <EmptyState title="No teams" message="This coach is not assigned to a team, so athletes cannot be assigned yet." />}
+            ) : <EmptyState icon="team" title="No teams" message="This coach is not assigned to a team, so athletes cannot be assigned yet." />}
           </Card>
-          <Card title="Assigned athletes">
-            {data?.assignedAthletes?.length ? (
-              <ul className="row-list">
-                {data.assignedAthletes.map((athlete) => (
-                  <li className="row" key={athlete.athleteId}>
-                    <div className="row-main">
-                      <strong>{fullName(athlete)}</strong>
-                      <span>{athlete.studentNumber || 'Student ID pending'} · {athlete.teamName}</span>
-                      <small>{athlete.course || 'Program not set'}{athlete.yearLevel ? ` · Year ${athlete.yearLevel}` : ''}</small>
-                    </div>
-                    <button className="btn btn-ghost btn-sm" type="button" onClick={() => setUnassigning(athlete)}>Unassign</button>
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState title="No athletes assigned" />}
+          <Card title="Assigned athletes" subtitle="Attendance and latest Registrar decision">
+            {roster.length ? (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead><tr><th>Athlete</th><th>Team</th><th>Attendance</th><th>Eligibility</th><th><span className="visually-hidden">Actions</span></th></tr></thead>
+                  <tbody>
+                    {roster.map((athlete) => (
+                      <tr key={athlete.athleteId}>
+                        <td>
+                          <button className="link-button" type="button" onClick={() => onOpenAthlete(athlete.athleteId)}>{fullName(athlete)}</button>
+                          <br /><small className="muted">{athlete.studentNumber}</small>
+                          {!isActiveAccount(athlete) && <> <StatusBadge status={athlete.accountStatus} /></>}
+                        </td>
+                        <td>{athlete.teamName}</td>
+                        <td><ProgressBar value={athlete.attendanceRate} /></td>
+                        <td>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} label={athlete.eligibilityStatus === 'PENDING' ? 'Awaiting decision' : undefined} /> : <span className="muted">Not evaluated</span>}</td>
+                        <td className="table-action"><button className="btn btn-ghost btn-sm" type="button" onClick={() => setUnassigning(athlete)}>Unassign</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <EmptyState icon="users" title="No athletes assigned" />}
           </Card>
         </div>
       </>}
@@ -149,35 +160,52 @@ function CoachProfile({ coach, session, onBack }) {
   )
 }
 
-function CoachesPage({ coaches, loading, onOpen }) {
+/** Roll-up of every coach: roster size, attendance, eligibility issues, and pending requests. */
+function coachSummaries(coaches, athleteRows, pendingSessions) {
+  return coaches.map((coach) => {
+    const teamNames = new Set((coach.teams || []).map((team) => team.teamName))
+    const roster = athleteRows.filter((athlete) => (athlete.teams || []).some((team) => teamNames.has(team.teamName)) && isActiveAccount(athlete))
+    return {
+      coach,
+      athletes: roster.length,
+      attendance: average(roster.map((athlete) => athlete.attendanceRate)),
+      ineligible: roster.filter((athlete) => athlete.eligibilityStatus === 'INELIGIBLE').length,
+      notEvaluated: roster.filter((athlete) => !athlete.eligibilityStatus).length,
+      pending: pendingSessions.filter((session) => session.coachName === fullName(coach)).length,
+    }
+  })
+}
+
+function CoachesPage({ summaries, loading, onOpen }) {
   const [search, setSearch] = useState('')
-  const filtered = coaches.filter((coach) => matchesSearch(search, coach.firstName, coach.lastName, coach.email, coach.specialization))
+  const filtered = summaries.filter(({ coach }) => matchesSearch(search, coach.firstName, coach.lastName, coach.email, coach.specialization))
   return (
     <>
-      <PageHeader title="Coaches" subtitle="Coach accounts and the athletes assigned to them" actions={<span className="badge badge-neutral">{coaches.length} total</span>} />
+      <PageHeader title="Coaches" subtitle="Coach accounts, their teams, and how their athletes are doing" actions={<span className="badge badge-neutral">{summaries.length} total</span>} />
       <div className="toolbar"><SearchInput value={search} onChange={setSearch} placeholder="Search coaches…" label="Search coaches" /></div>
-      {loading && !coaches.length ? <Loading label="Loading coaches…" /> : filtered.length ? (
+      {loading && !summaries.length ? <Loading label="Loading coaches…" /> : filtered.length ? (
         <div className="card-grid">
-          {filtered.map((coach) => (
+          {filtered.map(({ coach, athletes, attendance, ineligible }) => (
             <article className="person-card" key={coach.coachId}>
               <div className="person-card-top">
                 <Avatar firstName={coach.firstName} lastName={coach.lastName} size="lg" />
                 <div>
                   <strong>{fullName(coach)}</strong>
                   <small>{coach.email || 'Email unavailable'}</small>
-                  <span className="muted">{coach.specialization || 'Coach'}</span>
+                  <span className="muted">{coach.teams?.[0]?.teamName || coach.specialization || 'No team'}</span>
                   {!isActiveAccount(coach) && <StatusBadge status={coach.accountStatus} label={accountLabel(coach)} />}
                 </div>
               </div>
               <dl className="person-card-stats">
-                <div><dt>Athletes</dt><dd>{coach.assignedAthletesCount || 0}</dd></div>
-                <div><dt>Teams</dt><dd>{coach.teams?.length || 0}</dd></div>
+                <div><dt>Athletes</dt><dd>{athletes}</dd></div>
+                <div><dt>Attendance</dt><dd>{attendance == null ? '—' : `${attendance}%`}</dd></div>
+                <div><dt>Ineligible</dt><dd className={ineligible ? 'text-danger' : ''}>{ineligible}</dd></div>
               </dl>
-              <button className="btn btn-secondary btn-block" type="button" onClick={() => onOpen(coach)}>View profile</button>
+              <button className="btn btn-secondary btn-block" type="button" onClick={() => onOpen(coach)}>View coach</button>
             </article>
           ))}
         </div>
-      ) : <EmptyState title="No coaches found" />}
+      ) : <EmptyState icon="coach" title="No coaches found" />}
     </>
   )
 }
@@ -187,19 +215,29 @@ export default function DirectorPortal({ session, onLogout }) {
   const [profileAthlete, setProfileAthlete] = useState(null)
   const [profileCoach, setProfileCoach] = useState(null)
   const [showEventModal, setShowEventModal] = useState(false)
+  const [deleting, setDeleting] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState('')
   const [unread, refreshUnread] = useUnreadNotifications(session.token)
   const dashboard = useApiData('/api/DirectorDashboard', session.token)
   const coaches = useApiData('/api/Director/coaches', session.token)
   const pending = useApiData('/api/Training/pending', session.token, { initialData: [] })
-  const schedule = useApiData(view === 'schedule' ? '/api/Schedules/staff' : null, session.token, { initialData: [] })
+  const schedule = useApiData('/api/Schedules/staff', session.token, { initialData: [] })
 
-  const athletes = mergeAthleteTeams((dashboard.data?.athletes || []).flatMap((athlete) => athlete.teams?.length
+  const athleteRows = dashboard.data?.athletes || []
+  const athletes = mergeAthleteTeams(athleteRows.flatMap((athlete) => athlete.teams?.length
     ? athlete.teams.map((team) => ({ ...athlete, teamName: team.teamName, sport: team.sport }))
     : [athlete]))
+  const athleteIndex = new Map(athletes.map((athlete) => [athlete.athleteId, athlete]))
   const coachList = coaches.data?.coaches || []
-  const recentPortfolio = (dashboard.data?.portfolioItems || []).slice(0, 6)
-  const notEvaluated = (dashboard.data?.athletes || []).filter((athlete) => !athlete.eligibilityStatus).length
-  const ineligible = (dashboard.data?.athletes || []).filter((athlete) => athlete.eligibilityStatus === 'INELIGIBLE').length
+  const summaries = coachSummaries(coachList, athleteRows, pending.data || [])
+  const activeAthletes = athletes.filter(isActiveAccount)
+  const ineligible = activeAthletes.filter((athlete) => athlete.eligibilityStatus === 'INELIGIBLE')
+  const noTeam = activeAthletes.filter((athlete) => !athlete.teamName)
+  const today = localDateISO()
+  const upcomingEvents = (schedule.data || [])
+    .filter((item) => item.type !== 'TRAINING' && item.startDate >= today)
+    .sort((a, b) => `${a.startDate}${a.startTime}`.localeCompare(`${b.startDate}${b.startTime}`))
 
   const navigate = (key) => {
     setProfileAthlete(null)
@@ -207,27 +245,60 @@ export default function DirectorPortal({ session, onLogout }) {
     setView(key)
   }
 
+  const openAthlete = (athleteId) => {
+    const athlete = athleteIndex.get(athleteId)
+    if (!athlete) return
+    setProfileCoach(null)
+    setProfileAthlete(athlete)
+    setView('athletes')
+  }
+
   const onReviewed = () => {
     pending.reload()
     schedule.reload()
   }
 
+  const deleteEvent = async () => {
+    setBusy(true)
+    setActionError('')
+    try {
+      await api.del(`/api/Schedules/${deleting.sourceId}`, session.token)
+      setDeleting(null)
+      schedule.reload()
+    } catch (err) {
+      setActionError(err.message)
+      setDeleting(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const addEventButton = <button className="btn btn-primary" type="button" onClick={() => setShowEventModal(true)}>+ Add sports event</button>
+
   let content
   if (view === 'athletes' && profileAthlete) {
-    content = <AthleteProfilePage athlete={profileAthlete} session={session} canReview={false} onBack={() => setProfileAthlete(null)} />
+    content = <AthleteProfilePage athlete={profileAthlete} session={session} canEdit={false} onBack={() => setProfileAthlete(null)} />
   } else if (view === 'athletes') {
-    content = <AthletesPage athletes={athletes} title="All athletes" subtitle="Every registered student-athlete" onViewProfile={setProfileAthlete} />
+    content = <AthletesPage athletes={athletes} title="All athletes" subtitle="Every registered student-athlete — view only; coaches record athlete data" onViewProfile={setProfileAthlete} />
   } else if (view === 'coaches' && profileCoach) {
-    content = <CoachProfile coach={profileCoach} session={session} onBack={() => { setProfileCoach(null); coaches.reload(); dashboard.reload() }} />
+    content = <CoachProfile coach={profileCoach} session={session} athleteIndex={athleteIndex} onOpenAthlete={openAthlete} onBack={() => { setProfileCoach(null); coaches.reload(); dashboard.reload() }} />
   } else if (view === 'coaches') {
-    content = <CoachesPage coaches={coachList} loading={coaches.loading} onOpen={setProfileCoach} />
+    content = <CoachesPage summaries={summaries} loading={coaches.loading} onOpen={setProfileCoach} />
   } else if (view === 'schedule') {
     content = <>
-      <PageHeader title="Schedule" subtitle="Sports events, competitions, and approved training" actions={<button className="btn btn-primary" type="button" onClick={() => setShowEventModal(true)}>+ Add sports event</button>} />
-      <Alert>{schedule.error || pending.error}</Alert>
+      <PageHeader title="Schedule" subtitle="Publish sports events and competitions, and approve coaches' training sessions" actions={addEventButton} />
+      <Alert>{schedule.error || pending.error || actionError}</Alert>
       <div className="stack">
         {pending.data?.length > 0 && <TrainingApprovals sessions={pending.data} session={session} onReviewed={onReviewed} />}
-        <Card><CalendarView events={schedule.data || []} loading={schedule.loading} /></Card>
+        <Card>
+          <CalendarView
+            events={schedule.data || []}
+            loading={schedule.loading}
+            renderActions={(event, close) => event.type !== 'TRAINING' && (
+              <button className="btn btn-danger-outline" type="button" onClick={() => { close(); setDeleting(event) }}>Delete event</button>
+            )}
+          />
+        </Card>
       </div>
     </>
   } else if (view === 'performance') {
@@ -236,32 +307,68 @@ export default function DirectorPortal({ session, onLogout }) {
     content = <NotificationsPage session={session} onChanged={refreshUnread} />
   } else {
     content = <>
-      <PageHeader title="Director dashboard" subtitle={longToday()} />
+      <PageHeader title="Director dashboard" subtitle={longToday()} actions={addEventButton} />
       <Alert>{dashboard.error || coaches.error || pending.error}</Alert>
       {dashboard.loading && !dashboard.data ? <Loading label="Loading dashboard…" /> : <>
         <div className="stat-grid">
-          <StatCard label="Athletes" value={dashboard.data?.athleteCount || 0} hint="Registered student-athletes" />
-          <StatCard label="Coaches" value={coachList.length} hint="Coach accounts" tone="info" />
-          <StatCard label="Training approvals" value={pending.data?.length || 0} hint="Awaiting your review" tone="warning" />
-          <StatCard label="Ineligible" value={ineligible} hint={`${notEvaluated} not yet evaluated`} tone="danger" />
+          <StatCard icon="users" label="Active athletes" value={activeAthletes.length} hint={`${noTeam.length} without a team`} onClick={() => navigate('athletes')} />
+          <StatCard icon="coach" label="Coaches" value={coachList.filter(isActiveAccount).length} hint={`${coachList.length - coachList.filter(isActiveAccount).length} inactive or suspended`} tone="info" onClick={() => navigate('coaches')} />
+          <StatCard icon="clock" label="Training approvals" value={pending.data?.length || 0} hint="Awaiting your review" tone="warning" onClick={() => navigate('schedule')} />
+          <StatCard icon="alert" label="Ineligible athletes" value={ineligible.length} hint="Latest Registrar decisions" tone="danger" />
         </div>
-        <div className="stack">
-          <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
-          <Card title="Recent portfolio submissions" subtitle="Latest athlete achievements across all teams">
-            {recentPortfolio.length ? (
+
+        <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
+
+        <Card title="Coach overview" subtitle="Roster size, attendance, and eligibility for each coach's athletes">
+          {summaries.length ? (
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Coach</th><th>Team</th><th className="numeric">Athletes</th><th>Avg. attendance</th><th className="numeric">Ineligible</th><th className="numeric">Not evaluated</th><th className="numeric">Pending requests</th></tr></thead>
+                <tbody>
+                  {summaries.map((summary) => (
+                    <tr key={summary.coach.coachId}>
+                      <td>
+                        <button className="link-button" type="button" onClick={() => { setView('coaches'); setProfileCoach(summary.coach) }}>{fullName(summary.coach)}</button>
+                        {!isActiveAccount(summary.coach) && <> <StatusBadge status={summary.coach.accountStatus} /></>}
+                      </td>
+                      <td>{summary.coach.teams?.map((team) => team.teamName).join(', ') || <span className="muted">No team</span>}</td>
+                      <td className="numeric">{summary.athletes}</td>
+                      <td><ProgressBar value={summary.attendance} /></td>
+                      <td className={`numeric ${summary.ineligible ? 'text-danger' : ''}`}>{summary.ineligible}</td>
+                      <td className="numeric">{summary.notEvaluated}</td>
+                      <td className="numeric">{summary.pending}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <EmptyState icon="coach" title="No coaches yet" />}
+        </Card>
+
+        <div className="dashboard-grid">
+          <Card title="Ineligible athletes" subtitle="Based on the latest Registrar decision">
+            {ineligible.length ? (
               <ul className="row-list">
-                {recentPortfolio.map((item) => (
-                  <li className="row" key={item.portfolioItemId}>
-                    <div className="row-main">
-                      <strong>{item.title}</strong>
-                      <span>{item.athleteName} · {item.studentNumber}</span>
-                      <small>{formatDate(item.createdAt)}</small>
-                    </div>
-                    <StatusBadge status={item.verificationStatus || 'PENDING'} />
+                {ineligible.slice(0, 8).map((athlete) => (
+                  <li className="row" key={athlete.athleteId}>
+                    <div className="row-main"><strong>{fullName(athlete)}</strong><span>{athlete.teamName || 'No active team'}</span><small>{athlete.eligibilityTerm}</small></div>
+                    <button className="btn btn-ghost btn-sm" type="button" onClick={() => openAthlete(athlete.athleteId)}>View</button>
                   </li>
                 ))}
               </ul>
-            ) : <EmptyState title="No submissions yet" />}
+            ) : <EmptyState icon="check" title="No ineligible athletes" />}
+          </Card>
+          <Card title="Upcoming events" subtitle="Sports events and competitions you published" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('schedule')}>Schedule →</button>}>
+            {upcomingEvents.length ? (
+              <ul className="row-list">
+                {upcomingEvents.slice(0, 6).map((item) => (
+                  <li className="row" key={item.id}>
+                    <div className="row-main"><strong>{item.title}</strong><span>{formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</span><small>{item.location || 'Location TBA'}</small></div>
+                    <span className={`badge type-${item.type.toLowerCase()}`}>{eventTypeLabel(item.type)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <EmptyState icon="calendar" title="No upcoming events" action={addEventButton} />}
           </Card>
         </div>
       </>}
@@ -276,12 +383,12 @@ export default function DirectorPortal({ session, onLogout }) {
       roleLabel="Sports Director"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard', badge: pending.data?.length || 0 },
-        { key: 'coaches', label: 'Coaches' },
-        { key: 'athletes', label: 'All athletes' },
-        { key: 'schedule', label: 'Schedule' },
-        { key: 'performance', label: 'Performance' },
-        { key: 'notifications', label: 'Notifications', badge: unread },
+        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', badge: pending.data?.length || 0 },
+        { key: 'coaches', label: 'Coaches', icon: 'coach' },
+        { key: 'athletes', label: 'All athletes', icon: 'users' },
+        { key: 'schedule', label: 'Schedule', icon: 'calendar' },
+        { key: 'performance', label: 'Performance', icon: 'chart' },
+        { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}
       pageTitle={pageTitle}
@@ -291,6 +398,16 @@ export default function DirectorPortal({ session, onLogout }) {
     >
       {content}
       {showEventModal && <EventScheduleModal session={session} onClose={() => setShowEventModal(false)} onCreated={() => { setShowEventModal(false); schedule.reload() }} />}
+      {deleting && (
+        <ConfirmDialog
+          title="Delete event"
+          message={`Delete “${deleting.title}” on ${formatDate(deleting.startDate)}? Athletes will no longer see it.`}
+          confirmLabel="Delete event"
+          busy={busy}
+          onCancel={() => setDeleting(null)}
+          onConfirm={deleteEvent}
+        />
+      )}
     </AppLayout>
   )
 }

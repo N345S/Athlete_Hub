@@ -127,3 +127,25 @@ export const isActiveAccount = (person) => !person?.accountStatus || person.acco
 
 /** Badge label for a non-active account, e.g. "Account suspended". */
 export const accountLabel = (person) => `Account ${String(person?.accountStatus || '').toLowerCase()}`
+
+/** "just now", "5 minutes ago", "3 days ago", or a date for anything older than a month. */
+export function timeAgo(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  const seconds = Math.round((Date.now() - date.getTime()) / 1000)
+  if (Number.isNaN(seconds)) return ''
+  if (seconds < 60) return 'just now'
+  const units = [[60, 'minute'], [24, 'hour'], [30, 'day']]
+  let amount = Math.floor(seconds / 60)
+  for (const [size, unit] of units) {
+    if (amount < size) return `${amount} ${unit}${amount === 1 ? '' : 's'} ago`
+    amount = Math.floor(amount / size)
+  }
+  return formatDate(value)
+}
+
+/** Average of the non-null numbers, rounded, or null when there are none. */
+export function average(values) {
+  const numbers = values.filter((value) => typeof value === 'number')
+  return numbers.length ? Math.round(numbers.reduce((sum, value) => sum + value, 0) / numbers.length) : null
+}

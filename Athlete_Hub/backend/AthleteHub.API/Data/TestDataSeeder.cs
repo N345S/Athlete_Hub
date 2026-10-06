@@ -277,17 +277,17 @@ public class TestDataSeeder
         AddPerformance(sofia, spikers, spikersPast.Take(3).ToList(), [80, 76, 71]);
         await _context.SaveChangesAsync();
 
-        await AddEligibilityAsync(juan, _firstSem, "ELIGIBLE", [], "Good standing.", 120);
-        await AddEligibilityAsync(juan, _secondSem, "ELIGIBLE", [], null, 10);
-        await AddEligibilityAsync(ana, _secondSem, "INELIGIBLE", ["Failing Grades"], "Two failing grades in major subjects; may re-apply next term.", 8);
-        await AddEligibilityAsync(mark, _secondSem, "PENDING", [], null, 3, withPdf: false);
-        await AddEligibilityAsync(kevin, _secondSem, "PENDING", [], null, 4);
-        await AddEligibilityAsync(carla, _firstSem, "INELIGIBLE", ["Incomplete Academic Requirement", "Other"], "Incomplete requirements; account suspended pending review.", 100);
-        await AddEligibilityAsync(miguel, _firstSem, "ELIGIBLE", [], "Final term before leaving the university.", 130);
-        await AddEligibilityAsync(sofia, _firstSem, "ELIGIBLE", [], null, 125);
-        await AddEligibilityAsync(jasmine, _firstSem, "INELIGIBLE", ["Academic Requirement Not Met"], "Below required units.", 118);
-        await AddEligibilityAsync(jasmine, _secondSem, "ELIGIBLE", [], "Requirement completed; eligibility restored.", 6);
-        await AddEligibilityAsync(daniel, _secondSem, "ELIGIBLE", [], null, 15);
+        await AddEligibilityAsync(juan, _firstSem, "ELIGIBLE", [], "Good standing.", 120, requestedBy: eagles.Coach);
+        await AddEligibilityAsync(juan, _secondSem, "ELIGIBLE", [], null, 10, requestedBy: eagles.Coach);
+        await AddEligibilityAsync(ana, _secondSem, "INELIGIBLE", ["Failing Grades"], "Two failing grades in major subjects; may re-apply next term.", 8, requestedBy: spikers.Coach);
+        await AddEligibilityAsync(mark, _secondSem, "PENDING", [], null, 3, withPdf: false, requestedBy: eagles.Coach);
+        await AddEligibilityAsync(kevin, _secondSem, "PENDING", [], null, 4, requestedBy: eagles.Coach);
+        await AddEligibilityAsync(carla, _firstSem, "INELIGIBLE", ["Incomplete Academic Requirement", "Other"], "Incomplete requirements; account suspended pending review.", 100, requestedBy: eagles.Coach);
+        await AddEligibilityAsync(miguel, _firstSem, "ELIGIBLE", [], "Final term before leaving the university.", 130, requestedBy: eagles.Coach);
+        await AddEligibilityAsync(sofia, _firstSem, "ELIGIBLE", [], null, 125, requestedBy: spikers.Coach);
+        await AddEligibilityAsync(jasmine, _firstSem, "INELIGIBLE", ["Academic Requirement Not Met"], "Below required units.", 118, requestedBy: spikers.Coach);
+        await AddEligibilityAsync(jasmine, _secondSem, "ELIGIBLE", [], "Requirement completed; eligibility restored.", 6, requestedBy: spikers.Coach);
+        await AddEligibilityAsync(daniel, _secondSem, "ELIGIBLE", [], null, 15, requestedBy: eagles.Coach);
 
         await AddAchievementAsync(juan, "Regional Basketball Championship — 1st place", "Competition", -60, "VERIFIED", eagles.Coach);
         await AddAchievementAsync(juan, "Team captain, 2026-2027", "Leadership", -30, "PENDING", null);
@@ -362,24 +362,24 @@ public class TestDataSeeder
             switch (index % 10)
             {
                 case 0: case 1: case 2: case 3: case 4:
-                    await AddEligibilityAsync(athlete, _secondSem, "ELIGIBLE", [], null, 5 + index % 20);
+                    await AddEligibilityAsync(athlete, _secondSem, "ELIGIBLE", [], null, 5 + index % 20, requestedBy: plan.Coach);
                     notes.Add("eligible");
                     break;
                 case 5:
-                    await AddEligibilityAsync(athlete, _firstSem, "ELIGIBLE", [], null, 110);
-                    await AddEligibilityAsync(athlete, _secondSem, "ELIGIBLE", [], "Consistent standing.", 9);
+                    await AddEligibilityAsync(athlete, _firstSem, "ELIGIBLE", [], null, 110, requestedBy: plan.Coach);
+                    await AddEligibilityAsync(athlete, _secondSem, "ELIGIBLE", [], "Consistent standing.", 9, requestedBy: plan.Coach);
                     notes.Add("eligible both terms");
                     break;
                 case 6:
-                    await AddEligibilityAsync(athlete, _secondSem, "INELIGIBLE", [IneligibleReasons[index % IneligibleReasons.Length]], "See the Grade Evaluation for details.", 7);
+                    await AddEligibilityAsync(athlete, _secondSem, "INELIGIBLE", [IneligibleReasons[index % IneligibleReasons.Length]], "See the Grade Evaluation for details.", 7, requestedBy: plan.Coach);
                     notes.Add("INELIGIBLE");
                     break;
                 case 7:
-                    await AddEligibilityAsync(athlete, _secondSem, "PENDING", [], null, 2, withPdf: false);
+                    await AddEligibilityAsync(athlete, _secondSem, "PENDING", [], null, 2, withPdf: false, requestedBy: plan.Coach);
                     notes.Add("evaluation requested, no PDF");
                     break;
                 case 8:
-                    await AddEligibilityAsync(athlete, _secondSem, "PENDING", [], null, 3);
+                    await AddEligibilityAsync(athlete, _secondSem, "PENDING", [], null, 3, requestedBy: plan.Coach);
                     notes.Add("PDF uploaded, awaiting decision");
                     break;
                 default:
@@ -589,7 +589,7 @@ public class TestDataSeeder
         }
     }
 
-    private async Task AddEligibilityAsync(AthleteProfile athlete, AcademicTerm term, string status, string[] reasons, string? remarks, int daysAgo, bool withPdf = true)
+    private async Task AddEligibilityAsync(AthleteProfile athlete, AcademicTerm term, string status, string[] reasons, string? remarks, int daysAgo, bool withPdf = true, CoachProfile? requestedBy = null)
     {
         Document? pdf = null;
         if (withPdf)
@@ -619,7 +619,8 @@ public class TestDataSeeder
             AcademicStatus = status,
             EligibilityReasons = JsonSerializer.Serialize(reasons),
             Remarks = remarks,
-            RequestedBy = _director.UserId,
+            // Coaches request evaluations for their athletes.
+            RequestedBy = requestedBy?.UserId ?? _director.UserId,
             RequestedAt = DateTime.UtcNow.AddDays(-daysAgo),
             DocumentId = pdf?.DocumentId,
             UploadedBy = pdf == null ? null : _registrar.UserId,

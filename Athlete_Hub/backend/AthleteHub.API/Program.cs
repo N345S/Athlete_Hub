@@ -33,6 +33,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddScoped<AthleteAccessService>();
 builder.Services.AddScoped<AchievementReviewService>();
+builder.Services.AddScoped<NotificationService>();
 builder.Services.AddSingleton<DocumentStorage>();
 builder.Services.AddSingleton<AppClock>();
 

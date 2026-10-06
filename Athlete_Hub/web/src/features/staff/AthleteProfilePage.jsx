@@ -29,7 +29,7 @@ export function PdfPreview({ url, token, onClose }) {
   )
 }
 
-function AcademicEligibilityCard({ athlete, session }) {
+function AcademicEligibilityCard({ athlete, session, canRequest }) {
   const { data, loading, error, setData } = useApiData(`/api/Eligibility/athlete/${athlete.athleteId}`, session.token)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ academicYear: '', semester: SEMESTERS[0] })
@@ -66,7 +66,7 @@ function AcademicEligibilityCard({ athlete, session }) {
     <Card
       title="Academic eligibility"
       subtitle="Registrar decisions based on the official Grade Evaluation"
-      actions={!showForm && !hasPending && <button className="btn btn-secondary btn-sm" type="button" onClick={() => { setMessage(''); setShowForm(true) }}>Request evaluation</button>}
+      actions={canRequest && !showForm && !hasPending && <button className="btn btn-secondary btn-sm" type="button" onClick={() => { setMessage(''); setShowForm(true) }}>Request evaluation</button>}
     >
       <Alert>{error}</Alert>
       <Alert tone="success">{message}</Alert>
@@ -106,7 +106,7 @@ function AcademicEligibilityCard({ athlete, session }) {
             </li>
           ))}
         </ul>
-      ) : <EmptyState title="No evaluations yet" message="Request a Grade Evaluation to get a Registrar eligibility decision." />}
+      ) : <EmptyState icon="check" title="No evaluations yet" message={canRequest ? 'Request a Grade Evaluation to get a Registrar eligibility decision.' : 'The coach has not requested a Grade Evaluation for this athlete.'} />}
       {preview && <PdfPreview url={preview} token={session.token} onClose={() => setPreview(null)} />}
     </Card>
   )
@@ -164,7 +164,7 @@ function PortfolioReview({ athlete, session, canReview }) {
             )
           })}
         </ul>
-      ) : <EmptyState title="No portfolio submissions" message="Achievements this athlete submits will appear here." />}
+      ) : <EmptyState icon="trophy" title="No portfolio submissions" message="Achievements this athlete submits will appear here." />}
       {rejecting && (
         <ReasonDialog
           title="Reject portfolio submission"
@@ -179,7 +179,38 @@ function PortfolioReview({ athlete, session, canReview }) {
   )
 }
 
-export default function AthleteProfilePage({ athlete, session, canReview, onBack }) {
+/** Read-only list of the athlete's clearance documents for staff monitoring. */
+function DocumentsCard({ athlete, session }) {
+  const { data, loading, error } = useApiData(`/api/Documents/athlete/${athlete.athleteId}`, session.token, { initialData: [] })
+  const documents = (data || []).filter((item) => item.documentType !== 'Achievement Evidence')
+  return (
+    <Card title="Documents" subtitle="Clearance and consent forms uploaded by the athlete">
+      <Alert>{error}</Alert>
+      {loading && !documents.length ? <Loading /> : documents.length ? (
+        <ul className="row-list">
+          {documents.map((item) => (
+            <li className="row" key={item.documentId}>
+              <div className="row-main">
+                <strong>{item.title || item.documentName}</strong>
+                <span>{item.documentType} · Uploaded {formatDate(item.uploadedAt)}</span>
+              </div>
+              <div className="row-actions">
+                <StatusBadge status={item.status} />
+                <FileLink url={item.fileUrl} token={session.token} className="btn btn-ghost btn-sm">Open</FileLink>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : <EmptyState icon="file" title="No documents uploaded" />}
+    </Card>
+  )
+}
+
+/**
+ * Staff view of one athlete. Coaches (`canEdit`) request evaluations and verify portfolio items;
+ * the director sees the same information read-only.
+ */
+export default function AthleteProfilePage({ athlete, session, canEdit, onBack }) {
   return (
     <>
       <button className="btn btn-ghost back-button" type="button" onClick={onBack}>← Back to athletes</button>
@@ -199,8 +230,9 @@ export default function AthleteProfilePage({ athlete, session, canReview, onBack
         <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
       </dl>
       <div className="stack">
-        <AcademicEligibilityCard athlete={athlete} session={session} />
-        <PortfolioReview athlete={athlete} session={session} canReview={canReview} />
+        <AcademicEligibilityCard athlete={athlete} session={session} canRequest={canEdit} />
+        <PortfolioReview athlete={athlete} session={session} canReview={canEdit} />
+        <DocumentsCard athlete={athlete} session={session} />
       </div>
     </>
   )

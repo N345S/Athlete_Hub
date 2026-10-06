@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { initials, statusLabel, statusTone } from '../lib/format.js'
+import Icon from './icons.jsx'
 
 export function PageHeader({ title, subtitle, actions }) {
   return (
@@ -30,13 +31,27 @@ export function Card({ title, subtitle, actions, children, className = '' }) {
   )
 }
 
-export function StatCard({ label, value, hint, tone = 'brand' }) {
+export function StatCard({ label, value, hint, tone = 'brand', icon, onClick }) {
+  const Tag = onClick ? 'button' : 'article'
   return (
-    <article className={`stat-card tone-${tone}`}>
+    <Tag className={`stat-card tone-${tone} ${onClick ? 'stat-card-button' : ''}`} type={onClick ? 'button' : undefined} onClick={onClick}>
+      {icon && <span className="stat-icon"><Icon name={icon} size={20} /></span>}
       <span className="stat-label">{label}</span>
       <strong className="stat-value">{value}</strong>
       {hint && <small>{hint}</small>}
-    </article>
+    </Tag>
+  )
+}
+
+/** Horizontal bar for a 0–100 value; tone follows the value unless one is given. */
+export function ProgressBar({ value, label, tone }) {
+  if (value == null) return <span className="muted">—</span>
+  const resolved = tone || (value >= 80 ? 'success' : value >= 60 ? 'warning' : 'danger')
+  return (
+    <span className="progress" title={label || `${value}%`}>
+      <span className="progress-track"><span className={`progress-fill tone-${resolved}`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></span>
+      <span className="progress-value">{value}%</span>
+    </span>
   )
 }
 
@@ -48,9 +63,10 @@ export function Avatar({ firstName, lastName, size = 'md' }) {
   return <span className={`avatar avatar-${size}`} aria-hidden="true">{initials(firstName, lastName)}</span>
 }
 
-export function EmptyState({ title, message, action }) {
+export function EmptyState({ title, message, action, icon }) {
   return (
     <div className="empty-state">
+      {icon && <span className="empty-icon"><Icon name={icon} size={22} /></span>}
       <strong>{title}</strong>
       {message && <p>{message}</p>}
       {action}

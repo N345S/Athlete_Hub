@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { formatDateTime, fullName, isActiveAccount, longToday, matchesSearch } from '../../lib/format.js'
+import { formatDateTime, fullName, isActiveAccount, longToday, matchesSearch, timeAgo } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
@@ -8,18 +8,18 @@ import { Alert, Avatar, Card, EmptyState, Field, Loading, PageHeader, SearchInpu
 import { PdfPreview } from '../staff/AthleteProfilePage.jsx'
 
 const VIEWS = ['dashboard', 'requests', 'evaluations', 'students', 'notifications']
-const TITLES = { dashboard: 'Dashboard', requests: 'Eligibility requests', evaluations: 'Evaluations', students: 'Students', notifications: 'Notifications' }
+const TITLES = { dashboard: 'Dashboard', requests: 'Eligibility requests', evaluations: 'Decisions', students: 'Students', notifications: 'Notifications' }
 const REASONS = ['Failing Grades', 'Academic Requirement Not Met', 'Incomplete Academic Requirement', 'Other']
 
 const termLabel = (item) => `${item.term.semester} ${item.term.academicYear}`
 
 function EvaluationTable({ items, emptyTitle, emptyMessage, actionLabel, onOpen, showStatus }) {
-  if (!items.length) return <EmptyState title={emptyTitle} message={emptyMessage} />
+  if (!items.length) return <EmptyState icon="inbox" title={emptyTitle} message={emptyMessage} />
   return (
     <div className="table-wrap">
       <table className="table">
         <thead>
-          <tr><th>Student</th><th>Student ID</th><th>Term</th>{showStatus ? <><th>Decision</th><th>Reasons</th></> : <th>Grade Evaluation</th>}<th><span className="visually-hidden">Action</span></th></tr>
+          <tr><th>Student</th><th>Student ID</th><th>Term</th>{showStatus ? <><th>Decision</th><th>Reasons</th></> : <><th>Requested</th><th>Grade Evaluation</th></>}<th><span className="visually-hidden">Action</span></th></tr>
         </thead>
         <tbody>
           {items.map((item) => (
@@ -29,7 +29,10 @@ function EvaluationTable({ items, emptyTitle, emptyMessage, actionLabel, onOpen,
               <td>{termLabel(item)}</td>
               {showStatus
                 ? <><td><StatusBadge status={item.academicStatus} /></td><td>{item.reasons?.join(', ') || '—'}</td></>
-                : <td>{item.document ? <span className="badge badge-success">PDF uploaded</span> : <span className="badge badge-neutral">Requested</span>}</td>}
+                : <>
+                  <td>{timeAgo(item.requestedAt) || '—'}{item.requestedByName && <><br /><small className="muted">by {item.requestedByName}</small></>}</td>
+                  <td>{item.document ? <span className="badge badge-success">PDF uploaded</span> : <span className="badge badge-warning">Waiting for PDF</span>}</td>
+                </>}
               <td className="table-action"><button className="btn btn-secondary btn-sm" type="button" onClick={() => onOpen(item)}>{typeof actionLabel === 'function' ? actionLabel(item) : actionLabel}</button></td>
             </tr>
           ))}
@@ -190,13 +193,13 @@ export default function RegistrarPortal({ session, onLogout }) {
     content = <ReviewPage key={reviewing.eligibilityId} evaluation={reviewing} session={session} onBack={() => setReviewingId(null)} onUpdated={updateEvaluation} />
   } else if (view === 'requests') {
     content = <>
-      <PageHeader title="Eligibility requests" subtitle="Coach and Sports Director requests awaiting a Grade Evaluation or decision" />
+      <PageHeader title="Eligibility requests" subtitle="Coach requests waiting for the official Grade Evaluation or your decision" />
       {searchBar}
       <Card><EvaluationTable items={pending.filter(searchFilter)} emptyTitle="No pending requests" actionLabel={(item) => item.document ? 'Review' : 'Upload PDF'} onOpen={(item) => setReviewingId(item.eligibilityId)} /></Card>
     </>
   } else if (view === 'evaluations') {
     content = <>
-      <PageHeader title="Evaluations" subtitle="Completed Registrar eligibility decisions" />
+      <PageHeader title="Decisions" subtitle="Eligibility decisions you have recorded" />
       {searchBar}
       <Card><EvaluationTable items={completed.filter(searchFilter)} showStatus emptyTitle="No decisions yet" actionLabel="View" onOpen={(item) => setReviewingId(item.eligibilityId)} /></Card>
     </>
@@ -236,10 +239,10 @@ export default function RegistrarPortal({ session, onLogout }) {
     content = <>
       <PageHeader title="Registrar dashboard" subtitle={longToday()} actions={<button className="btn btn-secondary" type="button" onClick={() => { studentsData.reload(); evaluationsData.reload() }}>Refresh</button>} />
       <div className="stat-grid">
-        <StatCard label="Ready for decision" value={readyForReview.length} hint="Grade Evaluation uploaded" tone="info" />
-        <StatCard label="Awaiting PDF" value={awaitingPdf.length} hint="Requests without a Grade Evaluation" tone="warning" />
-        <StatCard label="Decided" value={completed.length} hint="Eligible or ineligible" tone="success" />
-        <StatCard label="Students" value={students.length} hint="Registered athletes" />
+        <StatCard icon="check" label="Ready for decision" value={readyForReview.length} hint="Grade Evaluation uploaded" tone="info" />
+        <StatCard icon="clock" label="Awaiting PDF" value={awaitingPdf.length} hint="Requests without a Grade Evaluation" tone="warning" />
+        <StatCard icon="shield" label="Decided" value={completed.length} hint="Eligible or ineligible" tone="success" />
+        <StatCard icon="users" label="Students" value={students.length} hint="Registered athletes" />
       </div>
       <Card title="Ready for a decision" subtitle="Grade Evaluation received">
         <EvaluationTable items={readyForReview} emptyTitle="Nothing to decide" emptyMessage="Requests without a PDF are listed under Eligibility requests." actionLabel="Review" onOpen={(item) => setReviewingId(item.eligibilityId)} />
@@ -253,11 +256,11 @@ export default function RegistrarPortal({ session, onLogout }) {
       roleLabel="Registrar"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard' },
-        { key: 'requests', label: 'Eligibility requests', badge: pending.length },
-        { key: 'evaluations', label: 'Evaluations' },
-        { key: 'students', label: 'Students' },
-        { key: 'notifications', label: 'Notifications', badge: unread },
+        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+        { key: 'requests', label: 'Eligibility requests', icon: 'inbox', badge: pending.length },
+        { key: 'evaluations', label: 'Decisions', icon: 'check' },
+        { key: 'students', label: 'Students', icon: 'users' },
+        { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}
       pageTitle={reviewing ? 'Evaluation review' : TITLES[view]}

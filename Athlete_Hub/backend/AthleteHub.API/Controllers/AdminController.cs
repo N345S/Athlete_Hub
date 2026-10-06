@@ -13,6 +13,7 @@ namespace AthleteHub.API.Controllers;
 [Authorize(Roles = "ADMIN")]
 public class AdminController : ControllerBase
 {
+    private static readonly string[] ValidStatuses = ["ACTIVE", "INACTIVE", "SUSPENDED"];
     private readonly AthleteHubDbContext _context;
 
     public AdminController(AthleteHubDbContext context)
@@ -76,6 +77,8 @@ public class AdminController : ControllerBase
             return BadRequest(new { message = "The specified role does not exist." });
         }
 
+        request.Email = request.Email.Trim().ToLowerInvariant();
+        request.UniversityId = request.UniversityId.Trim();
         if (await _context.Users.AnyAsync(u => u.Email == request.Email || u.UniversityId == request.UniversityId))
         {
             return Conflict(new { message = "Email or university ID is already registered." });
@@ -135,6 +138,11 @@ public class AdminController : ControllerBase
         }
 
         var targetRole = user.Role;
+        var newStatus = request.AccountStatus?.Trim().ToUpperInvariant() ?? user.AccountStatus;
+        if (!ValidStatuses.Contains(newStatus))
+        {
+            return BadRequest(new { message = "Status must be ACTIVE, INACTIVE, or SUSPENDED." });
+        }
 
         if (request.RoleId.HasValue)
         {
@@ -145,9 +153,13 @@ public class AdminController : ControllerBase
                 return BadRequest(new { message = "The specified role does not exist." });
             }
 
-            user.RoleId = targetRole.RoleId;
         }
 
+        var guard = await GuardAdminChangeAsync(user, targetRole.RoleName, newStatus);
+        if (guard != null) return guard;
+        user.RoleId = targetRole.RoleId;
+
+        request.Email = request.Email?.Trim().ToLowerInvariant();
         if (request.Email != null && await _context.Users.AnyAsync(u => u.UserId != userId && u.Email == request.Email))
         {
             return Conflict(new { message = "Email is already registered." });
@@ -164,7 +176,7 @@ public class AdminController : ControllerBase
         user.MiddleName = request.MiddleName ?? user.MiddleName;
         user.LastName = request.LastName?.Trim() ?? user.LastName;
         user.Phone = request.Phone ?? user.Phone;
-        user.AccountStatus = request.AccountStatus?.ToUpperInvariant() ?? user.AccountStatus;
+        user.AccountStatus = newStatus;
 
         if (!string.IsNullOrWhiteSpace(request.Password))
         {
@@ -208,12 +220,15 @@ public class AdminController : ControllerBase
             return BadRequest(new { message = "You cannot delete the account you are currently using." });
         }
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+        var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
 
         if (user == null)
         {
             return NotFound(new { message = "User not found." });
         }
+
+        var guard = await GuardAdminChangeAsync(user, "NONE", "DELETED");
+        if (guard != null) return guard;
 
         _context.Users.Remove(user);
 
@@ -230,6 +245,60 @@ public class AdminController : ControllerBase
         }
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Quickly activates, deactivates, or suspends an account. The change applies to the user's
+    /// next request because tokens of non-active accounts are rejected.
+    /// </summary>
+    [HttpPut("users/{userId}/status")]
+    public async Task<IActionResult> UpdateStatus(int userId, [FromBody] AccountStatusRequest request)
+    {
+        var status = request.Status?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (!ValidStatuses.Contains(status))
+        {
+            return BadRequest(new { message = "Status must be ACTIVE, INACTIVE, or SUSPENDED." });
+        }
+
+        var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
+        if (user == null)
+        {
+            return NotFound(new { message = "User not found." });
+        }
+
+        var guard = await GuardAdminChangeAsync(user, user.Role.RoleName, status);
+        if (guard != null) return guard;
+
+        user.AccountStatus = status;
+        await _context.SaveChangesAsync();
+        return Ok(ToResponse(user));
+    }
+
+    /// <summary>
+    /// Stops an admin from locking themselves out and keeps at least one active administrator.
+    /// Returns an error result when the change is not allowed, otherwise null.
+    /// </summary>
+    private async Task<IActionResult?> GuardAdminChangeAsync(User user, string newRole, string newStatus)
+    {
+        var currentUserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
+        var stillActiveAdmin = newRole == "ADMIN" && newStatus == "ACTIVE";
+
+        if (user.UserId == currentUserId && !stillActiveAdmin)
+        {
+            return BadRequest(new { message = "You cannot change your own role or status. Ask another administrator." });
+        }
+
+        if (user.Role.RoleName == "ADMIN" && user.AccountStatus == "ACTIVE" && !stillActiveAdmin)
+        {
+            var otherActiveAdmins = await _context.Users.CountAsync(u =>
+                u.UserId != user.UserId && u.Role.RoleName == "ADMIN" && u.AccountStatus == "ACTIVE");
+            if (otherActiveAdmins == 0)
+            {
+                return BadRequest(new { message = "At least one active administrator is required." });
+            }
+        }
+
+        return null;
     }
 
     private static object ToResponse(User user)
@@ -249,4 +318,9 @@ public class AdminController : ControllerBase
             Role = user.Role.RoleName
         };
     }
+}
+
+public sealed class AccountStatusRequest
+{
+    public string? Status { get; set; }
 }

@@ -27,12 +27,14 @@ public class EligibilityController : ControllerBase
     private readonly AthleteHubDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly AthleteAccessService _access;
+    private readonly NotificationService _notifications;
 
-    public EligibilityController(AthleteHubDbContext context, IWebHostEnvironment environment, AthleteAccessService access)
+    public EligibilityController(AthleteHubDbContext context, IWebHostEnvironment environment, AthleteAccessService access, NotificationService notifications)
     {
         _context = context;
         _environment = environment;
         _access = access;
+        _notifications = notifications;
     }
 
     [HttpGet("athlete/{athleteId}")]
@@ -62,7 +64,7 @@ public class EligibilityController : ControllerBase
     }
 
     [HttpPost("request")]
-    [Authorize(Roles = "COACH,DIRECTOR")]
+    [Authorize(Roles = "COACH")]
     public async Task<IActionResult> RequestGradeEvaluation(GradeEvaluationRequest request)
     {
         if (!await CanViewAthleteAsync(request.AthleteId)) return Forbid();
@@ -105,19 +107,11 @@ public class EligibilityController : ControllerBase
             _context.EligibilityRecords.Add(record);
             await _context.SaveChangesAsync();
 
-            var registrarIds = await _context.Users
-                .Where(user => user.Role.RoleName == "REGISTRAR")
-                .Select(user => user.UserId)
-                .ToListAsync();
-            _context.Notifications.AddRange(registrarIds.Select(userId => new Notification
-            {
-                UserId = userId,
-                Title = "Grade evaluation requested",
-                Message = $"A grade evaluation was requested for {record.Athlete.User.FirstName} {record.Athlete.User.LastName} ({term.AcademicYear}, {term.Semester}).",
-                NotificationType = "GRADE_EVALUATION_REQUEST",
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow
-            }));
+            _notifications.Notify(
+                await _notifications.ActiveUserIdsInRoleAsync("REGISTRAR"),
+                "Grade evaluation requested",
+                $"A grade evaluation was requested for {record.Athlete.User.FirstName} {record.Athlete.User.LastName} ({term.AcademicYear}, {term.Semester}).",
+                "GRADE_EVALUATION_REQUEST");
             await _context.SaveChangesAsync();
         }
 
@@ -181,6 +175,12 @@ public class EligibilityController : ControllerBase
 
         record.DocumentId = document.DocumentId;
         record.UploadedBy = GetCurrentUserId();
+        if (record.RequestedBy.HasValue)
+        {
+            _notifications.Notify(record.RequestedBy.Value, "Grade Evaluation received",
+                $"The Registrar uploaded the Grade Evaluation for {record.Athlete.User.FirstName} {record.Athlete.User.LastName} ({record.Term.AcademicYear}, {record.Term.Semester}); a decision will follow.",
+                "GRADE_EVALUATION_UPLOADED");
+        }
         await _context.SaveChangesAsync();
 
         return Ok(new
@@ -225,21 +225,6 @@ public class EligibilityController : ControllerBase
         return PhysicalFile(filePath, "application/pdf", enableRangeProcessing: true);
     }
 
-    [HttpPost]
-    [Authorize(Roles = "REGISTRAR,DIRECTOR,ADMIN")]
-    public async Task<IActionResult> Create(EligibilityRecordRequest request)
-    {
-        if (!ValidStatuses.Contains(request.AcademicStatus.Trim().ToUpperInvariant())) return BadRequest(new { message = "Academic status must be ELIGIBLE, AT_RISK, INELIGIBLE, or PENDING." });
-        if (!await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == request.AthleteId)) return NotFound(new { message = "Athlete profile not found." });
-        if (!await _context.AcademicTerms.AnyAsync(term => term.TermId == request.TermId)) return NotFound(new { message = "Academic term not found." });
-        if (await _context.EligibilityRecords.AnyAsync(item => item.AthleteId == request.AthleteId && item.TermId == request.TermId))
-            return Conflict(new { message = "An eligibility record already exists for this athlete and term." });
-        var record = new EligibilityRecord { AthleteId = request.AthleteId, TermId = request.TermId, AcademicStatus = request.AcademicStatus.Trim().ToUpperInvariant(), Remarks = request.Remarks, EvaluatedAt = DateTime.UtcNow };
-        _context.EligibilityRecords.Add(record);
-        await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetAthleteEligibility), new { athleteId = record.AthleteId }, new { record.EligibilityId, record.AthleteId, record.AcademicStatus });
-    }
-
     [HttpPost("review")]
     [Authorize(Roles = "REGISTRAR")]
     public async Task<IActionResult> Review(EligibilityReviewRequest request)
@@ -267,6 +252,7 @@ public class EligibilityController : ControllerBase
         if (term == null) return NotFound(new { message = "Academic term not found." });
 
         var record = await _context.EligibilityRecords
+            .Include(item => item.Athlete).ThenInclude(athlete => athlete.User)
             .FirstOrDefaultAsync(item => item.AthleteId == request.AthleteId && item.TermId == term.TermId);
         if (record == null) return NotFound(new { message = "Grade evaluation request not found." });
         if (!record.DocumentId.HasValue) return BadRequest(new { message = "Upload the official Grade Evaluation PDF before submitting the review." });
@@ -277,6 +263,15 @@ public class EligibilityController : ControllerBase
         record.ReviewedBy = GetCurrentUserId();
         record.ReviewedAt = DateTime.UtcNow;
         record.EvaluatedAt = record.ReviewedAt;
+
+        // The athlete's coaches (and whoever requested it) need the decision to plan their roster.
+        var recipients = await _notifications.CoachUserIdsForAthleteAsync(record.AthleteId);
+        if (record.RequestedBy.HasValue) recipients.Add(record.RequestedBy.Value);
+        var athleteName = $"{record.Athlete.User.FirstName} {record.Athlete.User.LastName}";
+        _notifications.Notify(recipients,
+            status == "ELIGIBLE" ? "Athlete eligible" : "Athlete ineligible",
+            $"The Registrar marked {athleteName} {status.ToLowerInvariant()} for {term.AcademicYear}, {term.Semester}.{(selectedReasons.Count > 0 ? $" Reasons: {string.Join(", ", selectedReasons)}." : string.Empty)}",
+            "ELIGIBILITY_DECISION");
         await _context.SaveChangesAsync();
         return Ok(new
         {
@@ -299,6 +294,10 @@ public class EligibilityController : ControllerBase
         var documents = await _context.Documents
             .Where(document => documentIds.Contains(document.DocumentId))
             .ToDictionaryAsync(document => document.DocumentId);
+        var requesterIds = records.Where(record => record.RequestedBy.HasValue).Select(record => record.RequestedBy!.Value).Distinct().ToList();
+        var requesterNames = await _context.Users
+            .Where(user => requesterIds.Contains(user.UserId))
+            .ToDictionaryAsync(user => user.UserId, user => user.FirstName + " " + user.LastName);
 
         return records.Select(record =>
         {
@@ -313,6 +312,7 @@ public class EligibilityController : ControllerBase
                 requestedAt = record.RequestedAt,
                 reviewedAt = record.ReviewedAt,
                 requestedBy = record.RequestedBy,
+                requestedByName = record.RequestedBy.HasValue ? requesterNames.GetValueOrDefault(record.RequestedBy.Value) : null,
                 uploadedBy = record.UploadedBy,
                 reviewedBy = record.ReviewedBy,
                 student = new
@@ -352,7 +352,7 @@ public class EligibilityController : ControllerBase
     private int? GetCurrentUserId() =>
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
 
-    private Task<bool> CanViewAthleteAsync(int athleteId) => _access.CanViewAthleteAsync(User, athleteId);
+    private Task<bool> CanViewAthleteAsync(int athleteId) => _access.CanViewAthleteAsync(User, athleteId, includeRegistrar: true);
 }
 
 public sealed class EligibilityReviewRequest

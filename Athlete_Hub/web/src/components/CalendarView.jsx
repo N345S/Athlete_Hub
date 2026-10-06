@@ -5,8 +5,11 @@ import { Loading, Modal, StatusBadge, Tabs } from './ui.jsx'
 const EVENT_TYPES = ['TRAINING', 'SPORTS_EVENT', 'COMPETITION']
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-/** Month calendar and list view of training sessions, sports events, and competitions. */
-export default function CalendarView({ events, loading }) {
+/**
+ * Month calendar and list view of training sessions, sports events, and competitions.
+ * `renderActions(event, close)` may return extra buttons for the event detail dialog.
+ */
+export default function CalendarView({ events, loading, renderActions }) {
   const [month, setMonth] = useState(() => {
     const today = new Date()
     return new Date(today.getFullYear(), today.getMonth(), 1)
@@ -86,7 +89,10 @@ export default function CalendarView({ events, loading }) {
 
       {selected && (
         <Modal title={selected.title} subtitle={eventTypeLabel(selected.type)} onClose={() => setSelected(null)} size="sm"
-          footer={<button className="btn btn-primary" type="button" onClick={() => setSelected(null)}>Close</button>}>
+          footer={<>
+            {renderActions?.(selected, () => setSelected(null))}
+            <button className="btn btn-primary" type="button" onClick={() => setSelected(null)}>Close</button>
+          </>}>
           <dl className="detail-list">
             <div><dt>Date</dt><dd>{formatDate(selected.startDate)}</dd></div>
             <div><dt>Time</dt><dd>{formatTimeRange(selected.startTime, selected.endTime)}</dd></div>

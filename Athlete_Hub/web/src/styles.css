@@ -313,6 +313,9 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
   cursor: pointer;
 }
 .nav-link:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.nav-link-label { display: inline-flex; align-items: center; gap: 10px; }
+.nav-link .icon { opacity: 0.85; flex: 0 0 auto; }
+.nav-link.active .icon { opacity: 1; }
 .nav-link.active { background: #fff; color: var(--brand-700); font-weight: 600; }
 .nav-badge {
   min-width: 22px; padding: 1px 7px;
@@ -333,6 +336,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
   cursor: pointer;
 }
 .sidebar-logout:hover { background: rgba(255, 255, 255, 0.1); }
+.sidebar-version { margin-top: calc(var(--space-3) * -1); color: rgba(255, 255, 255, 0.55); font-size: 0.75rem; text-align: center; }
 
 .sidebar-scrim { display: none; }
 
@@ -407,6 +411,17 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
   overflow: hidden;
 }
 .stat-card::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--tone, var(--brand-600)); }
+.stat-card:has(.stat-icon) { padding-right: 64px; }
+.stat-card-button { font: inherit; color: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+.stat-card-button:hover { border-color: var(--tone, var(--brand-600)); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.stat-icon {
+  position: absolute; top: var(--space-4); right: var(--space-4);
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  color: var(--tone, var(--brand-600));
+  background: color-mix(in srgb, var(--tone, var(--brand-600)) 12%, transparent);
+}
 .stat-label { font-size: 0.82rem; font-weight: 600; color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.04em; }
 .stat-value { font-size: 1.75rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .stat-card small { color: var(--ink-500); font-size: 0.84rem; }
@@ -417,6 +432,19 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
 .tone-info { --tone: var(--info-700); }
 
 .dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); align-items: start; }
+
+/* Progress and breakdown bars */
+.progress { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 140px; }
+.progress-track { flex: 1; height: 8px; border-radius: var(--radius-pill); background: var(--surface-muted); border: 1px solid var(--line); overflow: hidden; }
+.progress-fill { display: block; height: 100%; border-radius: inherit; background: var(--tone); }
+.progress-value { min-width: 38px; font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.role-breakdown { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.stacked-bar { display: flex; height: 8px; border-radius: var(--radius-pill); overflow: hidden; background: var(--surface-muted); width: min(280px, 100%); }
+.stacked-bar > span { background: var(--tone); }
+.row-figure { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.card-footnote { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px dashed var(--line); font-size: 0.86rem; color: var(--ink-500); }
+.text-success { color: var(--success-700) !important; }
+.text-brand { color: var(--brand-700); }
 
 /* Badges */
 .badge {
@@ -470,6 +498,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
   color: var(--ink-500);
 }
 .empty-state strong { color: var(--ink-900); }
+.empty-icon { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 4px; border-radius: 50%; background: var(--surface-muted); color: var(--ink-400); }
 .empty-state p { max-width: 420px; font-size: 0.92rem; }
 .error-state { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); margin: var(--space-6); }
 .error-detail { max-width: 100%; overflow: auto; padding: var(--space-3); border-radius: var(--radius-sm); background: var(--danger-100); color: var(--danger-700); font-size: 0.8rem; text-align: left; }
@@ -514,6 +543,8 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover td { background: var(--surface-muted); }
 .table-action { text-align: right; white-space: nowrap; }
+.table-action .row-actions { flex-wrap: nowrap; }
+select.action-select { width: auto; min-height: 32px; padding: 4px 28px 4px 10px; font-size: 0.84rem; font-weight: 600; }
 
 /* Segmented control */
 .segmented { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--radius-sm); background: var(--surface-muted); border: 1px solid var(--line); flex-wrap: wrap; }

@@ -147,7 +147,7 @@ public class AchievementsController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Roles = "ADMIN,COACH,DIRECTOR")]
+    [Authorize(Roles = "COACH")]
     [HttpPut("{achievementId}/verify")]
     public async Task<IActionResult> VerifyAchievement(
         int achievementId,

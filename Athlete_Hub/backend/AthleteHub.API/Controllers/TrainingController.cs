@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AthleteHub.API.Data;
 using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,12 +19,17 @@ public class TrainingController : ControllerBase
 {
     private static readonly string[] ValidStatuses = ["PRESENT", "ABSENT", "LATE", "EXCUSED"];
     private readonly AthleteHubDbContext _context;
+    private readonly NotificationService _notifications;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrainingController"/> class.
     /// </summary>
     /// <param name="context">The database context.</param>
-    public TrainingController(AthleteHubDbContext context) => _context = context;
+    public TrainingController(AthleteHubDbContext context, NotificationService notifications)
+    {
+        _context = context;
+        _notifications = notifications;
+    }
 
     /// <summary>
     /// Gets training sessions filtered by date range and user role.
@@ -155,6 +161,10 @@ public class TrainingController : ControllerBase
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow
             }));
+            var approvedCoachUserId = await _context.CoachProfiles.Where(coach => coach.CoachId == session.CoachId).Select(coach => coach.UserId).FirstAsync();
+            _notifications.Notify(approvedCoachUserId, "Training session approved",
+                $"{session.Title} for {session.Team.TeamName} on {session.TrainingDate:MMM d, yyyy} was approved and is now visible to your athletes.",
+                "TRAINING_APPROVED");
         }
         else
         {
@@ -230,7 +240,7 @@ public class TrainingController : ControllerBase
     }
 
     [HttpDelete("sessions/{sessionId}")]
-    [Authorize(Roles = "ADMIN,DIRECTOR,COACH")]
+    [Authorize(Roles = "DIRECTOR,COACH")]
     public async Task<IActionResult> DeleteSession(int sessionId)
     {
         var session = await _context.TrainingSessions
@@ -243,6 +253,9 @@ public class TrainingController : ControllerBase
         {
             var coach = await GetCoachAsync();
             if (coach == null || session.Team.CoachId != coach.CoachId) return Forbid();
+            // Approved sessions are already on athletes' calendars; only the Director can remove them.
+            if (session.ApprovalStatus == "APPROVED")
+                return BadRequest(new { message = "Approved sessions can only be removed by the Sports Director." });
         }
 
         _context.TrainingSessions.Remove(session);
@@ -287,7 +300,7 @@ public class TrainingController : ControllerBase
 
     private async Task<bool> CanViewTeamAsync(int teamId)
     {
-        if (User.IsInRole("ADMIN") || User.IsInRole("DIRECTOR") || User.IsInRole("REGISTRAR")) return true;
+        if (User.IsInRole("DIRECTOR")) return true;
         var coach = await GetCoachAsync();
         if (coach != null) return await _context.Teams.AnyAsync(team => team.TeamId == teamId && team.CoachId == coach.CoachId);
         if (User.IsInRole("ATHLETE") && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return await _context.TeamMembers.AnyAsync(member => member.TeamId == teamId && member.Athlete.UserId == userId && member.DateLeft == null);

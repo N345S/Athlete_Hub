@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AthleteHub.API.Data;
 using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +16,13 @@ public class SchedulesController : ControllerBase
 {
     private static readonly string[] ValidTypes = ["COMPETITION", "SPORTS_EVENT"];
     private readonly AthleteHubDbContext _context;
+    private readonly NotificationService _notifications;
 
-    public SchedulesController(AthleteHubDbContext context) => _context = context;
+    public SchedulesController(AthleteHubDbContext context, NotificationService notifications)
+    {
+        _context = context;
+        _notifications = notifications;
+    }
 
     [HttpGet]
     public async Task<IActionResult> Get(DateTime? from = null, DateTime? to = null)
@@ -167,16 +173,13 @@ public class SchedulesController : ControllerBase
         return Ok(trainingEvents.Cast<object>().Concat(sharedEvents));
     }
 
+    // Sports events and competitions are published by the Sports Director; coaches schedule training instead.
     [HttpPost]
-    [Authorize(Roles = "ADMIN,DIRECTOR,COACH,REGISTRAR")]
+    [Authorize(Roles = "DIRECTOR")]
     public async Task<IActionResult> Create(ScheduleRequest request)
     {
         var type = request.ScheduleType.Trim().ToUpperInvariant();
         if (!ValidTypes.Contains(type)) return BadRequest(new { message = "Invalid schedule type." });
-        if (User.IsInRole("DIRECTOR") && type is not ("SPORTS_EVENT" or "COMPETITION"))
-        {
-            return BadRequest(new { message = "Directors may only create sports events or competitions." });
-        }
         if (!request.StartDate.HasValue || !request.StartTime.HasValue) return BadRequest(new { message = "Start date and start time are required." });
         if (request.EndDate.HasValue != request.EndTime.HasValue) return BadRequest(new { message = "End date and end time must be provided together." });
 
@@ -195,17 +198,24 @@ public class SchedulesController : ControllerBase
 
         if (schedules.Any(schedule => schedule.EndDatetime.HasValue && schedule.EndDatetime <= schedule.StartDatetime)) return BadRequest(new { message = "End date and time must be after start date and time." });
         _context.Schedules.AddRange(schedules);
+        var label = type == "COMPETITION" ? "competition" : "sports event";
+        var when = schedules.Count == 1
+            ? $"on {schedules[0].StartDatetime:MMM d, yyyy 'at' h:mm tt}"
+            : $"on {schedules.Count} dates starting {schedules[0].StartDatetime:MMM d, yyyy}";
+        var recipients = (await _notifications.ActiveUserIdsInRoleAsync("ATHLETE")).Concat(await _notifications.ActiveUserIdsInRoleAsync("COACH"));
+        _notifications.Notify(recipients, $"New {label}: {request.Title.Trim()}",
+            $"{request.Title.Trim()} is scheduled {when}{(string.IsNullOrWhiteSpace(request.Location) ? string.Empty : $" at {request.Location.Trim()}")}.",
+            "SCHEDULE_CREATED");
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(Get), new { id = schedules[0].ScheduleId }, new { scheduleIds = schedules.Select(schedule => schedule.ScheduleId) });
     }
 
     [HttpDelete("{scheduleId}")]
-    [Authorize(Roles = "ADMIN,DIRECTOR,COACH,REGISTRAR")]
+    [Authorize(Roles = "DIRECTOR")]
     public async Task<IActionResult> Delete(int scheduleId)
     {
         var schedule = await _context.Schedules.FindAsync(scheduleId);
         if (schedule == null) return NotFound();
-        if (!User.IsInRole("ADMIN") && schedule.CreatedBy != GetUserId()) return Forbid();
         _context.Schedules.Remove(schedule);
         await _context.SaveChangesAsync();
         return NoContent();

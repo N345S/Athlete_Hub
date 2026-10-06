@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Avatar } from './ui.jsx'
+import Icon from './icons.jsx'
 import { fullName } from '../lib/format.js'
 
 /**
  * Shared portal shell: sidebar navigation, top bar with notifications, and the page area.
- * `nav` is a list of { key, label, badge? }; `activeKey` highlights the current section.
+ * `nav` is a list of { key, label, icon?, badge? }; `activeKey` highlights the current section.
+ * Pass `showNotifications={false}` for roles that receive no notifications.
  */
-export default function AppLayout({ portal, roleLabel, session, nav, activeKey, pageTitle, onNavigate, onLogout, unreadCount = 0, children }) {
+export default function AppLayout({ portal, roleLabel, session, nav, activeKey, pageTitle, onNavigate, onLogout, unreadCount = 0, showNotifications = true, children }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const navigate = (key) => {
@@ -42,13 +44,14 @@ export default function AppLayout({ portal, roleLabel, session, nav, activeKey, 
               aria-current={activeKey === item.key ? 'page' : undefined}
               onClick={() => navigate(item.key)}
             >
-              <span>{item.label}</span>
+              <span className="nav-link-label">{item.icon && <Icon name={item.icon} />}{item.label}</span>
               {item.badge > 0 && <span className="nav-badge">{item.badge > 99 ? '99+' : item.badge}</span>}
             </button>
           ))}
         </nav>
 
         <button className="sidebar-logout" type="button" onClick={onLogout}>Sign out</button>
+        <small className="sidebar-version">Athlete-Hub · {roleLabel} access</small>
       </aside>
 
       <button className="sidebar-scrim" type="button" aria-label="Close menu" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)} />
@@ -61,7 +64,7 @@ export default function AppLayout({ portal, roleLabel, session, nav, activeKey, 
             <span aria-hidden="true">›</span>
             <strong>{pageTitle}</strong>
           </div>
-          <button
+          {showNotifications && <button
             className="icon-button notification-bell"
             type="button"
             onClick={() => navigate('notifications')}
@@ -69,7 +72,7 @@ export default function AppLayout({ portal, roleLabel, session, nav, activeKey, 
           >
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
             {unreadCount > 0 && <span className="bell-dot">{unreadCount > 9 ? '9+' : unreadCount}</span>}
-          </button>
+          </button>}
         </header>
         <main className="page">{children}</main>
       </div>

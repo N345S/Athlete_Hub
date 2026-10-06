@@ -18,13 +18,16 @@ public class PortfolioController : ControllerBase
     private readonly AthleteAccessService _access;
     private readonly DocumentStorage _storage;
     private readonly AchievementReviewService _review;
+    private readonly NotificationService _notifications;
 
     public PortfolioController(
         AthleteHubDbContext context,
         AthleteAccessService access,
         DocumentStorage storage,
-        AchievementReviewService review)
+        AchievementReviewService review,
+        NotificationService notifications)
     {
+        _notifications = notifications;
         _context = context;
         _access = access;
         _storage = storage;
@@ -46,7 +49,7 @@ public class PortfolioController : ControllerBase
     }
 
     [HttpGet("athlete/{athleteId:int}")]
-    [Authorize(Roles = "COACH,DIRECTOR,ADMIN")]
+    [Authorize(Roles = "COACH,DIRECTOR")]
     public async Task<IActionResult> GetAthletePortfolio(int athleteId)
     {
         if (!await _access.CanViewAthleteAsync(User, athleteId, includeRegistrar: false))
@@ -148,6 +151,11 @@ public class PortfolioController : ControllerBase
                 CreatedAt = DateTime.UtcNow
             };
             _context.PortfolioItems.Add(item);
+            _notifications.Notify(
+                await _notifications.CoachUserIdsForAthleteAsync(athlete.AthleteId),
+                "New portfolio submission",
+                $"{await AthleteNameAsync(athlete.AthleteId)} submitted \"{achievement.Title}\" for verification.",
+                "PORTFOLIO_SUBMITTED");
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -303,8 +311,9 @@ public class PortfolioController : ControllerBase
         return NoContent();
     }
 
+    // Verifying achievements is the coach's job; the director only monitors.
     [HttpPut("{portfolioItemId:int}/verify")]
-    [Authorize(Roles = "COACH,DIRECTOR,ADMIN")]
+    [Authorize(Roles = "COACH")]
     public async Task<IActionResult> VerifyPortfolioItem(
         int portfolioItemId,
         [FromBody] PortfolioVerificationRequest request)
@@ -421,6 +430,11 @@ public class PortfolioController : ControllerBase
             })
         }).ToList();
     }
+
+    private Task<string> AthleteNameAsync(int athleteId) => _context.AthleteProfiles
+        .Where(athlete => athlete.AthleteId == athleteId)
+        .Select(athlete => athlete.User.FirstName + " " + athlete.User.LastName)
+        .FirstAsync();
 
     private async Task<AthleteProfile?> GetCurrentAthleteAsync()
     {

@@ -190,7 +190,7 @@ public class PerformanceController : ControllerBase
     /// <response code="401">Invalid or missing JWT token.</response>
     /// <response code="403">User not authorized to view this athlete's records.</response>
     [HttpGet("athlete/{athleteId}/trend")]
-    [Authorize(Roles = "COACH,DIRECTOR,ADMIN,ATHLETE,STUDENT")]
+    [Authorize(Roles = "COACH,DIRECTOR,ATHLETE,STUDENT")]
     public async Task<IActionResult> GetAthleteTrend(int athleteId, string timeRange = "overall")
     {
         if (!await CanViewAthleteAsync(athleteId)) return Forbid();
