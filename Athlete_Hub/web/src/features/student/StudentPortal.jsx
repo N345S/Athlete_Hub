@@ -8,8 +8,8 @@ import FileLink from '../../components/FileLink.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, PageHeader, StatCard, StatusBadge } from '../../components/ui.jsx'
 
-const VIEWS = ['dashboard', 'grades', 'schedule', 'documents', 'portfolio', 'profile', 'notifications']
-const TITLES = { dashboard: 'Dashboard', grades: 'My grades', schedule: 'Schedule', documents: 'Documents', portfolio: 'Portfolio', profile: 'Profile', notifications: 'Notifications' }
+const VIEWS = ['dashboard', 'schedule', 'documents', 'portfolio', 'profile', 'notifications']
+const TITLES = { dashboard: 'Dashboard', schedule: 'Schedule', documents: 'Documents', portfolio: 'Portfolio', profile: 'Profile', notifications: 'Notifications' }
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx']
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const DOCUMENT_TYPES = ['Medical Clearance', 'Consent Form', 'Enrollment Form', 'Athletic Eligibility Form', 'Other']
@@ -59,33 +59,44 @@ function FileDropZone({ files, onChange, label }) {
 }
 
 function StudentDashboard({ session, profile, onNavigate }) {
-  const academics = useApiData(profile?.athleteId ? `/api/AcademicRecords/dashboard/${profile.athleteId}` : null, session.token)
+  const evaluations = useApiData(profile?.athleteId ? `/api/Eligibility/athlete/${profile.athleteId}` : null, session.token)
   const upcoming = useApiData(`/api/Schedules/athlete?from=${localDateISO()}`, session.token, { initialData: [] })
   const portfolio = useApiData('/api/Portfolio/me', session.token, { initialData: [] })
-  const nextEvent = [...(upcoming.data || [])]
+  const documents = useApiData('/api/Documents/me', session.token, { initialData: [] })
+  const nextEvents = [...(upcoming.data || [])]
     .filter((item) => item.startDate >= localDateISO())
     .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`))
-  const nextTraining = nextEvent.find((item) => item.type === 'TRAINING')
+  const nextTraining = nextEvents.find((item) => item.type === 'TRAINING')
   const verified = (portfolio.data || []).filter((item) => ['VERIFIED', 'APPROVED'].includes(String(item.achievementStatus || item.verificationStatus).toUpperCase())).length
-  const eligibility = academics.data?.latestEligibility
+  const pendingDocuments = (documents.data || []).filter((item) => item.documentType !== 'Achievement Evidence' && item.status === 'PENDING').length
+  // Records arrive newest first; the latest decision is what determines eligibility today.
+  const records = evaluations.data?.records || []
+  const latestDecision = records.find((item) => item.academicStatus !== 'PENDING')
+  const pendingRequest = records.find((item) => item.academicStatus === 'PENDING')
+  const termOf = (item) => `${item.term.semester} ${item.term.academicYear}`
 
   return (
     <>
       <PageHeader title={`${greeting()}, ${session.firstName || 'Athlete'}`} subtitle={longToday()} />
-      {eligibility?.academicStatus === 'INELIGIBLE' && (
-        <Alert tone="warning">The Registrar marked you ineligible for {eligibility.term.semester} {eligibility.term.academicYear}.{eligibility.remarks ? ` Remark: ${eligibility.remarks}` : ''} Please coordinate with your coach.</Alert>
+      {latestDecision?.academicStatus === 'INELIGIBLE' && (
+        <Alert tone="warning">The Registrar marked you ineligible for {termOf(latestDecision)}. Please coordinate with your coach.</Alert>
       )}
       <div className="stat-grid">
-        <StatCard label="Current GPA" value={academics.data?.averageGrade || '—'} hint="Academic performance" />
-        <StatCard label="Enrolled units" value={academics.data?.totalUnits || '—'} hint="From your academic records" tone="info" />
-        <StatCard label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="success" />
+        <StatCard
+          label="Academic eligibility"
+          value={latestDecision ? statusLabel(latestDecision.academicStatus) : pendingRequest ? 'Under review' : 'Not evaluated'}
+          hint={latestDecision ? `Registrar decision · ${termOf(latestDecision)}` : pendingRequest ? `Requested for ${termOf(pendingRequest)}` : 'No Grade Evaluation requested yet'}
+          tone={latestDecision?.academicStatus === 'ELIGIBLE' ? 'success' : latestDecision?.academicStatus === 'INELIGIBLE' ? 'danger' : 'info'}
+        />
+        <StatCard label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" />
         <StatCard label="Verified achievements" value={verified} hint={`${(portfolio.data || []).length} submitted`} tone="warning" />
+        <StatCard label="Documents in review" value={pendingDocuments} hint="Awaiting staff approval" tone="info" />
       </div>
       <div className="dashboard-grid">
         <Card title="Coming up" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('schedule')}>Full schedule →</button>}>
-          {upcoming.loading && !upcoming.data?.length ? <Loading /> : nextEvent.length ? (
+          {upcoming.loading && !upcoming.data?.length ? <Loading /> : nextEvents.length ? (
             <ul className="row-list">
-              {nextEvent.slice(0, 5).map((item) => (
+              {nextEvents.slice(0, 5).map((item) => (
                 <li className="row" key={item.id}>
                   <div className="row-main">
                     <strong>{item.title}</strong>
@@ -98,49 +109,25 @@ function StudentDashboard({ session, profile, onNavigate }) {
             </ul>
           ) : <EmptyState title="Nothing scheduled" message="Approved training and events will appear here." />}
         </Card>
-        <Card title="Academic eligibility" subtitle="Latest Registrar decision">
-          {eligibility ? (
-            <div className="row">
-              <div className="row-main">
-                <strong>{eligibility.term.semester} {eligibility.term.academicYear}</strong>
-                {eligibility.remarks && <span>{eligibility.remarks}</span>}
-              </div>
-              <StatusBadge status={eligibility.academicStatus} />
-            </div>
+        <Card title="Academic eligibility" subtitle="Registrar decisions from your official Grade Evaluation">
+          <Alert>{evaluations.error}</Alert>
+          {evaluations.loading && !evaluations.data ? <Loading /> : records.length ? (
+            <ul className="row-list">
+              {records.slice(0, 4).map((item) => (
+                <li className="row" key={item.eligibilityId}>
+                  <div className="row-main">
+                    <strong>{termOf(item)}</strong>
+                    {item.academicStatus === 'PENDING' && <span>The Registrar is reviewing your Grade Evaluation.</span>}
+                    {item.reasons?.length > 0 && <span>Reasons: {item.reasons.join(', ')}</span>}
+                    {item.remarks && <small>Registrar remark: {item.remarks}</small>}
+                  </div>
+                  <StatusBadge status={item.academicStatus} label={item.academicStatus === 'PENDING' ? 'Under review' : undefined} />
+                </li>
+              ))}
+            </ul>
           ) : <EmptyState title="No decision yet" message="Your coach requests a Grade Evaluation from the Registrar each term." />}
         </Card>
       </div>
-    </>
-  )
-}
-
-function GradesPage({ session, profile }) {
-  const { data, loading, error } = useApiData(profile?.athleteId ? `/api/AcademicRecords/dashboard/${profile.athleteId}` : null, session.token)
-  const records = data?.records || []
-  return (
-    <>
-      <PageHeader title="My grades" subtitle="Academic records from the Registrar" />
-      <Alert>{error}</Alert>
-      <Card>
-        {loading || !profile ? <Loading /> : records.length ? (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Term</th><th>Subject</th><th className="numeric">Units</th><th className="numeric">Grade</th><th>Remarks</th></tr></thead>
-              <tbody>
-                {records.map((item) => (
-                  <tr key={item.academicRecordId}>
-                    <td>{item.term.semester} {item.term.academicYear}</td>
-                    <td><strong>{item.subjectCode}</strong> · {item.subjectName}</td>
-                    <td className="numeric">{item.units ?? '—'}</td>
-                    <td className="numeric">{item.grade ?? 'Pending'}</td>
-                    <td>{item.remarks || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : <EmptyState title="No academic records" message="Grades recorded by the Registrar will appear here." />}
-      </Card>
     </>
   )
 }
@@ -435,7 +422,6 @@ export default function StudentPortal({ session, onLogout }) {
 
   const pages = {
     dashboard: <StudentDashboard session={session} profile={profile.data} onNavigate={setView} />,
-    grades: <GradesPage session={session} profile={profile.data} />,
     schedule: <>
       <PageHeader title="Schedule" subtitle="Approved training sessions, sports events, and competitions" />
       <Alert>{schedule.error}</Alert>
@@ -454,7 +440,6 @@ export default function StudentPortal({ session, onLogout }) {
       session={session}
       nav={[
         { key: 'dashboard', label: 'Dashboard' },
-        { key: 'grades', label: 'My grades' },
         { key: 'schedule', label: 'Schedule' },
         { key: 'documents', label: 'Documents' },
         { key: 'portfolio', label: 'Portfolio' },

@@ -550,6 +550,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
 .person-card-stats div { display: flex; flex-direction: column; gap: 2px; }
 .person-card-stats dt { font-size: 0.75rem; color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.04em; }
 .person-card-stats dd { margin: 0; font-weight: 700; }
+.person-card-stats small { font-size: 0.78rem; }
 .person-card-button { align-items: center; text-align: center; gap: 4px; cursor: pointer; font: inherit; color: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
 .person-card-button:hover { border-color: var(--brand-500); box-shadow: var(--shadow-md); }
 .person-card-button .avatar { margin-bottom: var(--space-2); }

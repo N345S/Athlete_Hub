@@ -54,10 +54,10 @@ public class DirectorDashboardController : ControllerBase
                 .AsNoTracking()
                 .OrderByDescending(item => item.EvaluatedAt)
                 .ThenByDescending(item => item.EligibilityId)
-                .Select(item => new { item.AthleteId, item.AcademicStatus })
+                .Select(item => new { item.AthleteId, item.AcademicStatus, Term = item.Term.Semester + " " + item.Term.AcademicYear })
                 .ToListAsync())
             .GroupBy(item => item.AthleteId)
-            .ToDictionary(group => group.Key, group => group.First().AcademicStatus);
+            .ToDictionary(group => group.Key, group => group.First());
 
         var portfolioItems = await _context.PortfolioItems
             .AsNoTracking()
@@ -90,7 +90,8 @@ public class DirectorDashboardController : ControllerBase
                     athlete.Course,
                     athlete.YearLevel,
                     athlete.teams,
-                    eligibilityStatus = latestEligibility.GetValueOrDefault(athlete.AthleteId),
+                    eligibilityStatus = latestEligibility.GetValueOrDefault(athlete.AthleteId)?.AcademicStatus,
+                    eligibilityTerm = latestEligibility.GetValueOrDefault(athlete.AthleteId)?.Term,
                     attendanceRate = CoachDashboardController.AttendanceRate(attendance?.Attended, attendance?.Total)
                 };
             }),

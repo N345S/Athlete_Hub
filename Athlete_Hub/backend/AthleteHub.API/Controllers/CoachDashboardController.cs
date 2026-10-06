@@ -62,11 +62,11 @@ public class CoachDashboardController : ControllerBase
             .Where(item => athleteIds.Contains(item.AthleteId))
             .OrderByDescending(item => item.EvaluatedAt)
             .ThenByDescending(item => item.EligibilityId)
-            .Select(item => new { item.AthleteId, item.AcademicStatus, item.EvaluatedAt, item.EligibilityId })
+            .Select(item => new { item.AthleteId, item.AcademicStatus, item.EvaluatedAt, item.EligibilityId, Term = item.Term.Semester + " " + item.Term.AcademicYear })
             .ToListAsync();
         var latestEligibility = eligibilityRecords
             .GroupBy(item => item.AthleteId)
-            .ToDictionary(group => group.Key, group => group.First().AcademicStatus);
+            .ToDictionary(group => group.Key, group => group.First());
         var attendanceByAthlete = await _context.Attendances
             .Where(item => athleteIds.Contains(item.AthleteId) && teamIds.Contains(item.TrainingSession.TeamId))
             .GroupBy(item => item.AthleteId)
@@ -138,7 +138,8 @@ public class CoachDashboardController : ControllerBase
                     member.Athlete.StudentNumber,
                     member.Athlete.Course,
                     member.Athlete.YearLevel,
-                    eligibilityStatus = latestEligibility.GetValueOrDefault(member.AthleteId),
+                    eligibilityStatus = latestEligibility.GetValueOrDefault(member.AthleteId)?.AcademicStatus,
+                    eligibilityTerm = latestEligibility.GetValueOrDefault(member.AthleteId)?.Term,
                     attendanceRate = AttendanceRate(attendanceByAthlete.GetValueOrDefault(member.AthleteId)?.Attended, attendanceByAthlete.GetValueOrDefault(member.AthleteId)?.Total)
                 })
             }),

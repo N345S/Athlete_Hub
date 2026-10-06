@@ -27,9 +27,12 @@ export default function AthletesPage({ athletes, title, subtitle, onViewProfile 
                 </div>
               </div>
               <dl className="person-card-stats">
-                <div><dt>GPA</dt><dd>—</dd></div>
+                <div>
+                  <dt>Academic eligibility</dt>
+                  <dd>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} label={athlete.eligibilityStatus === 'PENDING' ? 'Awaiting decision' : undefined} /> : <span className="muted">Not evaluated</span>}</dd>
+                  {athlete.eligibilityTerm && <small className="muted">{athlete.eligibilityTerm}</small>}
+                </div>
                 <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
-                <div><dt>Eligibility</dt><dd>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} /> : <span className="muted">Not evaluated</span>}</dd></div>
               </dl>
               <button className="btn btn-secondary btn-block" type="button" onClick={() => onViewProfile(athlete)}>View profile</button>
             </article>
