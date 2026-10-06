@@ -26,7 +26,8 @@ public class RegistrarDashboardController : ControllerBase
                 firstName = athlete.User.FirstName,
                 lastName = athlete.User.LastName,
                 course = athlete.Course,
-                yearLevel = athlete.YearLevel
+                yearLevel = athlete.YearLevel,
+                accountStatus = athlete.User.AccountStatus
             })
             .OrderBy(athlete => athlete.lastName)
             .ThenBy(athlete => athlete.firstName)

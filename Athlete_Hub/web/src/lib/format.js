@@ -100,3 +100,30 @@ export function statusTone(status) {
 export function eventTypeLabel(type) {
   return String(type || '').replace(/_/g, ' ').toLowerCase().replace(/^\w/, (letter) => letter.toUpperCase())
 }
+
+/**
+ * Rosters arrive as one row per team membership; collapse them to one row per athlete,
+ * joining team and sport names for athletes on several teams.
+ */
+export function mergeAthleteTeams(rows) {
+  const byId = new Map()
+  for (const row of rows) {
+    const existing = byId.get(row.athleteId)
+    if (!existing) {
+      byId.set(row.athleteId, { ...row, teamNames: row.teamName ? [row.teamName] : [], sports: row.sport ? [row.sport] : [] })
+      continue
+    }
+    if (row.teamName && !existing.teamNames.includes(row.teamName)) existing.teamNames.push(row.teamName)
+    if (row.sport && !existing.sports.includes(row.sport)) existing.sports.push(row.sport)
+  }
+  return [...byId.values()].map((athlete) => ({
+    ...athlete,
+    teamName: athlete.teamNames.join(', ') || null,
+    sport: athlete.sports.join(' · ') || null,
+  }))
+}
+
+export const isActiveAccount = (person) => !person?.accountStatus || person.accountStatus === 'ACTIVE'
+
+/** Badge label for a non-active account, e.g. "Account suspended". */
+export const accountLabel = (person) => `Account ${String(person?.accountStatus || '').toLowerCase()}`

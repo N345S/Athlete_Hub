@@ -101,6 +101,18 @@ builder.Services
             // No extra time after token expiration
             ClockSkew = TimeSpan.Zero
         };
+
+        // Suspending or deactivating an account takes effect immediately, not when the token expires.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userId = AthleteAccessService.GetUserId(context.Principal!);
+                var db = context.HttpContext.RequestServices.GetRequiredService<AthleteHubDbContext>();
+                var active = userId != null && await db.Users.AnyAsync(user => user.UserId == userId && user.AccountStatus == "ACTIVE");
+                if (!active) context.Fail("This account is no longer active.");
+            }
+        };
     });
 
 
@@ -194,6 +206,25 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Services.GetRequiredService<DocumentStorage>().MoveLegacyFilesToPrivateStorage();
+
+// Development helpers: `dotnet run -- --seed-test-data` / `--remove-test-data` manage scenario data, then exit.
+if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data"))
+{
+    if (!app.Environment.IsDevelopment())
+    {
+        Console.Error.WriteLine("Test data commands only run in the Development environment.");
+        return;
+    }
+
+    using var seedScope = app.Services.CreateScope();
+    var seeder = new TestDataSeeder(
+        seedScope.ServiceProvider.GetRequiredService<AthleteHubDbContext>(),
+        seedScope.ServiceProvider.GetRequiredService<AppClock>(),
+        app.Environment);
+    if (args.Contains("--remove-test-data")) await seeder.RemoveAsync();
+    else await seeder.SeedAsync();
+    return;
+}
 
 // ==========================================
 // START APPLICATION

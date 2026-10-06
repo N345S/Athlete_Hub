@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { formatDate, fullName, longToday, matchesSearch } from '../../lib/format.js'
+import { accountLabel, formatDate, fullName, isActiveAccount, longToday, matchesSearch, mergeAthleteTeams } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
@@ -50,7 +50,7 @@ function AssignAthleteModal({ coach, session, onClose, onAssigned }) {
           <select value={athleteId} onChange={(event) => setAthleteId(event.target.value)} disabled={loading} required size={Math.min(8, Math.max(athletes.length, 2))}>
             {athletes.map((athlete) => (
               <option key={athlete.athleteId} value={athlete.athleteId}>
-                {fullName(athlete)} · {athlete.studentNumber}{athlete.currentCoach ? ` · currently ${athlete.currentCoach.teamName}` : ''}
+                {fullName(athlete)} · {athlete.studentNumber}{isActiveAccount(athlete) ? '' : ` · ${athlete.accountStatus}`}{athlete.currentCoach ? ` · currently ${athlete.currentCoach.teamName}` : ''}
               </option>
             ))}
           </select>
@@ -166,6 +166,7 @@ function CoachesPage({ coaches, loading, onOpen }) {
                   <strong>{fullName(coach)}</strong>
                   <small>{coach.email || 'Email unavailable'}</small>
                   <span className="muted">{coach.specialization || 'Coach'}</span>
+                  {!isActiveAccount(coach) && <StatusBadge status={coach.accountStatus} label={accountLabel(coach)} />}
                 </div>
               </div>
               <dl className="person-card-stats">
@@ -192,9 +193,9 @@ export default function DirectorPortal({ session, onLogout }) {
   const pending = useApiData('/api/Training/pending', session.token, { initialData: [] })
   const schedule = useApiData(view === 'schedule' ? '/api/Schedules/staff' : null, session.token, { initialData: [] })
 
-  const athletes = (dashboard.data?.athletes || []).flatMap((athlete) => athlete.teams?.length
+  const athletes = mergeAthleteTeams((dashboard.data?.athletes || []).flatMap((athlete) => athlete.teams?.length
     ? athlete.teams.map((team) => ({ ...athlete, teamName: team.teamName, sport: team.sport }))
-    : [athlete])
+    : [athlete]))
   const coachList = coaches.data?.coaches || []
   const recentPortfolio = (dashboard.data?.portfolioItems || []).slice(0, 6)
   const notEvaluated = (dashboard.data?.athletes || []).filter((athlete) => !athlete.eligibilityStatus).length

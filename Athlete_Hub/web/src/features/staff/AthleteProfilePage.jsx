@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, fetchFileUrl } from '../../lib/api.js'
-import { formatDate, fullName } from '../../lib/format.js'
+import { accountLabel, formatDate, fullName, isActiveAccount } from '../../lib/format.js'
 import { useApiData } from '../../lib/hooks.js'
 import FileLink from '../../components/FileLink.jsx'
 import { Alert, Avatar, Card, EmptyState, Field, Loading, Modal, ReasonDialog, StatusBadge } from '../../components/ui.jsx'
@@ -189,11 +189,13 @@ export default function AthleteProfilePage({ athlete, session, canReview, onBack
           <h1>{fullName(athlete)}</h1>
           <p>{athlete.studentNumber || 'Student ID pending'} · {athlete.sport || 'Athlete'}</p>
         </div>
+        {!isActiveAccount(athlete) && <StatusBadge status={athlete.accountStatus} label={accountLabel(athlete)} />}
       </section>
+      {!isActiveAccount(athlete) && <Alert tone="warning">This athlete's account is {String(athlete.accountStatus).toLowerCase()}. They cannot sign in, and attendance or performance cannot be recorded until an administrator reactivates the account.</Alert>}
       <dl className="detail-grid">
         <div><dt>Program</dt><dd>{athlete.course || '—'}</dd></div>
         <div><dt>Year level</dt><dd>{athlete.yearLevel || '—'}</dd></div>
-        <div><dt>Team</dt><dd>{athlete.teamName || 'No team assigned'}</dd></div>
+        <div><dt>Team</dt><dd>{athlete.teamName || 'No active team'}</dd></div>
         <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
       </dl>
       <div className="stack">

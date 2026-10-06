@@ -136,6 +136,7 @@ public class CoachDashboardController : ControllerBase
                     member.Athlete.User.FirstName,
                     member.Athlete.User.LastName,
                     member.Athlete.StudentNumber,
+                    member.Athlete.User.AccountStatus,
                     member.Athlete.Course,
                     member.Athlete.YearLevel,
                     eligibilityStatus = latestEligibility.GetValueOrDefault(member.AthleteId)?.AcademicStatus,

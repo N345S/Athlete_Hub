@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { formatDateTime, fullName, longToday, matchesSearch } from '../../lib/format.js'
+import { formatDateTime, fullName, isActiveAccount, longToday, matchesSearch } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
@@ -217,7 +217,7 @@ export default function RegistrarPortal({ session, onLogout }) {
                   const latest = latestByAthlete.get(student.athleteId)
                   return (
                     <tr key={student.athleteId}>
-                      <td>{fullName(student)}</td>
+                      <td>{fullName(student)} {!isActiveAccount(student) && <StatusBadge status={student.accountStatus} />}</td>
                       <td>{student.studentNumber}</td>
                       <td>{student.course || '—'}</td>
                       <td>{latest ? <button className="link-button" type="button" onClick={() => setReviewingId(latest.eligibilityId)}><StatusBadge status={latest.academicStatus} /> {termLabel(latest)}</button> : <span className="muted">Not requested</span>}</td>

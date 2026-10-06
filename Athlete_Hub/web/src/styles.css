@@ -393,6 +393,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
 .toolbar { display: flex; gap: var(--space-3); align-items: flex-end; flex-wrap: wrap; }
 .toolbar select { width: auto; min-width: 160px; }
 .toolbar .field { min-width: min(100%, 360px); }
+.card > .toolbar { margin-bottom: var(--space-4); }
 
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
 .stat-card {
@@ -545,6 +546,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
 .person-card-top { display: flex; gap: var(--space-3); align-items: center; }
 .person-card-top > div { display: flex; flex-direction: column; min-width: 0; }
 .person-card-top small { color: var(--ink-500); }
+.person-card-top .badge { align-self: flex-start; margin-top: 4px; }
 .person-card-top .muted { font-size: 0.88rem; }
 .person-card-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: var(--space-2); margin: 0; padding: var(--space-3) 0; border-block: 1px solid var(--line); }
 .person-card-stats div { display: flex; flex-direction: column; gap: 2px; }

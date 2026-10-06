@@ -27,6 +27,7 @@ public class DirectorDashboardController : ControllerBase
                 athlete.StudentNumber,
                 firstName = athlete.User.FirstName,
                 lastName = athlete.User.LastName,
+                accountStatus = athlete.User.AccountStatus,
                 athlete.Course,
                 athlete.YearLevel,
                 teams = athlete.TeamMembers
@@ -87,6 +88,7 @@ public class DirectorDashboardController : ControllerBase
                     athlete.StudentNumber,
                     athlete.firstName,
                     athlete.lastName,
+                    athlete.accountStatus,
                     athlete.Course,
                     athlete.YearLevel,
                     athlete.teams,

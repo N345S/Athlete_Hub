@@ -269,6 +269,8 @@ public class TrainingController : ControllerBase
         if (!await _context.Teams.AnyAsync(team => team.TeamId == session.TeamId && team.CoachId == coach.CoachId)) return Forbid();
         if (!ValidStatuses.Contains(request.AttendanceStatus.Trim().ToUpperInvariant())) return BadRequest(new { message = "Attendance status must be PRESENT, ABSENT, LATE, or EXCUSED." });
         if (!await _context.TeamMembers.AnyAsync(member => member.TeamId == session.TeamId && member.AthleteId == request.AthleteId && member.DateLeft == null)) return BadRequest(new { message = "Athlete is not an active member of this team." });
+        if (!await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == request.AthleteId && athlete.User.AccountStatus == "ACTIVE"))
+            return BadRequest(new { message = "Attendance cannot be recorded for a suspended or inactive account." });
         var attendance = await _context.Attendances.FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId && item.AthleteId == request.AthleteId);
         if (attendance == null) { attendance = new Attendance { TrainingSessionId = sessionId, AthleteId = request.AthleteId }; _context.Attendances.Add(attendance); }
         attendance.AttendanceStatus = request.AttendanceStatus.Trim().ToUpperInvariant();

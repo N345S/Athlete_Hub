@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { formatDate, fullName, localDateISO } from '../../lib/format.js'
+import { accountLabel, formatDate, fullName, isActiveAccount, localDateISO } from '../../lib/format.js'
 import { useApiData } from '../../lib/hooks.js'
-import { Alert, Avatar, Card, EmptyState, Field, Loading, PageHeader } from '../../components/ui.jsx'
+import { Alert, Avatar, Card, EmptyState, Field, Loading, PageHeader, StatusBadge } from '../../components/ui.jsx'
 
 const STATUSES = [
   ['PRESENT', 'Present'],
@@ -29,7 +29,8 @@ export default function AttendancePage({ teams, session }) {
 
   const statuses = { ...Object.fromEntries((attendance.data || []).map((item) => [item.athleteId, item.attendanceStatus])), ...(overrides[selectedId] || {}) }
   const athletes = teams.find((team) => team.teamId === selected?.teamId)?.athletes || []
-  const marked = athletes.filter((athlete) => statuses[athlete.athleteId]).length
+  const markable = athletes.filter(isActiveAccount)
+  const marked = markable.filter((athlete) => statuses[athlete.athleteId]).length
 
   const mark = async (athleteId, status) => {
     setSavingId(athleteId)
@@ -57,7 +58,7 @@ export default function AttendancePage({ teams, session }) {
                   {approved.map((item) => <option key={item.trainingSessionId} value={item.trainingSessionId}>{formatDate(item.trainingDate)} · {item.title} · {item.teamName}</option>)}
                 </select>
               </Field>
-              {selected && <span className="muted">{marked} of {athletes.length} marked</span>}
+              {selected && <span className="muted">{marked} of {markable.length} marked</span>}
             </div>
             {selected && selected.trainingDate > today && <Alert tone="info">This session has not happened yet.</Alert>}
             {athletes.length ? (
@@ -68,14 +69,14 @@ export default function AttendancePage({ teams, session }) {
                       <Avatar firstName={athlete.firstName} lastName={athlete.lastName} />
                       <div><strong>{fullName(athlete)}</strong><small>{athlete.studentNumber || 'Student ID pending'}</small></div>
                     </div>
-                    <div className="segmented attendance-options" role="group" aria-label={`Attendance for ${fullName(athlete)}`}>
+                    {!isActiveAccount(athlete) ? <StatusBadge status={athlete.accountStatus} label={`${accountLabel(athlete)} — cannot be marked`} /> : <div className="segmented attendance-options" role="group" aria-label={`Attendance for ${fullName(athlete)}`}>
                       {STATUSES.map(([value, label]) => (
                         <button key={value} type="button" className={`${statuses[athlete.athleteId] === value ? 'active' : ''} status-${value.toLowerCase()}`}
                           aria-pressed={statuses[athlete.athleteId] === value} disabled={savingId === athlete.athleteId} onClick={() => mark(athlete.athleteId, value)}>
                           {label}
                         </button>
                       ))}
-                    </div>
+                    </div>}
                   </li>
                 ))}
               </ul>

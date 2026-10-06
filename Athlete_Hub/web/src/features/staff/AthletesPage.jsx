@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fullName, matchesSearch } from '../../lib/format.js'
+import { accountLabel, fullName, isActiveAccount, matchesSearch } from '../../lib/format.js'
 import { Avatar, EmptyState, PageHeader, SearchInput, StatusBadge } from '../../components/ui.jsx'
 
 /** Roster of athletes as cards; used by coaches (their teams) and the director (everyone). */
@@ -17,13 +17,14 @@ export default function AthletesPage({ athletes, title, subtitle, onViewProfile 
       {filtered.length ? (
         <div className="card-grid">
           {filtered.map((athlete) => (
-            <article className="person-card" key={`${athlete.teamName || 'none'}-${athlete.athleteId}`}>
+            <article className="person-card" key={athlete.athleteId}>
               <div className="person-card-top">
                 <Avatar firstName={athlete.firstName} lastName={athlete.lastName} size="lg" />
                 <div>
                   <strong>{fullName(athlete)}</strong>
                   <small>{athlete.studentNumber || 'Student ID pending'}</small>
-                  <span className="muted">{athlete.sport || 'Athlete'}{athlete.teamName ? ` · ${athlete.teamName}` : ''}</span>
+                  <span className="muted">{athlete.teamName ? [athlete.sport, athlete.teamName].filter(Boolean).join(' · ') : 'No active team'}</span>
+                  {!isActiveAccount(athlete) && <StatusBadge status={athlete.accountStatus} label={accountLabel(athlete)} />}
                 </div>
               </div>
               <dl className="person-card-stats">

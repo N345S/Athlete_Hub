@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday } from '../../lib/format.js'
+import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday, mergeAthleteTeams } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
@@ -31,7 +31,7 @@ export default function CoachPortal({ session, onLogout }) {
   const schedule = useApiData(view === 'schedule' ? '/api/Schedules/staff' : null, session.token, { initialData: [] })
 
   const teams = dashboard.data?.teams || []
-  const athletes = teams.flatMap((team) => (team.athletes || []).map((athlete) => ({ ...athlete, teamName: team.teamName, sport: team.sport })))
+  const athletes = mergeAthleteTeams(teams.flatMap((team) => (team.athletes || []).map((athlete) => ({ ...athlete, teamName: team.teamName, sport: team.sport }))))
   const pendingPortfolio = (dashboard.data?.portfolioItems || []).filter((item) => String(item.achievementStatus || item.verificationStatus || 'PENDING').toUpperCase() === 'PENDING')
   const needsAttention = athletes.filter((athlete) => athlete.eligibilityStatus && athlete.eligibilityStatus !== 'ELIGIBLE')
   const eligibleCount = athletes.filter((athlete) => athlete.eligibilityStatus === 'ELIGIBLE').length

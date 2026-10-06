@@ -42,6 +42,7 @@ public class DirectorController : ControllerBase
             {
                 c.CoachId,
                 firstName = c.User.FirstName,
+                accountStatus = c.User.AccountStatus,
                 lastName = c.User.LastName,
                 email = c.User.Email,
                 c.Specialization,
@@ -295,6 +296,7 @@ public class DirectorController : ControllerBase
                 a.User.Phone,
                 a.Course,
                 a.YearLevel,
+                accountStatus = a.User.AccountStatus,
                 currentCoach = a.TeamMembers
                     .Where(tm => tm.DateLeft == null && tm.Team.Coach != null && tm.Team.Coach.User != null)
                     .Select(tm => new

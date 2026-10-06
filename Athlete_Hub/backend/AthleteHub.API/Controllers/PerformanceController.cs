@@ -112,6 +112,8 @@ public class PerformanceController : ControllerBase
     {
         var coach = await GetCoachAsync();
         if (coach == null || !await CoachHasAthleteAsync(coach.CoachId, request.AthleteId)) return Forbid();
+        if (!await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == request.AthleteId && athlete.User.AccountStatus == "ACTIVE"))
+            return BadRequest(new { message = "Performance cannot be recorded for a suspended or inactive account." });
         if (string.IsNullOrWhiteSpace(request.DataType)) return BadRequest(new { message = "A universal performance name is required." });
 
         var metricId = request.MetricId > 0

@@ -177,7 +177,7 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new
             {
-                message = "This account is not active."
+                message = $"This account is {user.AccountStatus.ToLowerInvariant()}. Please contact the athletics office or a system administrator."
             });
         }
 
