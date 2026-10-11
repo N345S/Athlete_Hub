@@ -224,7 +224,7 @@ public class AchievementsController : ControllerBase
         athlete = new AthleteProfile
         {
             UserId = user.UserId,
-            StudentNumber = user.UniversityId
+            StudentNumber = user.UniversityId ?? $"ATH-{user.UserId}"
         };
 
         _context.AthleteProfiles.Add(athlete);

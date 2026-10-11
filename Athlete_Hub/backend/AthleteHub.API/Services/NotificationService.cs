@@ -41,4 +41,15 @@ public class NotificationService
         .Select(member => member.Team.Coach!.UserId)
         .Distinct()
         .ToListAsync();
+
+    /// <summary>Active parent accounts linked to the athlete, with the child's first name for the message.</summary>
+    public async Task<List<(int ParentUserId, string ChildName)>> ParentsOfAthletesAsync(IEnumerable<int> athleteIds)
+    {
+        var ids = athleteIds.Distinct().ToList();
+        var rows = await _context.ParentAthletes
+            .Where(link => ids.Contains(link.AthleteId) && link.ParentUser.AccountStatus == "ACTIVE" && link.ParentUser.Role.RoleName == "PARENT")
+            .Select(link => new { link.ParentUserId, link.Athlete.User.FirstName })
+            .ToListAsync();
+        return rows.Select(row => (row.ParentUserId, row.FirstName)).ToList();
+    }
 }

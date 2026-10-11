@@ -3,8 +3,11 @@ import { api } from '../../lib/api.js'
 import { formatDateTime, fullName, isActiveAccount, longToday, matchesSearch, timeAgo } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
+import Icon from '../../components/icons.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
+import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, EmptyState, Field, Loading, PageHeader, SearchInput, StatCard, StatusBadge } from '../../components/ui.jsx'
+import { HELP } from '../../lib/help.js'
 import { PdfPreview } from '../staff/AthleteProfilePage.jsx'
 
 const VIEWS = ['dashboard', 'requests', 'evaluations', 'students', 'notifications']
@@ -43,6 +46,7 @@ function EvaluationTable({ items, emptyTitle, emptyMessage, actionLabel, onOpen,
 }
 
 function ReviewPage({ evaluation, session, onBack, onUpdated }) {
+  const toast = useToast()
   const [status, setStatus] = useState(evaluation.academicStatus === 'INELIGIBLE' ? 'INELIGIBLE' : 'ELIGIBLE')
   const [reasons, setReasons] = useState(evaluation.academicStatus === 'INELIGIBLE' ? evaluation.reasons || [] : [])
   const [remarks, setRemarks] = useState(evaluation.remarks || '')
@@ -61,6 +65,7 @@ function ReviewPage({ evaluation, session, onBack, onUpdated }) {
       body.append('file', file)
       const document = await api.post(`/api/Eligibility/${evaluation.eligibilityId}/document`, body, session.token)
       setFile(null)
+      toast.success('Grade Evaluation uploaded. You can now record the decision.')
       onUpdated({ ...evaluation, document })
     } catch (err) {
       setError(err.message)
@@ -82,6 +87,7 @@ function ReviewPage({ evaluation, session, onBack, onUpdated }) {
         reasons: status === 'INELIGIBLE' ? reasons : [],
         remarks,
       }, session.token)
+      toast.success(`${fullName(evaluation.student)} marked ${status === 'ELIGIBLE' ? 'eligible' : 'ineligible'} for ${termLabel(evaluation)}. The coach and athlete have been notified.`)
       onUpdated({ ...evaluation, academicStatus: result.academicStatus, reasons: result.reasons, remarks: result.remarks, reviewedAt: result.reviewedAt }, true)
     } catch (err) {
       setError(err.message)
@@ -91,6 +97,7 @@ function ReviewPage({ evaluation, session, onBack, onUpdated }) {
   }
 
   const canSubmit = evaluation.document && (status === 'ELIGIBLE' || reasons.length > 0)
+  const blocker = !evaluation.document ? '' : status === 'INELIGIBLE' && !reasons.length ? 'Select at least one reason for the ineligible decision.' : ''
 
   return (
     <>
@@ -115,7 +122,7 @@ function ReviewPage({ evaluation, session, onBack, onUpdated }) {
             </div>
           ) : (
             <div className="inline-form">
-              <Field label="Grade Evaluation PDF" hint="PDF only, up to 10 MB.">
+              <Field label="Grade Evaluation PDF" required hint="PDF only, up to 10 MB.">
                 <input type="file" accept="application/pdf,.pdf" onChange={(event) => setFile(event.target.files?.[0] || null)} />
               </Field>
               <div className="inline-form-actions">
@@ -140,12 +147,15 @@ function ReviewPage({ evaluation, session, onBack, onUpdated }) {
                 ))}
               </fieldset>
             )}
-            <Field label="Registrar remark" hint="Optional context shared with the coach and Sports Director.">
+            <Field label="Registrar remark" optional hint="Context shared with the coach and Sports Director.">
               <textarea rows="4" value={remarks} onChange={(event) => setRemarks(event.target.value)} maxLength={1000} disabled={!evaluation.document} />
             </Field>
             {!evaluation.document && <Alert tone="info">Upload the Grade Evaluation PDF before recording a decision.</Alert>}
             <Alert>{error}</Alert>
-            <div><button className="btn btn-primary" type="submit" disabled={saving || !canSubmit}>{saving ? 'Saving…' : 'Submit decision'}</button></div>
+            <div className="form-actions">
+              <button className="btn btn-primary" type="submit" disabled={saving || !canSubmit}>{saving ? 'Saving…' : 'Submit decision'}</button>
+              {blocker && <small className="muted">{blocker}</small>}
+            </div>
           </form>
         </Card>
       </div>
@@ -237,12 +247,12 @@ export default function RegistrarPortal({ session, onLogout }) {
     content = <NotificationsPage session={session} onChanged={refreshUnread} />
   } else {
     content = <>
-      <PageHeader title="Registrar dashboard" subtitle={longToday()} actions={<button className="btn btn-secondary" type="button" onClick={() => { studentsData.reload(); evaluationsData.reload() }}>Refresh</button>} />
+      <PageHeader title="Registrar dashboard" subtitle={longToday()} actions={<button className="btn btn-secondary" type="button" onClick={() => { studentsData.reload(); evaluationsData.reload() }}><Icon name="refresh" /> Refresh</button>} />
       <div className="stat-grid">
-        <StatCard icon="check" label="Ready for decision" value={readyForReview.length} hint="Grade Evaluation uploaded" tone="info" />
-        <StatCard icon="clock" label="Awaiting PDF" value={awaitingPdf.length} hint="Requests without a Grade Evaluation" tone="warning" />
-        <StatCard icon="shield" label="Decided" value={completed.length} hint="Eligible or ineligible" tone="success" />
-        <StatCard icon="users" label="Students" value={students.length} hint="Registered athletes" />
+        <StatCard icon="check" label="Ready for decision" value={readyForReview.length} hint="Grade Evaluation uploaded" tone="info" onClick={() => navigate('requests')} />
+        <StatCard icon="clock" label="Awaiting PDF" value={awaitingPdf.length} hint="Requests without a Grade Evaluation" tone="warning" onClick={() => navigate('requests')} />
+        <StatCard icon="shield" label="Decided" value={completed.length} hint="Eligible or ineligible" tone="success" onClick={() => navigate('evaluations')} />
+        <StatCard icon="users" label="Students" value={students.length} hint="Registered athletes" onClick={() => navigate('students')} />
       </div>
       <Card title="Ready for a decision" subtitle="Grade Evaluation received">
         <EvaluationTable items={readyForReview} emptyTitle="Nothing to decide" emptyMessage="Requests without a PDF are listed under Eligibility requests." actionLabel="Review" onOpen={(item) => setReviewingId(item.eligibilityId)} />
@@ -267,6 +277,7 @@ export default function RegistrarPortal({ session, onLogout }) {
       onNavigate={navigate}
       onLogout={onLogout}
       unreadCount={unread}
+      help={HELP.registrar[reviewing ? 'requests' : view]}
     >
       <Alert>{studentsData.error || evaluationsData.error}</Alert>
       {loading ? <Loading label="Loading Registrar data…" /> : content}

@@ -6,7 +6,9 @@ import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
+import { useToast } from '../../components/toast.jsx'
 import { Alert, Card, ConfirmDialog, EmptyState, Loading, PageHeader, ProgressBar, StatCard, StatusBadge } from '../../components/ui.jsx'
+import { HELP } from '../../lib/help.js'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import AttendancePage from '../staff/AttendancePage.jsx'
@@ -23,6 +25,7 @@ function addDays(days) {
 }
 
 export default function CoachPortal({ session, onLogout }) {
+  const toast = useToast()
   const [view, setView] = useHashView('dashboard', VIEWS)
   const [profileAthlete, setProfileAthlete] = useState(null)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
@@ -76,6 +79,7 @@ export default function CoachPortal({ session, onLogout }) {
     setActionError('')
     try {
       await api.del(`/api/Training/sessions/${cancelling.sourceId}`, session.token)
+      toast.success(`Training request “${cancelling.title}” withdrawn.`)
       setCancelling(null)
       refreshSchedules()
     } catch (err) {
@@ -123,8 +127,8 @@ export default function CoachPortal({ session, onLogout }) {
         <div className="stat-grid">
           <StatCard icon="users" label="My athletes" value={activeAthletes.length} hint={`Across ${teams.length} team${teams.length === 1 ? '' : 's'}`} onClick={() => navigate('athletes')} />
           <StatCard icon="check" label="Eligible" value={athletes.filter((athlete) => athlete.eligibilityStatus === 'ELIGIBLE').length} hint={`${notEvaluated.length} not yet evaluated`} tone="success" />
-          <StatCard icon="alert" label="Need attention" value={attentionRows.length} hint="Ineligible, low attendance, or inactive" tone="warning" />
-          <StatCard icon="trophy" label="Portfolio reviews" value={pendingPortfolio.length} hint="Waiting for your verification" tone="info" />
+          <StatCard icon="alert" label="Need attention" value={attentionRows.length} hint="Ineligible, low attendance, or inactive" tone="warning" onClick={() => document.getElementById('coach-attention')?.scrollIntoView({ behavior: 'smooth' })} />
+          <StatCard icon="trophy" label="Portfolio reviews" value={pendingPortfolio.length} hint="Waiting for your verification" tone="info" onClick={() => document.getElementById('coach-portfolio')?.scrollIntoView({ behavior: 'smooth' })} />
         </div>
 
         <Card title="Team overview" subtitle="Average attendance and eligibility per team">
@@ -153,7 +157,7 @@ export default function CoachPortal({ session, onLogout }) {
         </Card>
 
         <div className="dashboard-grid">
-          <Card title="Athletes needing attention" subtitle="Eligibility, attendance, or account issues">
+          <Card className="scroll-target" id="coach-attention" title="Athletes needing attention" subtitle="Eligibility, attendance, or account issues">
             {attentionRows.length ? (
               <ul className="row-list">
                 {attentionRows.slice(0, 8).map(({ athlete, issues }) => (
@@ -173,7 +177,7 @@ export default function CoachPortal({ session, onLogout }) {
             {awaiting.length > 0 && <p className="card-footnote">{awaiting.length} athlete{awaiting.length === 1 ? ' is' : 's are'} awaiting a Registrar decision.</p>}
           </Card>
 
-          <Card title="Portfolio verification" subtitle="Submissions waiting for your review">
+          <Card className="scroll-target" id="coach-portfolio" title="Portfolio verification" subtitle="Submissions waiting for your review">
             {pendingPortfolio.length ? (
               <ul className="row-list">
                 {pendingPortfolio.slice(0, 6).map((item) => (
@@ -247,9 +251,10 @@ export default function CoachPortal({ session, onLogout }) {
       onNavigate={navigate}
       onLogout={onLogout}
       unreadCount={unread}
+      help={HELP.coach[view]}
     >
       {content}
-      {showScheduleModal && <TrainingScheduleModal teams={teams} session={session} onClose={() => setShowScheduleModal(false)} onCreated={refreshSchedules} />}
+      {showScheduleModal && <TrainingScheduleModal teams={teams} session={session} onClose={() => setShowScheduleModal(false)} onCreated={() => { toast.success('Training request sent. The Sports Director will review it.'); refreshSchedules() }} />}
       {cancelling && (
         <ConfirmDialog
           title="Cancel training request"

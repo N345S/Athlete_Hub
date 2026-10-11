@@ -5,6 +5,7 @@ using System.Threading.RateLimiting;
 using AthleteHub.API.Data;
 using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -181,6 +182,13 @@ if (app.Environment.IsDevelopment())
 // ==========================================
 // HTTP REQUEST PIPELINE
 // ==========================================
+
+// The web server forwards /api from this machine (vite.config.js) so phones can use the app. Trust its
+// X-Forwarded-For header from loopback only, so per-device limits such as the login rate limit still apply.
+var forwardedHeaders = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor, ForwardLimit = 2 };
+forwardedHeaders.KnownProxies.Add(IPAddress.Loopback);
+forwardedHeaders.KnownProxies.Add(IPAddress.IPv6Loopback);
+app.UseForwardedHeaders(forwardedHeaders);
 
 // HTTPS redirection
 app.UseHttpsRedirection();

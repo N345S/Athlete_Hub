@@ -1,4 +1,6 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5007'
+// Empty means "same address as the web app": the Vite server forwards /api to the .NET API (vite.config.js),
+// which is what lets phones on the same Wi-Fi use the app. Set VITE_API_BASE_URL when the API lives elsewhere.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 // Fired when the API rejects the stored token so the app can sign the user out.
 export const UNAUTHORIZED_EVENT = 'athletehub:unauthorized'

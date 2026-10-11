@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
 import { formatDate, formatTimeRange } from '../../lib/format.js'
+import { useToast } from '../../components/toast.jsx'
 import { Alert, Card, EmptyState, ReasonDialog } from '../../components/ui.jsx'
 
 /** Director queue of coach-submitted training sessions awaiting approval. */
 export default function TrainingApprovals({ sessions, session, onReviewed }) {
+  const toast = useToast()
   const [busyId, setBusyId] = useState(null)
   const [rejecting, setRejecting] = useState(null)
   const [error, setError] = useState('')
@@ -14,6 +16,7 @@ export default function TrainingApprovals({ sessions, session, onReviewed }) {
     setError('')
     try {
       await api.put(`/api/Training/sessions/${item.trainingSessionId}/review?status=${status}`, { rejectionReason }, session.token)
+      toast.success(status === 'APPROVED' ? `“${item.title}” approved and published to athletes.` : `“${item.title}” rejected. Coach ${item.coachName} has been notified.`)
       setRejecting(null)
       onReviewed()
     } catch (err) {
@@ -43,7 +46,7 @@ export default function TrainingApprovals({ sessions, session, onReviewed }) {
             </li>
           ))}
         </ul>
-      ) : <EmptyState title="Nothing to review" message="No training sessions are waiting for approval." />}
+      ) : <EmptyState icon="check" title="Nothing to review" message="No training sessions are waiting for approval." />}
       {rejecting && (
         <ReasonDialog
           title="Reject training session"

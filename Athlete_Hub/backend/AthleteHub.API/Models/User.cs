@@ -9,7 +9,8 @@ public partial class User
 
     public int RoleId { get; set; }
 
-    public string UniversityId { get; set; } = null!;
+    /// <summary>School-issued ID. Parents are not students or staff, so theirs is null.</summary>
+    public string? UniversityId { get; set; }
 
     public string Email { get; set; } = null!;
 
@@ -40,6 +41,8 @@ public partial class User
     public virtual CoachProfile? CoachProfile { get; set; }
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+    public virtual ICollection<ParentAthlete> Children { get; set; } = new List<ParentAthlete>();
 
     public virtual Role Role { get; set; } = null!;
 

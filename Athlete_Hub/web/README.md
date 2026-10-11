@@ -1,16 +1,47 @@
-# React + Vite
+# Athlete-Hub web app
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + Vite front end for Athlete-Hub. Each role (student-athlete, coach, sports director, registrar,
+parent, administrator) gets its own portal; portals are loaded on demand after sign-in.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev        # http://localhost:5173 (expects the API on http://localhost:5007)
+npm run lint       # oxlint
+npm run build      # production build in dist/
+npm run phone      # build, then serve it to phones on the same Wi-Fi (http://<PC Wi-Fi IP>:4173)
+npm run dev:phone  # dev server reachable from phones (http://<PC Wi-Fi IP>:5173)
+```
 
-## React Compiler
+The web server forwards `/api/...` to the .NET API on `http://localhost:5007` (see `vite.config.js`;
+override with the `ATHLETEHUB_API_URL` environment variable), so phones only need to reach this one address.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Installable app (PWA)
 
-## Expanding the Oxlint configuration
+`public/manifest.webmanifest`, the icons in `public/icons/`, and the service worker `public/sw.js` let people add
+Athlete-Hub to their home screen. The service worker caches only the app's own files — never `/api` responses —
+and is registered only in production builds served over https or localhost. Full installation from a phone
+needs https; see "Testing on phones and tablets" in the user-testing guide.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Settings (`.env.local`)
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_BASE_URL` | API address for builds served without the Vite proxy (e.g. a separate web host). Leave unset locally: requests go to `/api` on the same address and are forwarded to the API. |
+| `VITE_SHOW_TEST_ACCOUNTS` | `true` shows one-click sign-in buttons for the seeded test accounts on the login page. Always shown in `npm run dev`; hidden in production builds unless set. |
+| `VITE_FEEDBACK_URL` | Adds a "Give feedback" link to every portal's sidebar, e.g. a survey used during user testing. |
+
+## Where things live
+
+| Path | Contents |
+|---|---|
+| `src/components/ui.jsx` | Shared building blocks: cards, fields (with required/optional markers), modals, action menu, help dialog |
+| `src/components/toast.jsx` | Confirmation messages (`useToast().success(...)`) |
+| `src/components/AppLayout.jsx` | Portal shell: sidebar, top bar with Help and notifications |
+| `src/lib/help.js` | The "How to use this page" text for every portal page |
+| `src/features/<role>/` | One folder per portal |
+| `src/styles.css` | Design tokens (top of file) and all styles |
+
+User-testing preparation (accounts, task scenarios, SUS questionnaire) is in
+[`../docs/USER_TESTING_GUIDE.md`](../docs/USER_TESTING_GUIDE.md).

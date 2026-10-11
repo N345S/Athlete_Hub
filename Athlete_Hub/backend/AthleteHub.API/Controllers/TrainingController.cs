@@ -55,6 +55,11 @@ public class TrainingController : ControllerBase
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             query = query.Where(session => (session.ApprovalStatus == "APPROVED" || session.ApprovalStatus == null) && session.Team.TeamMembers.Any(member => member.Athlete.UserId == userId && member.DateLeft == null));
         }
+        else if (User.IsInRole("PARENT"))
+        {
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            query = query.Where(session => (session.ApprovalStatus == "APPROVED" || session.ApprovalStatus == null) && session.Team.TeamMembers.Any(member => member.DateLeft == null && member.Athlete.Parents.Any(link => link.ParentUserId == userId)));
+        }
         if (from.HasValue) query = query.Where(session => session.TrainingDate >= from.Value.Date);
         if (to.HasValue) query = query.Where(session => session.TrainingDate <= to.Value.Date);
         var sessions = await query
@@ -165,6 +170,11 @@ public class TrainingController : ControllerBase
             _notifications.Notify(approvedCoachUserId, "Training session approved",
                 $"{session.Title} for {session.Team.TeamName} on {session.TrainingDate:MMM d, yyyy} was approved and is now visible to your athletes.",
                 "TRAINING_APPROVED");
+            await NotifyParentsAsync(
+                session.Team.TeamMembers.Where(member => member.DateLeft == null).Select(member => member.AthleteId),
+                "New training session",
+                children => $"{children} has a new training session: {session.Title} ({session.Team.TeamName}) on {DescribeWhen(session)}.",
+                "TRAINING_APPROVED");
         }
         else
         {
@@ -258,6 +268,15 @@ public class TrainingController : ControllerBase
                 return BadRequest(new { message = "Approved sessions can only be removed by the Sports Director." });
         }
 
+        // Parents were told about approved sessions, so tell them when one is cancelled.
+        if (session.ApprovalStatus is "APPROVED" or null)
+        {
+            var athleteIds = await _context.TeamMembers.Where(member => member.TeamId == session.TeamId && member.DateLeft == null).Select(member => member.AthleteId).ToListAsync();
+            await NotifyParentsAsync(athleteIds, "Training session cancelled",
+                children => $"{session.Title} ({session.Team.TeamName}) on {DescribeWhen(session)} for {children} has been cancelled.",
+                "TRAINING_CANCELLED");
+        }
+
         _context.TrainingSessions.Remove(session);
         await _context.SaveChangesAsync();
         return NoContent();
@@ -286,8 +305,16 @@ public class TrainingController : ControllerBase
             return BadRequest(new { message = "Attendance cannot be recorded for a suspended or inactive account." });
         var attendance = await _context.Attendances.FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId && item.AthleteId == request.AthleteId);
         if (attendance == null) { attendance = new Attendance { TrainingSessionId = sessionId, AthleteId = request.AthleteId }; _context.Attendances.Add(attendance); }
+        var previousStatus = attendance.AttendanceStatus;
         attendance.AttendanceStatus = request.AttendanceStatus.Trim().ToUpperInvariant();
         attendance.Remarks = request.Remarks;
+        if (attendance.AttendanceStatus != previousStatus)
+        {
+            var status = attendance.AttendanceStatus.ToLowerInvariant();
+            await NotifyParentsAsync([request.AthleteId], "Training attendance recorded",
+                children => $"{children} was marked {status} for {session.Title} on {DescribeWhen(session)}.",
+                "TRAINING_ATTENDANCE");
+        }
         await _context.SaveChangesAsync();
         return Ok(new { attendance.AttendanceId, attendance.TrainingSessionId, attendance.AthleteId, attendance.AttendanceStatus });
     }
@@ -306,6 +333,21 @@ public class TrainingController : ControllerBase
         if (User.IsInRole("ATHLETE") && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return await _context.TeamMembers.AnyAsync(member => member.TeamId == teamId && member.Athlete.UserId == userId && member.DateLeft == null);
         return false;
     }
+
+    /// <summary>
+    /// Queues one notification per linked parent, naming the parent's own children on the given athletes list.
+    /// </summary>
+    private async Task NotifyParentsAsync(IEnumerable<int> athleteIds, string title, Func<string, string> message, string type)
+    {
+        foreach (var parent in (await _notifications.ParentsOfAthletesAsync(athleteIds)).GroupBy(row => row.ParentUserId))
+        {
+            var children = string.Join(" and ", parent.Select(row => row.ChildName).Distinct());
+            _notifications.Notify(parent.Key, title, message(children), type);
+        }
+    }
+
+    private static string DescribeWhen(TrainingSession session) =>
+        $"{session.TrainingDate:MMM d, yyyy}{(session.StartTime.HasValue ? $" at {DateTime.Today.Add(session.StartTime.Value):h:mm tt}" : string.Empty)}{(string.IsNullOrWhiteSpace(session.Location) ? string.Empty : $", {session.Location}")}";
 
     private int? GetUserId() => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
 }

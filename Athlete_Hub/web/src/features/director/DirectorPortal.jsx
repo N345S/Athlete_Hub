@@ -6,7 +6,9 @@ import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
+import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, Modal, PageHeader, ProgressBar, SearchInput, StatCard, StatusBadge } from '../../components/ui.jsx'
+import { HELP } from '../../lib/help.js'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
@@ -39,14 +41,14 @@ function AssignAthleteModal({ coach, session, onClose, onAssigned }) {
   }
 
   return (
-    <Modal title="Assign athlete" subtitle={`Add an athlete to ${fullName(coach)}'s active team.`} onClose={onClose}
+    <Modal title="Assign athlete" subtitle={`Add an athlete to ${fullName(coach)}'s active team.`} onClose={onClose} closeOnBackdrop={false}
       footer={<>
         <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" type="submit" form="assign-form" disabled={saving || !athleteId}>{saving ? 'Assigning…' : 'Assign athlete'}</button>
       </>}>
       <form id="assign-form" className="stack-sm" onSubmit={submit}>
         <SearchInput value={search} onChange={setSearch} placeholder="Filter athletes…" label="Filter athletes" />
-        <Field label="Athlete">
+        <Field label="Athlete" required hint={athletes.length ? `${athletes.length} athlete${athletes.length === 1 ? '' : 's'} shown. Select one, then “Assign athlete”.` : 'No athletes match the filter.'}>
           <select value={athleteId} onChange={(event) => setAthleteId(event.target.value)} disabled={loading} required size={Math.min(8, Math.max(athletes.length, 2))}>
             {athletes.map((athlete) => (
               <option key={athlete.athleteId} value={athlete.athleteId}>
@@ -63,6 +65,7 @@ function AssignAthleteModal({ coach, session, onClose, onAssigned }) {
 
 /** One coach's teams and athletes, with each athlete's attendance and eligibility. */
 function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
+  const toast = useToast()
   const profile = useApiData(`/api/Director/coaches/${coach.coachId}`, session.token)
   const [showAssign, setShowAssign] = useState(false)
   const [unassigning, setUnassigning] = useState(null)
@@ -76,6 +79,7 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
     setError('')
     try {
       await api.del(`/api/Director/coaches/${coach.coachId}/unassign-athlete/${unassigning.athleteId}`, session.token)
+      toast.success(`${fullName(unassigning)} removed from ${fullName(coach)}'s team.`)
       setUnassigning(null)
       profile.reload()
     } catch (err) {
@@ -145,7 +149,7 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
           </Card>
         </div>
       </>}
-      {showAssign && <AssignAthleteModal coach={coach} session={session} onClose={() => setShowAssign(false)} onAssigned={() => { setShowAssign(false); profile.reload() }} />}
+      {showAssign && <AssignAthleteModal coach={coach} session={session} onClose={() => setShowAssign(false)} onAssigned={() => { setShowAssign(false); toast.success(`Athlete assigned to ${fullName(coach)}'s team.`); profile.reload() }} />}
       {unassigning && (
         <ConfirmDialog
           title="Unassign athlete"
@@ -211,6 +215,7 @@ function CoachesPage({ summaries, loading, onOpen }) {
 }
 
 export default function DirectorPortal({ session, onLogout }) {
+  const toast = useToast()
   const [view, setView] = useHashView('dashboard', VIEWS)
   const [profileAthlete, setProfileAthlete] = useState(null)
   const [profileCoach, setProfileCoach] = useState(null)
@@ -263,6 +268,7 @@ export default function DirectorPortal({ session, onLogout }) {
     setActionError('')
     try {
       await api.del(`/api/Schedules/${deleting.sourceId}`, session.token)
+      toast.success(`“${deleting.title}” deleted.`)
       setDeleting(null)
       schedule.reload()
     } catch (err) {
@@ -314,7 +320,7 @@ export default function DirectorPortal({ session, onLogout }) {
           <StatCard icon="users" label="Active athletes" value={activeAthletes.length} hint={`${noTeam.length} without a team`} onClick={() => navigate('athletes')} />
           <StatCard icon="coach" label="Coaches" value={coachList.filter(isActiveAccount).length} hint={`${coachList.length - coachList.filter(isActiveAccount).length} inactive or suspended`} tone="info" onClick={() => navigate('coaches')} />
           <StatCard icon="clock" label="Training approvals" value={pending.data?.length || 0} hint="Awaiting your review" tone="warning" onClick={() => navigate('schedule')} />
-          <StatCard icon="alert" label="Ineligible athletes" value={ineligible.length} hint="Latest Registrar decisions" tone="danger" />
+          <StatCard icon="alert" label="Ineligible athletes" value={ineligible.length} hint="Latest Registrar decisions" tone="danger" onClick={() => document.getElementById('director-ineligible')?.scrollIntoView({ behavior: 'smooth' })} />
         </div>
 
         <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
@@ -346,7 +352,7 @@ export default function DirectorPortal({ session, onLogout }) {
         </Card>
 
         <div className="dashboard-grid">
-          <Card title="Ineligible athletes" subtitle="Based on the latest Registrar decision">
+          <Card className="scroll-target" id="director-ineligible" title="Ineligible athletes" subtitle="Based on the latest Registrar decision">
             {ineligible.length ? (
               <ul className="row-list">
                 {ineligible.slice(0, 8).map((athlete) => (
@@ -395,9 +401,10 @@ export default function DirectorPortal({ session, onLogout }) {
       onNavigate={navigate}
       onLogout={onLogout}
       unreadCount={unread}
+      help={HELP.director[view]}
     >
       {content}
-      {showEventModal && <EventScheduleModal session={session} onClose={() => setShowEventModal(false)} onCreated={() => { setShowEventModal(false); schedule.reload() }} />}
+      {showEventModal && <EventScheduleModal session={session} onClose={() => setShowEventModal(false)} onCreated={() => { setShowEventModal(false); toast.success('Event published. Every athlete can now see it.'); schedule.reload() }} />}
       {deleting && (
         <ConfirmDialog
           title="Delete event"

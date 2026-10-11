@@ -36,6 +36,8 @@ public partial class AthleteHubDbContext : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
+    public virtual DbSet<ParentAthlete> ParentAthletes { get; set; }
+
     public virtual DbSet<PerformanceMetricDefinition> PerformanceMetricDefinitions { get; set; }
 
     public virtual DbSet<PerformanceRecord> PerformanceRecords { get; set; }
@@ -476,6 +478,38 @@ public partial class AthleteHubDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Notifications)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("fk_notification_user");
+        });
+
+        modelBuilder.Entity<ParentAthlete>(entity =>
+        {
+            entity.HasKey(e => e.ParentAthleteId).HasName("PRIMARY");
+
+            entity.ToTable("parent_athletes");
+
+            entity.HasIndex(e => new { e.ParentUserId, e.AthleteId }, "parent_athlete_unique").IsUnique();
+
+            entity.HasIndex(e => e.AthleteId, "fk_parent_athlete_athlete");
+
+            entity.Property(e => e.ParentAthleteId).HasColumnName("parent_athlete_id");
+            entity.Property(e => e.ParentUserId).HasColumnName("parent_user_id");
+            entity.Property(e => e.AthleteId).HasColumnName("athlete_id");
+            entity.Property(e => e.Relationship)
+                .HasMaxLength(50)
+                .HasColumnName("relationship");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.ParentUser).WithMany(p => p.Children)
+                .HasForeignKey(d => d.ParentUserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_parent_athlete_parent");
+
+            entity.HasOne(d => d.Athlete).WithMany(p => p.Parents)
+                .HasForeignKey(d => d.AthleteId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_parent_athlete_athlete");
         });
 
         modelBuilder.Entity<PerformanceMetricDefinition>(entity =>

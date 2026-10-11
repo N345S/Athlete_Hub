@@ -17,6 +17,13 @@ const PATHS = {
   clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 6v6l4 2',
   plus: 'M12 5v14M5 12h14',
   team: 'M17 20h5v-2a3 3 0 0 0-5.36-1.86M7 20H2v-2a3 3 0 0 1 5.36-1.86M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6M7 20v-1a5 5 0 0 1 10 0v1',
+  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  refresh: 'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
+  circle: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20',
+  arrowRight: 'M5 12h14M12 5l7 7-7 7',
+  download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
 }
 
 export default function Icon({ name, size = 18, className = '' }) {

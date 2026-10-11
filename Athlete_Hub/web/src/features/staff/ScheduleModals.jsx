@@ -4,30 +4,32 @@ import { formatDate, localDateISO } from '../../lib/format.js'
 import { Alert, Field, Modal } from '../../components/ui.jsx'
 
 /** Lets the user build a list of distinct, non-past dates. */
-function DatePicker({ dates, onChange, label }) {
+function DatePicker({ dates, onChange, label, hint }) {
   const [pending, setPending] = useState('')
   const [error, setError] = useState('')
   const today = localDateISO()
 
-  const add = () => {
-    if (!pending) return
-    if (pending < today) {
+  const add = (value = pending) => {
+    if (!value) return
+    if (value < today) {
       setError('Dates cannot be in the past.')
       return
     }
     setError('')
-    if (!dates.includes(pending)) onChange([...dates, pending].sort())
+    if (!dates.includes(value)) onChange([...dates, value].sort())
     setPending('')
   }
 
   return (
     <div className="field">
-      <span className="field-label">{label}</span>
+      <span className="field-label">{label}<span className="field-required" aria-hidden="true"> *</span></span>
       <div className="inline-row">
-        <input type="date" min={today} value={pending} onChange={(event) => setPending(event.target.value)} aria-label={`${label} to add`} />
-        <button className="btn btn-secondary" type="button" onClick={add} disabled={!pending}>Add date</button>
+        <input type="date" min={today} value={pending} onChange={(event) => setPending(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); add() } }}
+          onBlur={() => { if (pending && pending >= today) add() }} aria-label={`${label} to add`} />
+        <button className="btn btn-secondary" type="button" onClick={() => add()} disabled={!pending}>Add date</button>
       </div>
       {error && <small className="text-danger">{error}</small>}
+      {!error && <small className="field-hint">{dates.length ? `${dates.length} date${dates.length === 1 ? '' : 's'} selected.` : hint || 'Pick a date, then select “Add date”. Repeat to add more.'}</small>}
       {dates.length > 0 && (
         <div className="chip-list">
           {dates.map((date) => (
@@ -71,7 +73,7 @@ export function TrainingScheduleModal({ teams, session, onClose, onCreated }) {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    if (!form.teamId || !form.title.trim() || !form.dates.length) return setError('Team, title, and at least one date are required.')
+    if (!form.teamId || !form.title.trim() || !form.dates.length) return setError('Team, title, and at least one date are required. Select “Add date” after picking each date.')
     if (form.startTime && form.endTime && form.endTime <= form.startTime) return setError('End time must be after start time.')
     submit(() => api.post('/api/Training/sessions', {
       teamId: Number(form.teamId),
@@ -86,24 +88,24 @@ export function TrainingScheduleModal({ teams, session, onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Add training schedule" subtitle="Sessions are published to athletes after the Sports Director approves them." onClose={onClose}
+    <Modal title="Request training session" subtitle="Sessions are published to athletes after the Sports Director approves them." onClose={onClose} closeOnBackdrop={false}
       footer={<>
         <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" type="submit" form="training-form" disabled={saving || !teams.length}>{saving ? 'Saving…' : 'Submit for approval'}</button>
       </>}>
       <form id="training-form" className="form-grid" onSubmit={handleSubmit}>
-        <Field label="Team">
+        <Field label="Team" required>
           <select value={form.teamId} onChange={update('teamId')} required>
             {!teams.length && <option value="">No teams assigned</option>}
             {teams.map((team) => <option key={team.teamId} value={team.teamId}>{team.teamName}</option>)}
           </select>
         </Field>
-        <Field label="Title"><input value={form.title} onChange={update('title')} maxLength={200} placeholder="e.g. Team practice" required /></Field>
+        <Field label="Title" required><input value={form.title} onChange={update('title')} maxLength={200} placeholder="e.g. Team practice" required /></Field>
         <div className="span-2"><DatePicker label="Dates" dates={form.dates} onChange={(dates) => setForm((current) => ({ ...current, dates }))} /></div>
-        <Field label="Start time"><input type="time" value={form.startTime} onChange={update('startTime')} /></Field>
-        <Field label="End time"><input type="time" value={form.endTime} onChange={update('endTime')} /></Field>
-        <Field label="Location" className="span-2"><input value={form.location} onChange={update('location')} placeholder="e.g. Gymnasium" /></Field>
-        <Field label="Description" className="span-2"><textarea rows="3" value={form.description} onChange={update('description')} placeholder="Optional details for athletes" /></Field>
+        <Field label="Start time" optional><input type="time" value={form.startTime} onChange={update('startTime')} /></Field>
+        <Field label="End time" optional><input type="time" value={form.endTime} onChange={update('endTime')} /></Field>
+        <Field label="Location" optional className="span-2"><input value={form.location} onChange={update('location')} placeholder="e.g. Gymnasium" /></Field>
+        <Field label="Description" optional className="span-2"><textarea rows="3" value={form.description} onChange={update('description')} placeholder="Details for athletes" /></Field>
       </form>
       <Alert>{error}</Alert>
     </Modal>
@@ -118,7 +120,7 @@ export function EventScheduleModal({ session, onClose, onCreated }) {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    if (!form.title.trim() || !form.dates.length || !form.startTime) return setError('Title, at least one date, and a start time are required.')
+    if (!form.title.trim() || !form.dates.length || !form.startTime) return setError('Title, at least one date, and a start time are required. Select “Add date” after picking each date.')
     if (form.endTime && form.endTime <= form.startTime) return setError('End time must be after start time.')
     submit(() => api.post('/api/Schedules', {
       scheduleType: form.scheduleType,
@@ -134,24 +136,24 @@ export function EventScheduleModal({ session, onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Add sports event" subtitle="Create a sports event or competition on one or more dates." onClose={onClose}
+    <Modal title="Add sports event" subtitle="Create a sports event or competition on one or more dates. Every athlete will see it." onClose={onClose} closeOnBackdrop={false}
       footer={<>
         <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" type="submit" form="event-form" disabled={saving}>{saving ? 'Saving…' : 'Add event'}</button>
       </>}>
       <form id="event-form" className="form-grid" onSubmit={handleSubmit}>
-        <Field label="Event type">
+        <Field label="Event type" required>
           <select value={form.scheduleType} onChange={update('scheduleType')}>
             <option value="SPORTS_EVENT">Sports event</option>
             <option value="COMPETITION">Competition</option>
           </select>
         </Field>
-        <Field label="Title"><input value={form.title} onChange={update('title')} maxLength={200} placeholder="e.g. Regional athletics meet" required /></Field>
+        <Field label="Title" required><input value={form.title} onChange={update('title')} maxLength={200} placeholder="e.g. Regional athletics meet" required /></Field>
         <div className="span-2"><DatePicker label="Dates" dates={form.dates} onChange={(dates) => setForm((current) => ({ ...current, dates }))} /></div>
-        <Field label="Start time"><input type="time" value={form.startTime} onChange={update('startTime')} required /></Field>
-        <Field label="End time"><input type="time" value={form.endTime} onChange={update('endTime')} /></Field>
-        <Field label="Location" className="span-2"><input value={form.location} onChange={update('location')} placeholder="e.g. Athletics stadium" /></Field>
-        <Field label="Description" className="span-2"><textarea rows="3" value={form.description} onChange={update('description')} placeholder="Optional event details" /></Field>
+        <Field label="Start time" required><input type="time" value={form.startTime} onChange={update('startTime')} required /></Field>
+        <Field label="End time" optional><input type="time" value={form.endTime} onChange={update('endTime')} /></Field>
+        <Field label="Location" optional className="span-2"><input value={form.location} onChange={update('location')} placeholder="e.g. Athletics stadium" /></Field>
+        <Field label="Description" optional className="span-2"><textarea rows="3" value={form.description} onChange={update('description')} placeholder="Event details" /></Field>
       </form>
       <Alert>{error}</Alert>
     </Modal>

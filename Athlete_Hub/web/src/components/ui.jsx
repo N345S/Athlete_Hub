@@ -14,9 +14,9 @@ export function PageHeader({ title, subtitle, actions }) {
   )
 }
 
-export function Card({ title, subtitle, actions, children, className = '' }) {
+export function Card({ title, subtitle, actions, children, className = '', id }) {
   return (
-    <section className={`card ${className}`}>
+    <section className={`card ${className}`} id={id}>
       {(title || actions) && (
         <div className="card-header">
           <div>
@@ -96,19 +96,31 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', label 
   )
 }
 
-export function Field({ label, hint, children, className = '' }) {
+/** Form field wrapper. `required` adds a red asterisk; `optional` adds a muted "(optional)". */
+export function Field({ label, hint, required, optional, children, className = '' }) {
   return (
     <label className={`field ${className}`}>
-      <span className="field-label">{label}</span>
+      <span className="field-label">
+        {label}
+        {required && <span className="field-required" aria-hidden="true"> *</span>}
+        {optional && <span className="field-optional"> (optional)</span>}
+      </span>
       {children}
       {hint && <small className="field-hint">{hint}</small>}
     </label>
   )
 }
 
-export function Modal({ title, subtitle, onClose, children, footer, size = 'md' }) {
+/**
+ * Accessible dialog. Pass `closeOnBackdrop={false}` for forms so a stray click outside
+ * does not throw away what the user typed (Escape and the × button still close it).
+ */
+export function Modal({ title, subtitle, onClose, children, footer, size = 'md', closeOnBackdrop = true }) {
   const titleId = useId()
   const dialogRef = useRef(null)
+  // Only close when the press both started and ended on the backdrop, so selecting text
+  // inside the dialog and releasing outside it does not dismiss the dialog.
+  const pressedBackdrop = useRef(false)
   // Callers usually pass an inline function; keep the latest without re-running the mount effect.
   const onCloseRef = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose }, [onClose])
@@ -127,7 +139,14 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md' 
   }, [])
 
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => { pressedBackdrop.current = event.target === event.currentTarget }}
+      onMouseUp={(event) => {
+        if (closeOnBackdrop && pressedBackdrop.current && event.target === event.currentTarget) onClose()
+        pressedBackdrop.current = false
+      }}
+    >
       <section ref={dialogRef} className={`modal modal-${size}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="modal-header">
           <div>
@@ -168,13 +187,14 @@ export function ReasonDialog({ title, message, label = 'Reason', confirmLabel = 
       title={title}
       onClose={onCancel}
       size="sm"
+      closeOnBackdrop={false}
       footer={<>
         <button className="btn btn-secondary" type="button" onClick={onCancel} disabled={busy}>Cancel</button>
         <button className="btn btn-danger" type="button" onClick={() => onConfirm(reason.trim())} disabled={busy || !reason.trim()}>{busy ? 'Saving…' : confirmLabel}</button>
       </>}
     >
       {message && <p className="modal-message">{message}</p>}
-      <Field label={label}>
+      <Field label={label} required hint="The person will see this reason, so be specific.">
         <textarea rows="4" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} required />
       </Field>
       <Alert>{error}</Alert>
@@ -189,5 +209,77 @@ export function Tabs({ value, onChange, options, label }) {
         <button key={key} type="button" className={value === key ? 'active' : ''} aria-pressed={value === key} onClick={() => onChange(key)}>{text}</button>
       ))}
     </div>
+  )
+}
+
+/**
+ * "More" button that opens a short list of actions. Replaces a <select> used as a menu, which
+ * people often do not recognise as clickable. Items: { label, onSelect, tone?, hidden? }.
+ */
+export function ActionMenu({ label = 'More', ariaLabel, items }) {
+  const [open, setOpen] = useState(false)
+  const menuId = useId()
+  const rootRef = useRef(null)
+  const visible = items.filter((item) => !item.hidden)
+
+  useEffect(() => {
+    if (!open) return undefined
+    const close = (event) => { if (!rootRef.current?.contains(event.target)) setOpen(false) }
+    const onKey = (event) => {
+      if (event.key === 'Escape') { setOpen(false); rootRef.current?.querySelector('.action-menu-trigger')?.focus() }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const buttons = [...(rootRef.current?.querySelectorAll('.action-menu-item') || [])]
+        const index = buttons.indexOf(document.activeElement)
+        const next = event.key === 'ArrowDown' ? (index + 1) % buttons.length : (index - 1 + buttons.length) % buttons.length
+        buttons[next]?.focus()
+      }
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', onKey)
+    rootRef.current?.querySelector('.action-menu-item')?.focus()
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  if (!visible.length) return null
+  return (
+    <div className="action-menu" ref={rootRef}>
+      <button type="button" className="btn btn-ghost btn-sm action-menu-trigger" aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} aria-label={ariaLabel} onClick={() => setOpen((value) => !value)}>
+        {label} <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="action-menu-list" role="menu" id={menuId}>
+          {visible.map((item) => (
+            <button key={item.label} type="button" role="menuitem" className={`action-menu-item ${item.tone ? `tone-text-${item.tone}` : ''}`} onClick={() => { setOpen(false); item.onSelect() }}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Step-by-step help for the current page, opened from the "Help" button in the top bar. */
+export function HelpDialog({ help, onClose }) {
+  return (
+    <Modal title={help.title} subtitle="How to use this page" onClose={onClose} size="md"
+      footer={<button className="btn btn-primary" type="button" onClick={onClose}>Got it</button>}>
+      {help.intro && <p className="modal-message">{help.intro}</p>}
+      {help.steps?.length > 0 && (
+        <ol className="help-steps">
+          {help.steps.map((step) => <li key={step}>{step}</li>)}
+        </ol>
+      )}
+      {help.tips?.length > 0 && (
+        <div className="help-tips">
+          <strong>Good to know</strong>
+          <ul>{help.tips.map((tip) => <li key={tip}>{tip}</li>)}</ul>
+        </div>
+      )}
+    </Modal>
   )
 }

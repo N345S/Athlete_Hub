@@ -7,16 +7,18 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 /**
  * Month calendar and list view of training sessions, sports events, and competitions.
- * `renderActions(event, close)` may return extra buttons for the event detail dialog.
+ * `renderActions(event, close)` may return extra buttons for the event detail dialog, and
+ * `renderDetails(event)` extra rows for its detail list. `eventTypes` limits the type filters shown.
  */
-export default function CalendarView({ events, loading, renderActions }) {
+export default function CalendarView({ events, loading, renderActions, renderDetails, eventTypes = EVENT_TYPES }) {
   const [month, setMonth] = useState(() => {
     const today = new Date()
     return new Date(today.getFullYear(), today.getMonth(), 1)
   })
   const [view, setView] = useState('calendar')
-  const [types, setTypes] = useState(EVENT_TYPES)
+  const [types, setTypes] = useState(eventTypes)
   const [selected, setSelected] = useState(null)
+  const [selectedDay, setSelectedDay] = useState(() => localDateISO())
 
   const visible = events
     .map((item) => ({ ...item, type: String(item.type || 'OTHER').toUpperCase() }))
@@ -36,6 +38,13 @@ export default function CalendarView({ events, loading, renderActions }) {
 
   const toggleType = (type) => setTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type])
   const shiftMonth = (delta) => setMonth(new Date(month.getFullYear(), month.getMonth() + delta, 1))
+  const goToday = () => {
+    const now = new Date()
+    setMonth(new Date(now.getFullYear(), now.getMonth(), 1))
+    setSelectedDay(localDateISO(now))
+  }
+  const dayEvents = visible.filter((item) => item.startDate === selectedDay)
+  const selectedInMonth = selectedDay.startsWith(isoFor(1).slice(0, 7))
 
   const eventButton = (item, compact) => (
     <button key={item.id} type="button" className={`event-chip type-${item.type.toLowerCase()} ${compact ? 'compact' : ''}`} onClick={() => setSelected(item)}>
@@ -58,33 +67,49 @@ export default function CalendarView({ events, loading, renderActions }) {
             <button className="icon-button" type="button" onClick={() => shiftMonth(-1)} aria-label="Previous month">‹</button>
             <strong>{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
             <button className="icon-button" type="button" onClick={() => shiftMonth(1)} aria-label="Next month">›</button>
+            <button className="btn btn-secondary btn-sm" type="button" onClick={goToday}>Today</button>
           </div>
         ) : <strong>Upcoming events</strong>}
         <Tabs label="Calendar view" value={view} onChange={setView} options={[['calendar', 'Calendar'], ['list', 'List']]} />
       </div>
 
-      <div className="calendar-filters" role="group" aria-label="Event types">
-        {EVENT_TYPES.map((type) => (
-          <button key={type} type="button" className={`filter-chip type-${type.toLowerCase()} ${types.includes(type) ? 'active' : ''}`} aria-pressed={types.includes(type)} onClick={() => toggleType(type)}>
-            {eventTypeLabel(type)}
-          </button>
-        ))}
-      </div>
+      {eventTypes.length > 1 && (
+        <div className="calendar-filters" role="group" aria-label="Event types">
+          {eventTypes.map((type) => (
+            <button key={type} type="button" className={`filter-chip type-${type.toLowerCase()} ${types.includes(type) ? 'active' : ''}`} aria-pressed={types.includes(type)} onClick={() => toggleType(type)}>
+              {eventTypeLabel(type)}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading && !events.length ? <Loading label="Loading schedule…" /> : view === 'list' ? (
         <div className="event-list">{listEvents.length ? listEvents.map((item) => eventButton(item, false)) : <p className="muted">No upcoming events match the selected filters.</p>}</div>
       ) : (
-        <div className="calendar-grid">
-          {WEEKDAYS.map((day) => <div className="calendar-weekday" key={day}>{day}</div>)}
-          {cells.map((day, index) => (
-            <div key={index} className={`calendar-day ${day ? '' : 'blank'} ${day && isoFor(day) === today ? 'today' : ''}`}>
-              {day && <>
-                <span className="day-number">{day}</span>
-                {visible.filter((item) => item.startDate === isoFor(day)).map((item) => eventButton(item, true))}
-              </>}
+        <>
+          <div className="calendar-grid">
+            {WEEKDAYS.map((day) => <div className="calendar-weekday" key={day}>{day}</div>)}
+            {cells.map((day, index) => {
+              if (!day) return <div key={index} className="calendar-day blank" />
+              const iso = isoFor(day)
+              const count = visible.filter((item) => item.startDate === iso).length
+              return (
+                // Clicking anywhere in the cell selects the day; the day number is the keyboard target.
+                <div key={index} className={`calendar-day ${iso === today ? 'today' : ''} ${iso === selectedDay ? 'selected' : ''} ${count ? 'has-events' : ''}`} onClick={() => setSelectedDay(iso)}>
+                  <button type="button" className="day-number" onClick={() => setSelectedDay(iso)} aria-pressed={iso === selectedDay}
+                    aria-label={`${formatDate(iso)}${count ? `, ${count} event${count === 1 ? '' : 's'}` : ', no events'}`}>{day}</button>
+                  {visible.filter((item) => item.startDate === iso).map((item) => eventButton(item, true))}
+                </div>
+              )
+            })}
+          </div>
+          {selectedInMonth && (
+            <div className="calendar-agenda" aria-live="polite">
+              <strong>{new Date(`${selectedDay}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</strong>
+              {dayEvents.length ? <div className="event-list">{dayEvents.map((item) => eventButton(item, false))}</div> : <p className="muted">Nothing scheduled on this day.</p>}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {selected && (
@@ -101,6 +126,7 @@ export default function CalendarView({ events, loading, renderActions }) {
             {selected.approvalStatus && <div><dt>Status</dt><dd><StatusBadge status={selected.approvalStatus} /></dd></div>}
             {selected.rejectionReason && <div><dt>Reason</dt><dd>{selected.rejectionReason}</dd></div>}
             {selected.description && <div><dt>Details</dt><dd>{selected.description}</dd></div>}
+            {renderDetails?.(selected)}
           </dl>
         </Modal>
       )}

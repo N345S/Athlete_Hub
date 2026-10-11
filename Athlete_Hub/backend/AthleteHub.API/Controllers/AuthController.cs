@@ -231,7 +231,7 @@ public class AuthController : ControllerBase
             // University ID
             new Claim(
                 "UniversityId",
-                user.UniversityId
+                user.UniversityId ?? string.Empty
             ),
 
             // First Name

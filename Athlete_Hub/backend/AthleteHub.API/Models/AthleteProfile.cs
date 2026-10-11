@@ -29,6 +29,8 @@ public partial class AthleteProfile
 
     public virtual ICollection<EligibilityRecord> EligibilityRecords { get; set; } = new List<EligibilityRecord>();
 
+    public virtual ICollection<ParentAthlete> Parents { get; set; } = new List<ParentAthlete>();
+
     public virtual ICollection<PerformanceRecord> PerformanceRecords { get; set; } = new List<PerformanceRecord>();
 
     public virtual ICollection<PortfolioItem> PortfolioItems { get; set; } = new List<PortfolioItem>();

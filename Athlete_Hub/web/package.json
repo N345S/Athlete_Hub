@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:phone": "vite --host",
+    "phone": "vite build && vite preview --host",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"

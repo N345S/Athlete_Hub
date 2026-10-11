@@ -471,15 +471,15 @@ namespace AthleteHub.API.Migrations
                         .HasColumnType("int")
                         .HasColumnName("document_id");
 
+                    b.Property<string>("EligibilityReasons")
+                        .HasColumnType("longtext")
+                        .HasColumnName("eligibility_reasons");
+
                     b.Property<DateTime?>("EvaluatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp")
                         .HasColumnName("evaluated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("EligibilityReasons")
-                        .HasColumnType("longtext")
-                        .HasColumnName("eligibility_reasons");
 
                     b.Property<string>("Remarks")
                         .HasColumnType("text")
@@ -573,6 +573,43 @@ namespace AthleteHub.API.Migrations
                     b.HasIndex(new[] { "UserId" }, "fk_notification_user");
 
                     b.ToTable("notifications", (string)null);
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.ParentAthlete", b =>
+                {
+                    b.Property<int>("ParentAthleteId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("parent_athlete_id");
+
+                    b.Property<int>("AthleteId")
+                        .HasColumnType("int")
+                        .HasColumnName("athlete_id");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("ParentUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("parent_user_id");
+
+                    b.Property<string>("Relationship")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("relationship");
+
+                    b.HasKey("ParentAthleteId")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex(new[] { "AthleteId" }, "fk_parent_athlete_athlete");
+
+                    b.HasIndex(new[] { "ParentUserId", "AthleteId" }, "parent_athlete_unique")
+                        .IsUnique();
+
+                    b.ToTable("parent_athletes", (string)null);
                 });
 
             modelBuilder.Entity("AthleteHub.API.Models.PerformanceMetricDefinition", b =>
@@ -1062,7 +1099,6 @@ namespace AthleteHub.API.Migrations
                         .HasColumnName("role_id");
 
                     b.Property<string>("UniversityId")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)")
                         .HasColumnName("university_id");
@@ -1205,7 +1241,7 @@ namespace AthleteHub.API.Migrations
             modelBuilder.Entity("AthleteHub.API.Models.Document", b =>
                 {
                     b.HasOne("AthleteHub.API.Models.Achievement", "Achievement")
-                        .WithMany("Documents")
+                        .WithMany()
                         .HasForeignKey("AchievementId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_document_achievement");
@@ -1231,12 +1267,6 @@ namespace AthleteHub.API.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_eligibility_athlete");
 
-                    b.HasOne("AthleteHub.API.Models.AcademicTerm", "Term")
-                        .WithMany("EligibilityRecords")
-                        .HasForeignKey("TermId")
-                        .IsRequired()
-                        .HasConstraintName("fk_eligibility_term");
-
                     b.HasOne("AthleteHub.API.Models.Document", null)
                         .WithMany()
                         .HasForeignKey("DocumentId")
@@ -1251,15 +1281,21 @@ namespace AthleteHub.API.Migrations
 
                     b.HasOne("AthleteHub.API.Models.User", null)
                         .WithMany()
-                        .HasForeignKey("UploadedBy")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_eligibility_uploaded_by");
-
-                    b.HasOne("AthleteHub.API.Models.User", null)
-                        .WithMany()
                         .HasForeignKey("ReviewedBy")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_eligibility_reviewed_by");
+
+                    b.HasOne("AthleteHub.API.Models.AcademicTerm", "Term")
+                        .WithMany("EligibilityRecords")
+                        .HasForeignKey("TermId")
+                        .IsRequired()
+                        .HasConstraintName("fk_eligibility_term");
+
+                    b.HasOne("AthleteHub.API.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_eligibility_uploaded_by");
 
                     b.Navigation("Athlete");
 
@@ -1276,6 +1312,27 @@ namespace AthleteHub.API.Migrations
                         .HasConstraintName("fk_notification_user");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.ParentAthlete", b =>
+                {
+                    b.HasOne("AthleteHub.API.Models.AthleteProfile", "Athlete")
+                        .WithMany("Parents")
+                        .HasForeignKey("AthleteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_parent_athlete_athlete");
+
+                    b.HasOne("AthleteHub.API.Models.User", "ParentUser")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_parent_athlete_parent");
+
+                    b.Navigation("Athlete");
+
+                    b.Navigation("ParentUser");
                 });
 
             modelBuilder.Entity("AthleteHub.API.Models.PerformanceMetricDefinition", b =>
@@ -1442,8 +1499,6 @@ namespace AthleteHub.API.Migrations
 
             modelBuilder.Entity("AthleteHub.API.Models.Achievement", b =>
                 {
-                    b.Navigation("Documents");
-
                     b.Navigation("PortfolioItems");
                 });
 
@@ -1458,6 +1513,8 @@ namespace AthleteHub.API.Migrations
                     b.Navigation("Documents");
 
                     b.Navigation("EligibilityRecords");
+
+                    b.Navigation("Parents");
 
                     b.Navigation("PerformanceRecords");
 
@@ -1513,6 +1570,8 @@ namespace AthleteHub.API.Migrations
                     b.Navigation("Announcements");
 
                     b.Navigation("AthleteProfile");
+
+                    b.Navigation("Children");
 
                     b.Navigation("CoachProfile");
 

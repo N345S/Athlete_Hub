@@ -43,7 +43,15 @@ public class AdminController : ControllerBase
                 u.AccountStatus,
                 u.CreatedAt,
                 u.UpdatedAt,
-                Role = u.Role.RoleName
+                Role = u.Role.RoleName,
+                // Parents have no university ID; they are identified through their children's.
+                linkedAthletes = u.Children.Select(link => new
+                {
+                    athleteUserId = link.Athlete.UserId,
+                    link.Athlete.User.FirstName,
+                    link.Athlete.User.LastName,
+                    link.Athlete.User.UniversityId
+                }).ToList()
             })
             .ToListAsync();
 
@@ -77,17 +85,32 @@ public class AdminController : ControllerBase
             return BadRequest(new { message = "The specified role does not exist." });
         }
 
+        var isParent = role.RoleName == "PARENT";
         request.Email = request.Email.Trim().ToLowerInvariant();
-        request.UniversityId = request.UniversityId.Trim();
-        if (await _context.Users.AnyAsync(u => u.Email == request.Email || u.UniversityId == request.UniversityId))
+        request.UniversityId = isParent ? null : request.UniversityId?.Trim();
+        if (!isParent && string.IsNullOrEmpty(request.UniversityId))
+        {
+            return BadRequest(new { message = "University ID is required." });
+        }
+
+        if (await _context.Users.AnyAsync(u => u.Email == request.Email || (request.UniversityId != null && u.UniversityId == request.UniversityId)))
         {
             return Conflict(new { message = "Email or university ID is already registered." });
+        }
+
+        // A parent is correlated to their children through the children's university IDs.
+        var childAthleteIds = new List<int>();
+        if (isParent)
+        {
+            var (athleteIds, problem) = await ResolveChildUniversityIdsAsync(request.ChildUniversityIds);
+            if (problem != null) return problem;
+            childAthleteIds = athleteIds;
         }
 
         var user = new User
         {
             RoleId = role.RoleId,
-            UniversityId = request.UniversityId.Trim(),
+            UniversityId = request.UniversityId,
             Email = request.Email.Trim(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FirstName = request.FirstName.Trim(),
@@ -101,12 +124,25 @@ public class AdminController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        if (role.RoleName == "ATHLETE")
+        if (isParent)
+        {
+            var relationship = string.IsNullOrWhiteSpace(request.Relationship) ? null : request.Relationship.Trim();
+            _context.ParentAthletes.AddRange(childAthleteIds.Select(athleteId => new ParentAthlete
+            {
+                ParentUserId = user.UserId,
+                AthleteId = athleteId,
+                Relationship = relationship,
+                CreatedAt = DateTime.UtcNow
+            }));
+
+            await _context.SaveChangesAsync();
+        }
+        else if (role.RoleName == "ATHLETE")
         {
             _context.AthleteProfiles.Add(new AthleteProfile
             {
                 UserId = user.UserId,
-                StudentNumber = user.UniversityId
+                StudentNumber = user.UniversityId!
             });
 
             await _context.SaveChangesAsync();
@@ -165,12 +201,19 @@ public class AdminController : ControllerBase
             return Conflict(new { message = "Email is already registered." });
         }
 
+        request.UniversityId = string.IsNullOrWhiteSpace(request.UniversityId) ? null : request.UniversityId.Trim();
         if (request.UniversityId != null && await _context.Users.AnyAsync(u => u.UserId != userId && u.UniversityId == request.UniversityId))
         {
             return Conflict(new { message = "University ID is already registered." });
         }
 
-        user.UniversityId = request.UniversityId?.Trim() ?? user.UniversityId;
+        // Parents have no university ID; everyone else must keep one.
+        user.UniversityId = targetRole.RoleName == "PARENT" ? null : request.UniversityId ?? user.UniversityId;
+        if (user.UniversityId == null && targetRole.RoleName != "PARENT")
+        {
+            return BadRequest(new { message = "University ID is required for this role." });
+        }
+
         user.Email = request.Email?.Trim() ?? user.Email;
         user.FirstName = request.FirstName?.Trim() ?? user.FirstName;
         user.MiddleName = request.MiddleName ?? user.MiddleName;
@@ -191,7 +234,7 @@ public class AdminController : ControllerBase
             _context.AthleteProfiles.Add(new AthleteProfile
             {
                 UserId = user.UserId,
-                StudentNumber = user.UniversityId
+                StudentNumber = user.UniversityId!
             });
         }
 
@@ -275,6 +318,95 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
+    /// The athletes a parent account is linked to. Parents only ever see these children's training.
+    /// </summary>
+    [HttpGet("users/{userId}/children")]
+    public async Task<IActionResult> GetChildren(int userId)
+    {
+        if (!await _context.Users.AnyAsync(u => u.UserId == userId && u.Role.RoleName == "PARENT"))
+        {
+            return NotFound(new { message = "Parent account not found." });
+        }
+
+        return Ok(await _context.ParentAthletes
+            .Where(link => link.ParentUserId == userId)
+            .Select(link => new
+            {
+                athleteUserId = link.Athlete.UserId,
+                link.Athlete.User.FirstName,
+                link.Athlete.User.LastName,
+                link.Athlete.User.UniversityId,
+                link.Relationship
+            })
+            .ToListAsync());
+    }
+
+    /// <summary>
+    /// Replaces the set of athletes linked to a parent account (by the athletes' user IDs).
+    /// </summary>
+    [HttpPut("users/{userId}/children")]
+    public async Task<IActionResult> SetChildren(int userId, SetParentChildrenRequest request)
+    {
+        if (!await _context.Users.AnyAsync(u => u.UserId == userId && u.Role.RoleName == "PARENT"))
+        {
+            return NotFound(new { message = "Parent account not found." });
+        }
+
+        var requestedUserIds = request.AthleteUserIds.Distinct().ToList();
+        var athletes = await _context.AthleteProfiles
+            .Where(profile => requestedUserIds.Contains(profile.UserId))
+            .Select(profile => new { profile.AthleteId, profile.UserId })
+            .ToListAsync();
+        if (athletes.Count != requestedUserIds.Count)
+        {
+            return BadRequest(new { message = "Every linked child must be an existing athlete account." });
+        }
+
+        var relationship = string.IsNullOrWhiteSpace(request.Relationship) ? null : request.Relationship.Trim();
+        var existing = await _context.ParentAthletes.Where(link => link.ParentUserId == userId).ToListAsync();
+        var keepIds = athletes.Select(athlete => athlete.AthleteId).ToHashSet();
+        _context.ParentAthletes.RemoveRange(existing.Where(link => !keepIds.Contains(link.AthleteId)));
+        foreach (var link in existing.Where(link => keepIds.Contains(link.AthleteId)))
+        {
+            link.Relationship = relationship ?? link.Relationship;
+        }
+        _context.ParentAthletes.AddRange(keepIds
+            .Except(existing.Select(link => link.AthleteId))
+            .Select(athleteId => new ParentAthlete { ParentUserId = userId, AthleteId = athleteId, Relationship = relationship, CreatedAt = DateTime.UtcNow }));
+
+        await _context.SaveChangesAsync();
+        return await GetChildren(userId);
+    }
+
+    /// <summary>
+    /// Maps children's university IDs to athlete profiles. A parent account needs at least one child.
+    /// </summary>
+    private async Task<(List<int> AthleteIds, IActionResult? Problem)> ResolveChildUniversityIdsAsync(IEnumerable<string>? universityIds)
+    {
+        var wanted = (universityIds ?? [])
+            .Select(id => id.Trim())
+            .Where(id => id.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (wanted.Count == 0)
+        {
+            return ([], BadRequest(new { message = "Enter the university ID of at least one child (athlete) this parent monitors." }));
+        }
+
+        var found = await _context.AthleteProfiles
+            .Where(profile => profile.User.UniversityId != null && wanted.Contains(profile.User.UniversityId))
+            .Select(profile => new { profile.AthleteId, profile.User.UniversityId })
+            .ToListAsync();
+        var missing = wanted.Where(id => !found.Any(row => string.Equals(row.UniversityId, id, StringComparison.OrdinalIgnoreCase))).ToList();
+        if (missing.Count > 0)
+        {
+            return ([], BadRequest(new { message = $"No athlete account has university ID {string.Join(", ", missing)}." }));
+        }
+
+        return (found.Select(row => row.AthleteId).Distinct().ToList(), null);
+    }
+
+    /// <summary>
     /// Stops an admin from locking themselves out and keeps at least one active administrator.
     /// Returns an error result when the change is not allowed, otherwise null.
     /// </summary>
@@ -323,4 +455,12 @@ public class AdminController : ControllerBase
 public sealed class AccountStatusRequest
 {
     public string? Status { get; set; }
+}
+
+public sealed class SetParentChildrenRequest
+{
+    public List<int> AthleteUserIds { get; set; } = [];
+
+    [System.ComponentModel.DataAnnotations.MaxLength(50)]
+    public string? Relationship { get; set; }
 }

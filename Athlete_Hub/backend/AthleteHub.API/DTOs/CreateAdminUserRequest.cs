@@ -7,8 +7,14 @@ public class CreateAdminUserRequest
     [Required]
     public int RoleId { get; set; }
 
-    [Required]
-    public string UniversityId { get; set; } = string.Empty;
+    /// <summary>Required for every role except PARENT, which has no university ID.</summary>
+    public string? UniversityId { get; set; }
+
+    /// <summary>For PARENT accounts: the university IDs of the athletes this parent monitors.</summary>
+    public List<string>? ChildUniversityIds { get; set; }
+
+    [MaxLength(50)]
+    public string? Relationship { get; set; }
 
     [Required]
     [EmailAddress]

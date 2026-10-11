@@ -3,6 +3,7 @@ import { api, fetchFileUrl } from '../../lib/api.js'
 import { accountLabel, formatDate, fullName, isActiveAccount } from '../../lib/format.js'
 import { useApiData } from '../../lib/hooks.js'
 import FileLink from '../../components/FileLink.jsx'
+import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, EmptyState, Field, Loading, Modal, ReasonDialog, StatusBadge } from '../../components/ui.jsx'
 
 const SEMESTERS = ['1st Semester', '2nd Semester', 'Summer']
@@ -29,10 +30,17 @@ export function PdfPreview({ url, token, onClose }) {
   )
 }
 
+/** "2026-2027" during June–December, otherwise the year that started last June. */
+function currentAcademicYear(date = new Date()) {
+  const start = date.getMonth() >= 5 ? date.getFullYear() : date.getFullYear() - 1
+  return `${start}-${start + 1}`
+}
+
 function AcademicEligibilityCard({ athlete, session, canRequest }) {
+  const toast = useToast()
   const { data, loading, error, setData } = useApiData(`/api/Eligibility/athlete/${athlete.athleteId}`, session.token)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ academicYear: '', semester: SEMESTERS[0] })
+  const [form, setForm] = useState({ academicYear: currentAcademicYear(), semester: SEMESTERS[0] })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [formError, setFormError] = useState('')
@@ -54,6 +62,7 @@ function AcademicEligibilityCard({ athlete, session, canRequest }) {
         setData((current) => ({ ...current, records: [result.evaluation, ...(current?.records || []).filter((item) => item.eligibilityId !== result.evaluation.eligibilityId)] }))
       }
       setMessage(result.message || 'Grade Evaluation request sent to the Registrar.')
+      toast.success('Grade Evaluation requested. The Registrar has been notified.')
       setShowForm(false)
     } catch (err) {
       setFormError(err.message)
@@ -72,8 +81,8 @@ function AcademicEligibilityCard({ athlete, session, canRequest }) {
       <Alert tone="success">{message}</Alert>
       {showForm && (
         <form className="inline-form" onSubmit={request}>
-          <Field label="Academic year"><input value={form.academicYear} onChange={(event) => setForm({ ...form, academicYear: event.target.value })} placeholder="2026-2027" required /></Field>
-          <Field label="Semester">
+          <Field label="Academic year" required hint="Format: YYYY-YYYY"><input value={form.academicYear} onChange={(event) => setForm({ ...form, academicYear: event.target.value })} placeholder="2026-2027" required /></Field>
+          <Field label="Semester" required>
             <select value={form.semester} onChange={(event) => setForm({ ...form, semester: event.target.value })}>
               {SEMESTERS.map((semester) => <option key={semester}>{semester}</option>)}
             </select>
@@ -113,6 +122,7 @@ function AcademicEligibilityCard({ athlete, session, canRequest }) {
 }
 
 function PortfolioReview({ athlete, session, canReview }) {
+  const toast = useToast()
   const { data, loading, error, reload } = useApiData(`/api/Portfolio/athlete/${athlete.athleteId}`, session.token)
   const [busyId, setBusyId] = useState(null)
   const [rejecting, setRejecting] = useState(null)
@@ -124,6 +134,7 @@ function PortfolioReview({ athlete, session, canReview }) {
     setActionError('')
     try {
       await api.put(`/api/Portfolio/${item.portfolioItemId}/verify`, { status, rejectionReason }, session.token)
+      toast.success(status === 'VERIFIED' ? `“${item.title}” verified.` : `“${item.title}” rejected. The athlete can see your reason.`)
       setRejecting(null)
       reload()
     } catch (err) {

@@ -7,9 +7,10 @@ using Microsoft.EntityFrameworkCore;
 namespace AthleteHub.API.Data;
 
 /// <summary>
-/// Development-only test data: 100 sign-in-ready accounts (1 director, 5 admins, 5 registrars, 10 coaches,
-/// 79 athletes) spread across eight teams, covering active, suspended, inactive, quit, transferred,
-/// unassigned, and multi-sport athletes, every eligibility outcome, and approval workflows in each state.
+/// Development-only test data: 104 sign-in-ready accounts (1 director, 5 admins, 5 registrars, 10 coaches,
+/// 79 athletes, 4 parents) spread across eight teams, covering active, suspended, inactive, quit, transferred,
+/// unassigned, and multi-sport athletes, every eligibility outcome, approval workflows in each state, and
+/// parents linked to one child, to two children, or to none.
 ///
 ///   dotnet run -- --seed-test-data     (re-creates everything; earlier seed data is removed first)
 ///   dotnet run -- --remove-test-data   (deletes only seed data)
@@ -116,6 +117,7 @@ public class TestDataSeeder
         await _context.Achievements.Where(item => athleteIds.Contains(item.AthleteId)).ExecuteDeleteAsync();
         await _context.TrainingSessions.Where(item => sessionIds.Contains(item.TrainingSessionId)).ExecuteDeleteAsync();
         await _context.TeamMembers.Where(item => athleteIds.Contains(item.AthleteId) || teamIds.Contains(item.TeamId)).ExecuteDeleteAsync();
+        await _context.ParentAthletes.Where(item => userIds.Contains(item.ParentUserId) || athleteIds.Contains(item.AthleteId)).ExecuteDeleteAsync();
         await _context.Teams.Where(item => teamIds.Contains(item.TeamId)).ExecuteDeleteAsync();
         await _context.Teams.Where(item => item.CoachId != null && coachIds.Contains(item.CoachId.Value)).ExecuteUpdateAsync(set => set.SetProperty(item => item.CoachId, none));
         await _context.Schedules.Where(item => item.Title.StartsWith(Prefix)).ExecuteDeleteAsync();
@@ -318,6 +320,15 @@ public class TestDataSeeder
         Describe(bea, "—", "New athlete with no team");
         Describe(kevin, "Blue Eagles Basketball, Lady Spikers Volleyball", "Two sports; PDF uploaded, awaiting Registrar decision");
         Describe(jasmine, "Lady Spikers Volleyball", "17% attendance; ineligible last term, eligible again now");
+
+        // ---------------- Parents (no university ID; linked to their children's athlete profiles) ----------------
+        var rosario = await CreateParentAsync("Rosario", "Dela Cruz", [(juan, "Mother")], "Parent of the model athlete — good attendance, upcoming practice");
+        var teresa = await CreateParentAsync("Teresa", "Flores", [(jasmine, "Mother")], "Parent of a low-attendance athlete (17%)");
+        await CreateParentAsync("Roberto", "Aquino", [(kevin, "Father"), (daniel, "Guardian")], "Two linked children on different teams — switch between them on Training sessions");
+        await CreateParentAsync("Nora", "Lim", [], "No children linked yet — empty state; admin can link Bea Lim (SEED-A-008)");
+        Notify(rosario.UserId, "Training attendance recorded", "Juan Dela Cruz was marked present for Training — week 6.", "TRAINING_ATTENDANCE");
+        Notify(teresa.UserId, "Training attendance recorded", "Jasmine Flores was marked absent for Training — week 6.", "TRAINING_ATTENDANCE");
+        await _context.SaveChangesAsync();
     }
 
     private async Task SeedGeneratedAthletesAsync(TeamPlan[] teams)
@@ -427,7 +438,7 @@ public class TestDataSeeder
     private static string EmailFor(string firstName, string lastName) =>
         $"{firstName}.{lastName.Replace(" ", string.Empty)}".ToLowerInvariant() + EmailDomain;
 
-    private User NewUser(string role, string universityId, string firstName, string lastName, string status)
+    private User NewUser(string role, string? universityId, string firstName, string lastName, string status)
     {
         var email = EmailFor(firstName, lastName);
         _usedEmails.Add(email);
@@ -439,7 +450,7 @@ public class TestDataSeeder
             PasswordHash = _passwordHash,
             FirstName = firstName,
             LastName = lastName,
-            Phone = $"0917 555 {universityId.Sum(character => character * 7) % 10000:D4}",
+            Phone = $"0917 555 {(universityId ?? email).Sum(character => character * 7) % 10000:D4}",
             AccountStatus = status,
             CreatedAt = DateTime.UtcNow.AddMonths(-12)
         };
@@ -451,6 +462,22 @@ public class TestDataSeeder
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
         _accounts.Add(new AccountRow(role, $"{firstName} {lastName}", user.Email, status, "—", scenario));
+        return user;
+    }
+
+    /// <summary>A parent account (no university ID) linked to the given children.</summary>
+    private async Task<User> CreateParentAsync(string firstName, string lastName, (AthleteProfile Athlete, string Relationship)[] children, string scenario)
+    {
+        var user = NewUser("PARENT", null, firstName, lastName, "ACTIVE");
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+        foreach (var (athlete, relationship) in children)
+        {
+            _context.ParentAthletes.Add(new ParentAthlete { ParentUserId = user.UserId, AthleteId = athlete.AthleteId, Relationship = relationship, CreatedAt = DateTime.UtcNow });
+        }
+        await _context.SaveChangesAsync();
+        var linked = children.Length == 0 ? "—" : string.Join(", ", children.Select(child => $"{child.Athlete.User.FirstName} {child.Athlete.User.LastName} ({child.Relationship.ToLowerInvariant()})"));
+        _accounts.Add(new AccountRow("PARENT", $"{firstName} {lastName}", user.Email, "ACTIVE", linked, scenario));
         return user;
     }
 
@@ -716,7 +743,7 @@ public class TestDataSeeder
     {
         var databaseFolder = Path.GetFullPath(Path.Combine(_contentRoot, "..", "..", "database"));
         var path = Path.Combine(Directory.Exists(databaseFolder) ? databaseFolder : _contentRoot, "TEST_ACCOUNTS.md");
-        var roleOrder = new[] { "DIRECTOR", "ADMIN", "REGISTRAR", "COACH", "ATHLETE" };
+        var roleOrder = new[] { "DIRECTOR", "ADMIN", "REGISTRAR", "COACH", "ATHLETE", "PARENT" };
 
         var builder = new StringBuilder();
         builder.AppendLine("# Test accounts");
@@ -736,7 +763,7 @@ public class TestDataSeeder
             var heading = $"{role[0]}{role[1..].ToLowerInvariant()}";
             builder.AppendLine($"## {heading}{(heading.EndsWith("h") ? "es" : "s")}");
             builder.AppendLine();
-            builder.AppendLine("| # | Name | Email | Status | Can sign in | Team | Scenario |");
+            builder.AppendLine(role == "PARENT" ? "| # | Name | Email | Status | Can sign in | Linked children | Scenario |" : "| # | Name | Email | Status | Can sign in | Team | Scenario |");
             builder.AppendLine("|---|---|---|---|---|---|---|");
             var number = 1;
             foreach (var row in _accounts.Where(row => row.Role == role))

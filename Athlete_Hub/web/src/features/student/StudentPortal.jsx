@@ -6,7 +6,10 @@ import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import FileLink from '../../components/FileLink.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
+import Icon from '../../components/icons.jsx'
+import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, PageHeader, StatCard, StatusBadge } from '../../components/ui.jsx'
+import { HELP } from '../../lib/help.js'
 
 const VIEWS = ['dashboard', 'schedule', 'documents', 'portfolio', 'profile', 'notifications']
 const TITLES = { dashboard: 'Dashboard', schedule: 'Schedule', documents: 'Documents', portfolio: 'Portfolio', profile: 'Profile', notifications: 'Notifications' }
@@ -23,13 +26,13 @@ function fileProblem(file) {
 }
 
 /** File picker with drag-and-drop that stages files and flags invalid ones before upload. */
-function FileDropZone({ files, onChange, label }) {
+function FileDropZone({ files, onChange, label, required }) {
   const [dragging, setDragging] = useState(false)
   const add = (list) => onChange([...files, ...Array.from(list || [])])
 
   return (
     <div className="field">
-      <span className="field-label">{label}</span>
+      <span className="field-label">{label}{required && <span className="field-required" aria-hidden="true"> *</span>}</span>
       <label
         className={`drop-zone ${dragging ? 'dragging' : ''}`}
         onDragEnter={(event) => { event.preventDefault(); setDragging(true) }}
@@ -58,6 +61,48 @@ function FileDropZone({ files, onChange, label }) {
   )
 }
 
+/** First-run checklist so new athletes know what to do; hidden once complete or dismissed. */
+function GettingStarted({ session, profile, documents, portfolio, onNavigate }) {
+  const storageKey = `athletehub-checklist-dismissed-${session.userId}`
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(storageKey) === '1' } catch { return false }
+  })
+  const steps = [
+    { done: Boolean(profile?.course && profile?.yearLevel && profile?.phone), label: 'Complete your profile', detail: 'Program, year level, and phone number', view: 'profile' },
+    { done: documents.some((item) => item.documentType === 'Medical Clearance'), label: 'Upload your medical clearance', detail: 'Required before competing', view: 'documents' },
+    { done: portfolio.length > 0, label: 'Add your first achievement', detail: 'Your coach verifies it using your evidence', view: 'portfolio' },
+  ]
+  const finished = steps.filter((step) => step.done).length
+  if (!profile || dismissed || finished === steps.length) return null
+
+  const dismiss = () => {
+    try { localStorage.setItem(storageKey, '1') } catch { /* private mode: hide for this visit only */ }
+    setDismissed(true)
+  }
+
+  return (
+    <Card
+      className="checklist-card"
+      title="Getting started"
+      subtitle={`${finished} of ${steps.length} done`}
+      actions={<button className="btn btn-ghost btn-sm" type="button" onClick={dismiss}>Hide</button>}
+    >
+      <ol className="checklist">
+        {steps.map((step) => (
+          <li key={step.label} className={step.done ? 'done' : ''}>
+            <span className="checklist-mark" aria-hidden="true">{step.done && <Icon name="check" size={16} />}</span>
+            <span className="checklist-copy">
+              <strong>{step.label}<span className="visually-hidden">{step.done ? ' (completed)' : ' (not completed)'}</span></strong>
+              <small>{step.done ? 'Done' : step.detail}</small>
+            </span>
+            {!step.done && <button className="btn btn-secondary btn-sm" type="button" onClick={() => onNavigate(step.view)}>Start</button>}
+          </li>
+        ))}
+      </ol>
+    </Card>
+  )
+}
+
 function StudentDashboard({ session, profile, onNavigate }) {
   const evaluations = useApiData(profile?.athleteId ? `/api/Eligibility/athlete/${profile.athleteId}` : null, session.token)
   const upcoming = useApiData(`/api/Schedules/athlete?from=${localDateISO()}`, session.token, { initialData: [] })
@@ -82,6 +127,7 @@ function StudentDashboard({ session, profile, onNavigate }) {
       {latestDecision?.academicStatus === 'INELIGIBLE' && (
         <Alert tone="warning">The Registrar marked you ineligible for {termOf(latestDecision)}. Please coordinate with your coach.</Alert>
       )}
+      <GettingStarted session={session} profile={profile} documents={documents.data || []} portfolio={portfolio.data || []} onNavigate={onNavigate} />
       <div className="stat-grid">
         <StatCard
           icon="check"
@@ -90,9 +136,9 @@ function StudentDashboard({ session, profile, onNavigate }) {
           hint={latestDecision ? `Registrar decision · ${termOf(latestDecision)}` : pendingRequest ? `Requested for ${termOf(pendingRequest)}` : 'No Grade Evaluation requested yet'}
           tone={latestDecision?.academicStatus === 'ELIGIBLE' ? 'success' : latestDecision?.academicStatus === 'INELIGIBLE' ? 'danger' : 'info'}
         />
-        <StatCard icon="calendar" label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" />
-        <StatCard icon="trophy" label="Verified achievements" value={verified} hint={`${(portfolio.data || []).length} submitted`} tone="warning" />
-        <StatCard icon="file" label="Documents in review" value={pendingDocuments} hint="Awaiting staff approval" tone="info" />
+        <StatCard icon="calendar" label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" onClick={() => onNavigate('schedule')} />
+        <StatCard icon="trophy" label="Verified achievements" value={verified} hint={`${(portfolio.data || []).length} submitted`} tone="warning" onClick={() => onNavigate('portfolio')} />
+        <StatCard icon="file" label="Documents in review" value={pendingDocuments} hint="Awaiting staff approval" tone="info" onClick={() => onNavigate('documents')} />
       </div>
       <div className="dashboard-grid">
         <Card title="Coming up" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('schedule')}>Full schedule →</button>}>
@@ -150,6 +196,7 @@ function StudentDashboard({ session, profile, onNavigate }) {
 }
 
 function DocumentsPage({ session }) {
+  const toast = useToast()
   const { data, loading, error, reload } = useApiData('/api/Documents/me', session.token, { initialData: [] })
   const [form, setForm] = useState({ documentType: DOCUMENT_TYPES[0], title: '', description: '' })
   const [files, setFiles] = useState([])
@@ -176,7 +223,9 @@ function DocumentsPage({ session }) {
       await api.post('/api/Documents', body, session.token)
       setFiles([])
       setForm({ ...form, title: '', description: '' })
+      const count = files.length
       setMessage('Documents uploaded and awaiting review.')
+      toast.success(`${count} file${count === 1 ? '' : 's'} uploaded. Staff will review ${count === 1 ? 'it' : 'them'} soon.`)
       reload()
     } catch (err) {
       setActionError(err.message)
@@ -190,6 +239,7 @@ function DocumentsPage({ session }) {
     setActionError('')
     try {
       await api.del(`/api/Documents/${deleting.documentId}`, session.token)
+      toast.success('Document deleted.')
       reload()
     } catch (err) {
       setActionError(err.message)
@@ -205,15 +255,15 @@ function DocumentsPage({ session }) {
       <div className="stack">
         <Card title="Upload documents">
           <form className="form-grid" onSubmit={upload}>
-            <Field label="Document type">
+            <Field label="Document type" required>
               <select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value })}>
                 {DOCUMENT_TYPES.map((type) => <option key={type}>{type}</option>)}
               </select>
             </Field>
-            <Field label="Title (optional)"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} maxLength={200} placeholder="e.g. PRISAA 2027 requirements" /></Field>
-            <Field label="Description (optional)" className="span-2"><textarea rows="2" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="What are these documents for?" /></Field>
+            <Field label="Title" optional><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} maxLength={200} placeholder="e.g. PRISAA 2027 requirements" /></Field>
+            <Field label="Description" optional className="span-2"><textarea rows="2" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="What are these documents for?" /></Field>
             <div className="span-2"><FileDropZone label="Files" files={files} onChange={setFiles} /></div>
-            <div className="span-2"><button className="btn btn-primary" type="submit" disabled={uploading || !files.length}>{uploading ? 'Uploading…' : `Upload ${files.length || ''} file${files.length === 1 ? '' : 's'}`}</button></div>
+            <div className="span-2"><button className="btn btn-primary" type="submit" disabled={uploading || !files.length}><Icon name="upload" />{uploading ? 'Uploading…' : files.length ? `Upload ${files.length} file${files.length === 1 ? '' : 's'}` : 'Add files to upload'}</button></div>
           </form>
           <Alert tone="success">{message}</Alert>
           <Alert>{actionError}</Alert>
@@ -238,7 +288,7 @@ function DocumentsPage({ session }) {
                 </li>
               ))}
             </ul>
-          ) : <EmptyState title="No documents yet" message="Upload your clearance and consent forms above." />}
+          ) : <EmptyState icon="file" title="No documents yet" message="Upload your clearance and consent forms above." />}
         </Card>
       </div>
       {deleting && <ConfirmDialog title="Delete document" message={`Delete “${deleting.title || deleting.documentName}”? This cannot be undone.`} confirmLabel="Delete" busy={busy} onCancel={() => setDeleting(null)} onConfirm={remove} />}
@@ -247,6 +297,7 @@ function DocumentsPage({ session }) {
 }
 
 function PortfolioPage({ session, profile }) {
+  const toast = useToast()
   const { data, loading, error, reload } = useApiData('/api/Portfolio/me', session.token, { initialData: [] })
   const [form, setForm] = useState({ title: '', description: '', achievementDate: '', category: '' })
   const [files, setFiles] = useState([])
@@ -259,6 +310,7 @@ function PortfolioPage({ session, profile }) {
 
   const submit = async (event) => {
     event.preventDefault()
+    if (!form.title.trim()) return setActionError('Enter the achievement title.')
     if (!files.length) return setActionError('Attach at least one evidence file.')
     if (files.some(fileProblem)) return setActionError('Remove the files marked as invalid first.')
     setSaving(true)
@@ -273,6 +325,7 @@ function PortfolioPage({ session, profile }) {
       await api.post('/api/Portfolio/submit', body, session.token)
       setForm({ title: '', description: '', achievementDate: '', category: '' })
       setFiles([])
+      toast.success('Achievement submitted. Your coach will review it.')
       reload()
     } catch (err) {
       setActionError(err.message)
@@ -286,6 +339,7 @@ function PortfolioPage({ session, profile }) {
     setActionError('')
     try {
       await api.del(`/api/Portfolio/${deleting.portfolioItemId}`, session.token)
+      toast.success('Submission deleted.')
       reload()
     } catch (err) {
       setActionError(err.message)
@@ -314,16 +368,16 @@ function PortfolioPage({ session, profile }) {
       <div className="stack">
         <Card title="Submit an achievement">
           <form className="form-grid" onSubmit={submit}>
-            <Field label="Achievement title" className="span-2"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} maxLength={200} placeholder="e.g. Regional Basketball Championship — 1st place" required /></Field>
-            <Field label="Date achieved"><input type="date" max={localDateISO()} value={form.achievementDate} onChange={(event) => setForm({ ...form, achievementDate: event.target.value })} /></Field>
-            <Field label="Category">
+            <Field label="Achievement title" required className="span-2"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} maxLength={200} placeholder="e.g. Regional Basketball Championship — 1st place" required /></Field>
+            <Field label="Date achieved" optional><input type="date" max={localDateISO()} value={form.achievementDate} onChange={(event) => setForm({ ...form, achievementDate: event.target.value })} /></Field>
+            <Field label="Category" optional>
               <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })}>
                 <option value="">Select a category</option>
                 {ACHIEVEMENT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
               </select>
             </Field>
-            <Field label="Description" className="span-2"><textarea rows="3" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Describe the achievement and the evidence attached" /></Field>
-            <div className="span-2"><FileDropZone label="Evidence files" files={files} onChange={setFiles} /></div>
+            <Field label="Description" optional className="span-2"><textarea rows="3" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Describe the achievement and the evidence attached" /></Field>
+            <div className="span-2"><FileDropZone label="Evidence files" required files={files} onChange={setFiles} /></div>
             <div className="span-2"><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Submitting…' : 'Submit for verification'}</button></div>
           </form>
           <Alert>{actionError}</Alert>
@@ -355,7 +409,7 @@ function PortfolioPage({ session, profile }) {
                 )
               })}
             </ul>
-          ) : <EmptyState title="No submissions yet" message="Add your first achievement above." />}
+          ) : <EmptyState icon="trophy" title="No submissions yet" message="Add your first achievement above." />}
         </Card>
       </div>
       {deleting && <ConfirmDialog title="Delete submission" message={`Delete “${deleting.title}” and its evidence files?`} confirmLabel="Delete" busy={saving} onCancel={() => setDeleting(null)} onConfirm={remove} />}
@@ -364,6 +418,7 @@ function PortfolioPage({ session, profile }) {
 }
 
 function ProfilePage({ session, profile, onSaved }) {
+  const toast = useToast()
   const [form, setForm] = useState(() => ({
     course: profile?.course || '',
     yearLevel: profile?.yearLevel ? String(profile.yearLevel) : '',
@@ -388,6 +443,7 @@ function ProfilePage({ session, profile, onSaved }) {
         phone: form.phone.trim() || null,
       }, session.token)
       setMessage('Profile saved.')
+      toast.success('Profile saved.')
       onSaved()
     } catch (err) {
       setError(err.data?.errors ? Object.values(err.data.errors).flat().join(' ') : err.message)
@@ -468,6 +524,7 @@ export default function StudentPortal({ session, onLogout }) {
       onNavigate={setView}
       onLogout={onLogout}
       unreadCount={unread}
+      help={HELP.athlete[view]}
     >
       <Alert>{profile.error}</Alert>
       {pages[view]}
