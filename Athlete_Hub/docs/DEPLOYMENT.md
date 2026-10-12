@@ -45,23 +45,24 @@ ConnectionStrings__DefaultConnection=Server=${{MySQL.MYSQLHOST}};Port=${{MySQL.M
 Jwt__Key=<a random string of at least 64 characters>
 App__SeedTestDataIfEmpty=true
 AllowedHosts=*
+PORT=8080
 ```
 
 | Variable | Purpose |
 |---|---|
 | `ConnectionStrings__DefaultConnection` | Database connection. The `${{MySQL.…}}` references are filled in by Railway. |
-| `Jwt__Key` | Signs sign-in tokens. Generate one, e.g. in PowerShell: `[Convert]::ToBase64String((1..48 \| % { Get-Random -Max 256 }))`. Never reuse the development key. |
+| `Jwt__Key` | Signs sign-in tokens. Generate one, e.g. in PowerShell: `[Convert]::ToBase64String([byte[]](1..48 \| % { Get-Random -Maximum 256 }))`. Never reuse the development key. |
 | `App__SeedTestDataIfEmpty` | `true` creates the test accounts from `database/TEST_ACCOUNTS.md` (password `Seed123!`) on the first start. Later starts keep testers' changes. |
 | `AllowedHosts` | Host names the API answers to. After step 4, replace `*` with the generated domain, e.g. `athletehub-production.up.railway.app`. |
 | `VITE_FEEDBACK_URL` *(optional)* | Adds a "Give feedback" link to every portal (e.g. a Google Form with the SUS questions). Build-time: redeploy after changing it. |
 | `VITE_SHOW_TEST_ACCOUNTS` *(optional)* | `true` shows one-click sign-in buttons. **Leave it off** on a public address — anyone with the link could sign in as any role. |
 
-`App__BehindProxy=true` and `ASPNETCORE_ENVIRONMENT=Production` are already set in the Dockerfile. The listening port
-comes from Railway's `PORT` variable automatically.
+`App__BehindProxy=true` and `ASPNETCORE_ENVIRONMENT=Production` are already set in the Dockerfile. The app listens on the
+`PORT` variable; setting it to `8080` keeps it the same as the port given to the domain in step 4.
 
 ## 4. Get the address
 
-App service → **Settings → Networking → Generate Domain**. Railway shows an address like
+App service → **Settings → Networking → Generate Domain** (if asked for a port, enter `8080`). Railway shows an address like
 `https://athletehub-production.up.railway.app`. Put that host name (without `https://`) in `AllowedHosts`.
 
 Railway redeploys after variable changes. When the deploy log shows `Now listening on`, open the address and
