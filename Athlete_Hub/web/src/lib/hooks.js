@@ -77,6 +77,21 @@ export function usePerformanceData(athleteId, token) {
   return { records, trend, range, setRange, reload }
 }
 
+/**
+ * State for a detail screen (an athlete profile, an evaluation review) opened from one page. It belongs
+ * to that page, so moving to any other page closes it — including the phone's back gesture or the
+ * browser Back button, which change the page without going through the menu.
+ * `open(value, forView)` names the page when the detail is opened together with a page change.
+ */
+export function usePageDetail(view) {
+  const [detail, setDetail] = useState(null)
+  // Left the page: forget the detail so coming back later shows the page itself, not a stale profile.
+  if (detail && detail.view !== view) setDetail(null)
+  const value = detail && detail.view === view ? detail.value : null
+  const open = useCallback((next, forView) => setDetail(next == null ? null : { view: forView || view, value: next }), [view])
+  return [value, open]
+}
+
 /** Polls the signed-in user's unread notification count. */
 export function useUnreadNotifications(token) {
   const [count, setCount] = useState(0)

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
 import { formatDateTime, fullName, isActiveAccount, longToday, matchesSearch, timeAgo } from '../../lib/format.js'
-import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
+import { useApiData, useHashView, usePageDetail, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import Icon from '../../components/icons.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
@@ -166,7 +166,7 @@ function ReviewPage({ evaluation, session, onBack, onUpdated }) {
 
 export default function RegistrarPortal({ session, onLogout }) {
   const [view, setView] = useHashView('dashboard', VIEWS)
-  const [reviewingId, setReviewingId] = useState(null)
+  const [reviewingId, setReviewingId] = usePageDetail(view)
   const [search, setSearch] = useState('')
   const [unread, refreshUnread] = useUnreadNotifications(session.token)
   const studentsData = useApiData('/api/RegistrarDashboard', session.token)

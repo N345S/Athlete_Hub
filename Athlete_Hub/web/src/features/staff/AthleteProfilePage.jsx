@@ -62,7 +62,8 @@ function AcademicEligibilityCard({ athlete, session, canRequest }) {
         setData((current) => ({ ...current, records: [result.evaluation, ...(current?.records || []).filter((item) => item.eligibilityId !== result.evaluation.eligibilityId)] }))
       }
       setMessage(result.message || 'Grade Evaluation request sent to the Registrar.')
-      toast.success('Grade Evaluation requested. The Registrar has been notified.')
+      if (result.alreadyExists) toast.info(`${form.semester} ${form.academicYear} already has an evaluation or request — nothing new was sent.`)
+      else toast.success('Grade Evaluation requested. The Registrar has been notified.')
       setShowForm(false)
     } catch (err) {
       setFormError(err.message)

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
 import { accountLabel, average, eventTypeLabel, formatDate, formatTimeRange, fullName, isActiveAccount, localDateISO, longToday, matchesSearch, mergeAthleteTeams } from '../../lib/format.js'
-import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
+import { useApiData, useHashView, usePageDetail, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
@@ -325,8 +325,8 @@ function CoachesPage({ summaries, loading, onOpen }) {
 export default function DirectorPortal({ session, onLogout }) {
   const toast = useToast()
   const [view, setView] = useHashView('dashboard', VIEWS)
-  const [profileAthlete, setProfileAthlete] = useState(null)
-  const [profileCoach, setProfileCoach] = useState(null)
+  const [profileAthlete, setProfileAthlete] = usePageDetail(view)
+  const [profileCoach, setProfileCoach] = usePageDetail(view)
   const [showEventModal, setShowEventModal] = useState(false)
   const [deleting, setDeleting] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -362,7 +362,7 @@ export default function DirectorPortal({ session, onLogout }) {
     const athlete = athleteIndex.get(athleteId)
     if (!athlete) return
     setProfileCoach(null)
-    setProfileAthlete(athlete)
+    setProfileAthlete(athlete, 'athletes')
     setView('athletes')
   }
 
@@ -442,7 +442,7 @@ export default function DirectorPortal({ session, onLogout }) {
                   {summaries.map((summary) => (
                     <tr key={summary.coach.coachId}>
                       <td>
-                        <button className="link-button" type="button" onClick={() => { setView('coaches'); setProfileCoach(summary.coach) }}>{fullName(summary.coach)}</button>
+                        <button className="link-button" type="button" onClick={() => { setProfileCoach(summary.coach, 'coaches'); setView('coaches') }}>{fullName(summary.coach)}</button>
                         {!isActiveAccount(summary.coach) && <> <StatusBadge status={summary.coach.accountStatus} /></>}
                       </td>
                       <td>{summary.coach.teams?.map((team) => team.teamName).join(', ') || <span className="muted">No team</span>}</td>

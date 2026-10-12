@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
 import { average, formatDate, formatTimeRange, fullName, greeting, isActiveAccount, localDateISO, longToday, mergeAthleteTeams } from '../../lib/format.js'
-import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
+import { useApiData, useHashView, usePageDetail, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
@@ -27,7 +27,7 @@ function addDays(days) {
 export default function CoachPortal({ session, onLogout }) {
   const toast = useToast()
   const [view, setView] = useHashView('dashboard', VIEWS)
-  const [profileAthlete, setProfileAthlete] = useState(null)
+  const [profileAthlete, setProfileAthlete] = usePageDetail(view)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [cancelling, setCancelling] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -63,7 +63,7 @@ export default function CoachPortal({ session, onLogout }) {
   const openAthlete = (athleteId) => {
     const athlete = athletes.find((item) => item.athleteId === athleteId)
     if (!athlete) return
-    setProfileAthlete(athlete)
+    setProfileAthlete(athlete, 'athletes')
     setView('athletes')
   }
 
