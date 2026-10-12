@@ -1,0 +1,872 @@
+{
+  "Athlete_Hub/backend/AthleteHub.API/AthleteHub.API.csproj": {
+    "mtime": 1789706316.5627487,
+    "seen": 1791289474.2326708,
+    "ast_hash": "e2fb11041b092cddf1e2f1ffb6149bd1",
+    "semantic_hash": "e2fb11041b092cddf1e2f1ffb6149bd1"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/AcademicRecordsController.cs": {
+    "mtime": 1790804462.7288232,
+    "seen": 1791289474.2326753,
+    "ast_hash": "3ec2a3f9dc6bd7ee457f41dd573128e4",
+    "semantic_hash": "3ec2a3f9dc6bd7ee457f41dd573128e4"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/AchievementsController.cs": {
+    "mtime": 1789779710.4206858,
+    "seen": 1791289474.2326772,
+    "ast_hash": "4642e4b0a06a1ad7efe1dd93059355f8",
+    "semantic_hash": "4642e4b0a06a1ad7efe1dd93059355f8"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/AdminController.cs": {
+    "mtime": 1788362096.3576753,
+    "seen": 1791289474.2326782,
+    "ast_hash": "3eeaf6a76e120694c1f6e031b440f8b1",
+    "semantic_hash": "3eeaf6a76e120694c1f6e031b440f8b1"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/AdminDashboardController.cs": {
+    "mtime": 1790830551.4879816,
+    "seen": 1791289474.2326791,
+    "ast_hash": "698bc3341f60c28f329749723ef3283d",
+    "semantic_hash": "698bc3341f60c28f329749723ef3283d"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/AthleteProfileController.cs": {
+    "mtime": 1788399965.1283197,
+    "seen": 1791289474.23268,
+    "ast_hash": "e06c947fad7bdd9393c0bf832820e675",
+    "semantic_hash": "e06c947fad7bdd9393c0bf832820e675"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/AuthController.cs": {
+    "mtime": 1789781294.0568557,
+    "seen": 1791289474.2326813,
+    "ast_hash": "2ea5d75b3a3d5af36f3eca286083486c",
+    "semantic_hash": "2ea5d75b3a3d5af36f3eca286083486c"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/CoachDashboardController.cs": {
+    "mtime": 1790830103.0893426,
+    "seen": 1791289474.232682,
+    "ast_hash": "4d20dc0579ee81fd5425e48f90b3502b",
+    "semantic_hash": "4d20dc0579ee81fd5425e48f90b3502b"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/DatabaseTestController.cs": {
+    "mtime": 1786472909.5646012,
+    "seen": 1791289474.2326827,
+    "ast_hash": "07c7494b345477c4e2a8db22398b82be",
+    "semantic_hash": "07c7494b345477c4e2a8db22398b82be"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/DirectorController.cs": {
+    "mtime": 1790830571.3112016,
+    "seen": 1791289474.2326837,
+    "ast_hash": "1fd6c7336f2851124265daf380bb66c1",
+    "semantic_hash": "1fd6c7336f2851124265daf380bb66c1"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/DirectorDashboardController.cs": {
+    "mtime": 1789779710.4136207,
+    "seen": 1791289474.2326844,
+    "ast_hash": "0d7d31735fd9939442550d10c6d2995d",
+    "semantic_hash": "0d7d31735fd9939442550d10c6d2995d"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/DocumentsController.cs": {
+    "mtime": 1790814048.1426115,
+    "seen": 1791289474.2326856,
+    "ast_hash": "8d986c035ea7f3c34ce5432235a167ab",
+    "semantic_hash": "8d986c035ea7f3c34ce5432235a167ab"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/EligibilityController.cs": {
+    "mtime": 1790829292.3354013,
+    "seen": 1791289474.2326863,
+    "ast_hash": "24cec5c3c1d82cc5213a2d1de5a4f9c4",
+    "semantic_hash": "24cec5c3c1d82cc5213a2d1de5a4f9c4"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/GradeEvaluationsController.cs": {
+    "mtime": 1789938354.5182624,
+    "seen": 1791289474.232687,
+    "ast_hash": "f2ed95ea00c8e46bc802d682421269ad",
+    "semantic_hash": "f2ed95ea00c8e46bc802d682421269ad"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/NotificationsController.cs": {
+    "mtime": 1789576629.4067335,
+    "seen": 1791289474.2326882,
+    "ast_hash": "0c2a920c0ed92d55ca6861562171f408",
+    "semantic_hash": "0c2a920c0ed92d55ca6861562171f408"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/PerformanceController.cs": {
+    "mtime": 1789779710.4156218,
+    "seen": 1791289474.232689,
+    "ast_hash": "d1717d8f9a6e9aa966da764dab96979a",
+    "semantic_hash": "d1717d8f9a6e9aa966da764dab96979a"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/PortfolioController.cs": {
+    "mtime": 1789780136.0076008,
+    "seen": 1791289474.2326896,
+    "ast_hash": "bd219919e5454c0f18c464976eafb15f",
+    "semantic_hash": "bd219919e5454c0f18c464976eafb15f"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/RegistrarDashboardController.cs": {
+    "mtime": 1790805736.4898639,
+    "seen": 1791289474.2326903,
+    "ast_hash": "8af45615d3eed0d0368bbb2c42c50a88",
+    "semantic_hash": "8af45615d3eed0d0368bbb2c42c50a88"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/RoleController.cs": {
+    "mtime": 1787285988.9033656,
+    "seen": 1791289474.2326913,
+    "ast_hash": "4dacbf0acc35d9ca4fcfb9f3fb174894",
+    "semantic_hash": "4dacbf0acc35d9ca4fcfb9f3fb174894"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/RoleTestController.cs": {
+    "mtime": 1787287122.2099335,
+    "seen": 1791289474.232692,
+    "ast_hash": "005a68772676985eda0f08269afa6ef0",
+    "semantic_hash": "005a68772676985eda0f08269afa6ef0"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/SchedulesController.cs": {
+    "mtime": 1790805336.90416,
+    "seen": 1791289474.232693,
+    "ast_hash": "8c08ef96220d8a041f2595a1e2ef011a",
+    "semantic_hash": "8c08ef96220d8a041f2595a1e2ef011a"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Controllers/TrainingController.cs": {
+    "mtime": 1789706061.3636165,
+    "seen": 1791289474.2326934,
+    "ast_hash": "f750dc2c48a5f685bf2d9cfe333480d7",
+    "semantic_hash": "f750dc2c48a5f685bf2d9cfe333480d7"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/AttendanceRequest.cs": {
+    "mtime": 1790890309.1344767,
+    "seen": 1791289474.232695,
+    "ast_hash": "ab2e754f2c77caaf3c8517ba7b22c98e",
+    "semantic_hash": "ab2e754f2c77caaf3c8517ba7b22c98e"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/CreateAchievementRequest.cs": {
+    "mtime": 1787290143.4383624,
+    "seen": 1791289474.2326958,
+    "ast_hash": "44db661e8941d170fa7986679e135665",
+    "semantic_hash": "44db661e8941d170fa7986679e135665"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/CreateAdminUserRequest.cs": {
+    "mtime": 1787296253.546424,
+    "seen": 1791289474.2326965,
+    "ast_hash": "8b9234bd196a567eda10e50a3cbc5aa3",
+    "semantic_hash": "8b9234bd196a567eda10e50a3cbc5aa3"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/EligibilityRecordRequest.cs": {
+    "mtime": 1790890309.1849332,
+    "seen": 1791289474.2326972,
+    "ast_hash": "ac048d1aa94a2ff14be23980260252bb",
+    "semantic_hash": "ac048d1aa94a2ff14be23980260252bb"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/LoginRequest.cs": {
+    "mtime": 1786547562.0495193,
+    "seen": 1791289474.2326982,
+    "ast_hash": "e5cc3a3d3813d9788540a55766a69b73",
+    "semantic_hash": "e5cc3a3d3813d9788540a55766a69b73"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/PerformanceRecordRequest.cs": {
+    "mtime": 1790890309.0134797,
+    "seen": 1791289474.232699,
+    "ast_hash": "d34e03625e71942ababe48bc0ec8481b",
+    "semantic_hash": "d34e03625e71942ababe48bc0ec8481b"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/PortfolioItemRequest.cs": {
+    "mtime": 1789746501.4192579,
+    "seen": 1791289474.2326999,
+    "ast_hash": "e7839647d3a7e2ecdda0e1227bec2c18",
+    "semantic_hash": "e7839647d3a7e2ecdda0e1227bec2c18"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/PortfolioItemResponse.cs": {
+    "mtime": 1787295307.123163,
+    "seen": 1791289474.2327006,
+    "ast_hash": "7e2932c3525e33781c87a51a56c99ded",
+    "semantic_hash": "7e2932c3525e33781c87a51a56c99ded"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/RegisterRequest.cs": {
+    "mtime": 1786547562.8105211,
+    "seen": 1791289474.2327015,
+    "ast_hash": "7d94c09a7fbd014a93c886e7f8c768d5",
+    "semantic_hash": "7d94c09a7fbd014a93c886e7f8c768d5"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/ScheduleRequest.cs": {
+    "mtime": 1790890309.2308016,
+    "seen": 1791289474.2327025,
+    "ast_hash": "db9058017d5c69fbc6965ab45bea7ab4",
+    "semantic_hash": "db9058017d5c69fbc6965ab45bea7ab4"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/SendGradeEvaluationRequest.cs": {
+    "mtime": 1787299787.9795914,
+    "seen": 1791289474.2327032,
+    "ast_hash": "981e821f31726f21ab7a78938d7d36de",
+    "semantic_hash": "981e821f31726f21ab7a78938d7d36de"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/TrainingApprovalRequest.cs": {
+    "mtime": 1790890309.133478,
+    "seen": 1791289474.232704,
+    "ast_hash": "76bfeb99774ff7a4dc215f3ad5892267",
+    "semantic_hash": "76bfeb99774ff7a4dc215f3ad5892267"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/TrainingSessionRequest.cs": {
+    "mtime": 1790890309.063573,
+    "seen": 1791289474.2327049,
+    "ast_hash": "23b0eadf658229bfc2b8813621649b48",
+    "semantic_hash": "23b0eadf658229bfc2b8813621649b48"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/UpdateAcademicRecordRequest.cs": {
+    "mtime": 1789785208.114865,
+    "seen": 1791289474.2327056,
+    "ast_hash": "b20159e478c52a78e8d450864554f97c",
+    "semantic_hash": "b20159e478c52a78e8d450864554f97c"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/UpdateAdminUserRequest.cs": {
+    "mtime": 1787296253.2301226,
+    "seen": 1791289474.2327063,
+    "ast_hash": "ff9c39f11e1b13d94fd65372f8d92153",
+    "semantic_hash": "ff9c39f11e1b13d94fd65372f8d92153"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/DTOs/UpdateAthleteProfileRequest.cs": {
+    "mtime": 1786550305.688904,
+    "seen": 1791289474.2327073,
+    "ast_hash": "857260b171312c319d2042783aa0e083",
+    "semantic_hash": "857260b171312c319d2042783aa0e083"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Data/AthleteHubDbContext.cs": {
+    "mtime": 1790813633.4295418,
+    "seen": 1791289474.232708,
+    "ast_hash": "0d399614cbf8b78d49ef31c5f3b28781",
+    "semantic_hash": "0d399614cbf8b78d49ef31c5f3b28781"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/20260919011438_InitialAthleteHubSchema.Designer.cs": {
+    "mtime": 1789780478.409958,
+    "seen": 1791289474.2327092,
+    "ast_hash": "9832a42413a8cadce0a58c799856cb79",
+    "semantic_hash": "9832a42413a8cadce0a58c799856cb79"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/20260919011438_InitialAthleteHubSchema.cs": {
+    "mtime": 1789785208.1118655,
+    "seen": 1791289474.23271,
+    "ast_hash": "e9dc9039ebf0906b84cd86c2a5c55c43",
+    "semantic_hash": "e9dc9039ebf0906b84cd86c2a5c55c43"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/20260919020647_AddAchievementRejectionReason.cs": {
+    "mtime": 1789785208.1118655,
+    "seen": 1791289474.2327106,
+    "ast_hash": "0ba9ee24ac55bd7d76f26e97124ef940",
+    "semantic_hash": "0ba9ee24ac55bd7d76f26e97124ef940"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/20260919022000_ReconcileLegacySchema.Designer.cs": {
+    "mtime": 1789781800.6059797,
+    "seen": 1791289474.2327113,
+    "ast_hash": "83659190470bde31d9fd8dae501eadaf",
+    "semantic_hash": "83659190470bde31d9fd8dae501eadaf"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/20260919022000_ReconcileLegacySchema.cs": {
+    "mtime": 1789781741.1241705,
+    "seen": 1791289474.232713,
+    "ast_hash": "3018648981f547a118551f9c02fd58e2",
+    "semantic_hash": "3018648981f547a118551f9c02fd58e2"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/20260919023000_RepairAchievementRejectionReason.cs": {
+    "mtime": 1789785208.1098664,
+    "seen": 1791289474.2327137,
+    "ast_hash": "c80097b80b9da2513753b8d9689f4f28",
+    "semantic_hash": "c80097b80b9da2513753b8d9689f4f28"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/20260921120000_RepairPerformanceRecordSchema.cs": {
+    "mtime": 1789938354.5147667,
+    "seen": 1791289474.2327144,
+    "ast_hash": "b7d46c962d29e9894d1e75e05030fb21",
+    "semantic_hash": "b7d46c962d29e9894d1e75e05030fb21"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/20261001090000_AddEligibilityEvaluationWorkflow.cs": {
+    "mtime": 1790813644.2604492,
+    "seen": 1791289474.2327156,
+    "ast_hash": "ace834114e0bf4a37ae93a8e3b6fa350",
+    "semantic_hash": "ace834114e0bf4a37ae93a8e3b6fa350"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Migrations/AthleteHubDbContextModelSnapshot.cs": {
+    "mtime": 1790813633.437549,
+    "seen": 1791289474.2327163,
+    "ast_hash": "e37a638a4b085dc93b7975fba97731c2",
+    "semantic_hash": "e37a638a4b085dc93b7975fba97731c2"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/AcademicImportBatch.cs": {
+    "mtime": 1786470854.1748526,
+    "seen": 1791289474.232717,
+    "ast_hash": "e1255ed9da52aae409d8ba2073c21479",
+    "semantic_hash": "e1255ed9da52aae409d8ba2073c21479"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/AcademicRecord.cs": {
+    "mtime": 1786470854.1748526,
+    "seen": 1791289474.2327178,
+    "ast_hash": "a16cad7c013a2bd971758835750444d3",
+    "semantic_hash": "a16cad7c013a2bd971758835750444d3"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/AcademicTerm.cs": {
+    "mtime": 1787288950.353426,
+    "seen": 1791289474.2327187,
+    "ast_hash": "caaad577c36dad525b8f6108a00d6a78",
+    "semantic_hash": "caaad577c36dad525b8f6108a00d6a78"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Achievement.cs": {
+    "mtime": 1789783840.5313673,
+    "seen": 1791289474.2327194,
+    "ast_hash": "15a01b19c884179830162f883c03b151",
+    "semantic_hash": "15a01b19c884179830162f883c03b151"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Announcement.cs": {
+    "mtime": 1786470854.1758504,
+    "seen": 1791289474.2327201,
+    "ast_hash": "3db7a85856fbc237d4d919974ba7b401",
+    "semantic_hash": "3db7a85856fbc237d4d919974ba7b401"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/AthleteProfile.cs": {
+    "mtime": 1786470854.1768491,
+    "seen": 1791289474.2327209,
+    "ast_hash": "86e6d460ce0cb83a7ffdca67d6288219",
+    "semantic_hash": "86e6d460ce0cb83a7ffdca67d6288219"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Attendance.cs": {
+    "mtime": 1786470854.1768491,
+    "seen": 1791289474.2327218,
+    "ast_hash": "a75974f780945802b7a9b4b1169229e0",
+    "semantic_hash": "a75974f780945802b7a9b4b1169229e0"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/CoachProfile.cs": {
+    "mtime": 1786470854.1778502,
+    "seen": 1791289474.2327228,
+    "ast_hash": "7517cded25112cdf28acf37f9950f2c1",
+    "semantic_hash": "7517cded25112cdf28acf37f9950f2c1"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Document.cs": {
+    "mtime": 1789576629.3892055,
+    "seen": 1791289474.2327232,
+    "ast_hash": "3fa54c34158883e551acaf545103e6fe",
+    "semantic_hash": "3fa54c34158883e551acaf545103e6fe"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/EligibilityRecord.cs": {
+    "mtime": 1790813633.4245398,
+    "seen": 1791289474.2327242,
+    "ast_hash": "105d18bfe3f708f1ea93d37a486ef80d",
+    "semantic_hash": "105d18bfe3f708f1ea93d37a486ef80d"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Notification.cs": {
+    "mtime": 1786470854.1798465,
+    "seen": 1791289474.2327251,
+    "ast_hash": "e3384c3e47e62db90635f7a41e07d58a",
+    "semantic_hash": "e3384c3e47e62db90635f7a41e07d58a"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/PerformanceMetricDefinition.cs": {
+    "mtime": 1789717262.135859,
+    "seen": 1791289474.232726,
+    "ast_hash": "d4af7a58a8bc058f522da00b9404d17b",
+    "semantic_hash": "d4af7a58a8bc058f522da00b9404d17b"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/PerformanceRecord.cs": {
+    "mtime": 1789779710.4166222,
+    "seen": 1791289474.2327268,
+    "ast_hash": "c6aa0cc3e36f53609e53b4e9564d6df6",
+    "semantic_hash": "c6aa0cc3e36f53609e53b4e9564d6df6"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/PortfolioItem.cs": {
+    "mtime": 1789745911.7116103,
+    "seen": 1791289474.2327278,
+    "ast_hash": "7bff9fa0ede8a01bedfd48f0b78056b9",
+    "semantic_hash": "7bff9fa0ede8a01bedfd48f0b78056b9"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Role.cs": {
+    "mtime": 1786470854.1808498,
+    "seen": 1791289474.2327285,
+    "ast_hash": "b7d233b668e5762e59557fe9b77b80bf",
+    "semantic_hash": "b7d233b668e5762e59557fe9b77b80bf"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Schedule.cs": {
+    "mtime": 1786470854.181943,
+    "seen": 1791289474.2327297,
+    "ast_hash": "5e56bd6ff5d18a2b790ef4dbbff3a323",
+    "semantic_hash": "5e56bd6ff5d18a2b790ef4dbbff3a323"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Sport.cs": {
+    "mtime": 1786470854.181943,
+    "seen": 1791289474.2327304,
+    "ast_hash": "e5044be116258390a465965930be673c",
+    "semantic_hash": "e5044be116258390a465965930be673c"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/Team.cs": {
+    "mtime": 1786470854.182939,
+    "seen": 1791289474.2327309,
+    "ast_hash": "2569823372131036e8ab22f42033bd53",
+    "semantic_hash": "2569823372131036e8ab22f42033bd53"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/TeamMember.cs": {
+    "mtime": 1786470854.182939,
+    "seen": 1791289474.2327318,
+    "ast_hash": "b3f4503a2b1440b30151d4aae7640bb3",
+    "semantic_hash": "b3f4503a2b1440b30151d4aae7640bb3"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/TrainingSession.cs": {
+    "mtime": 1789576629.3972137,
+    "seen": 1791289474.2327328,
+    "ast_hash": "7a6e020bcfff08e1b98ca7131d4fa90b",
+    "semantic_hash": "7a6e020bcfff08e1b98ca7131d4fa90b"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Models/User.cs": {
+    "mtime": 1786470854.1839426,
+    "seen": 1791289474.2327332,
+    "ast_hash": "5d28e5cd8a13ac3937ade20681307205",
+    "semantic_hash": "5d28e5cd8a13ac3937ade20681307205"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Program.cs": {
+    "mtime": 1789779710.419622,
+    "seen": 1791289474.232734,
+    "ast_hash": "b5ff6fc339c8c088ebe94693e9be8e3d",
+    "semantic_hash": "b5ff6fc339c8c088ebe94693e9be8e3d"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/Properties/launchSettings.json": {
+    "mtime": 1786292301.1243734,
+    "seen": 1791289474.232735,
+    "ast_hash": "7ff92b9910ea13d8cf63831f59c53740",
+    "semantic_hash": "7ff92b9910ea13d8cf63831f59c53740"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/appsettings.Development.json": {
+    "mtime": 1789706142.8708396,
+    "seen": 1791289474.2327356,
+    "ast_hash": "a0c1d4d0d9a019afacd4abd5bd6e5136",
+    "semantic_hash": "a0c1d4d0d9a019afacd4abd5bd6e5136"
+  },
+  "Athlete_Hub/backend/AthleteHub.API/appsettings.json": {
+    "mtime": 1789706135.9317765,
+    "seen": 1791289474.2327366,
+    "ast_hash": "079c2020111170ca15c6f2280aa99bbc",
+    "semantic_hash": "079c2020111170ca15c6f2280aa99bbc"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_academic_import_batches.sql": {
+    "mtime": 1788589552.8385208,
+    "seen": 1791289474.2327373,
+    "ast_hash": "fb2ed71063f9b2e6f7499ca6b11cb364",
+    "semantic_hash": "fb2ed71063f9b2e6f7499ca6b11cb364"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_academic_import_batches0.sql": {
+    "mtime": 1788742742.8560264,
+    "seen": 1791289474.232738,
+    "ast_hash": "40828bbd9958efc64cfa778164e14c58",
+    "semantic_hash": "40828bbd9958efc64cfa778164e14c58"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_academic_records.sql": {
+    "mtime": 1788589552.1267517,
+    "seen": 1791289474.2327387,
+    "ast_hash": "d27257c22b6074bba421b022f90232fc",
+    "semantic_hash": "d27257c22b6074bba421b022f90232fc"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_academic_records0.sql": {
+    "mtime": 1788742743.3788059,
+    "seen": 1791289474.2327397,
+    "ast_hash": "3df34a8c840a0db7babbbd9ca1db0d96",
+    "semantic_hash": "3df34a8c840a0db7babbbd9ca1db0d96"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_academic_terms.sql": {
+    "mtime": 1788589552.3004797,
+    "seen": 1791289474.2327406,
+    "ast_hash": "bcccef97fc03f4efea4564fc757abc9b",
+    "semantic_hash": "bcccef97fc03f4efea4564fc757abc9b"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_academic_terms0.sql": {
+    "mtime": 1788742742.683696,
+    "seen": 1791289474.2327414,
+    "ast_hash": "df2c79a98ecdd8760fc0e200fe139254",
+    "semantic_hash": "df2c79a98ecdd8760fc0e200fe139254"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_achievements.sql": {
+    "mtime": 1788589552.745991,
+    "seen": 1791289474.2327423,
+    "ast_hash": "781d0ec7ea9a2d5f312cad6c1f1d148a",
+    "semantic_hash": "781d0ec7ea9a2d5f312cad6c1f1d148a"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_achievements0.sql": {
+    "mtime": 1788742743.0321722,
+    "seen": 1791289474.2327433,
+    "ast_hash": "ba96d693b0fb8ef53a63921e0d2de68a",
+    "semantic_hash": "ba96d693b0fb8ef53a63921e0d2de68a"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_announcements.sql": {
+    "mtime": 1788589553.1048684,
+    "seen": 1791289474.232744,
+    "ast_hash": "9aa27debde07e69bf813b224e17da6c1",
+    "semantic_hash": "9aa27debde07e69bf813b224e17da6c1"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_announcements0.sql": {
+    "mtime": 1788742743.1216927,
+    "seen": 1791289474.2327447,
+    "ast_hash": "07d7fa435c5de60ebab7bbbcb9d992de",
+    "semantic_hash": "07d7fa435c5de60ebab7bbbcb9d992de"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_athlete_profiles.sql": {
+    "mtime": 1788589552.656475,
+    "seen": 1791289474.2327483,
+    "ast_hash": "f409918e203b576e2f924e1d59f6fb1d",
+    "semantic_hash": "f409918e203b576e2f924e1d59f6fb1d"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_athlete_profiles0.sql": {
+    "mtime": 1788742743.8955846,
+    "seen": 1791289474.232749,
+    "ast_hash": "46a208efc9ce45065c9be6ef198f888c",
+    "semantic_hash": "46a208efc9ce45065c9be6ef198f888c"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_attendance.sql": {
+    "mtime": 1788589551.6886456,
+    "seen": 1791289474.23275,
+    "ast_hash": "20b73c8ce32d39b3438236660453d37f",
+    "semantic_hash": "20b73c8ce32d39b3438236660453d37f"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_attendance0.sql": {
+    "mtime": 1788742743.7258067,
+    "seen": 1791289474.2327518,
+    "ast_hash": "fa4af4f12eda01e1e29ce381b5cebc25",
+    "semantic_hash": "fa4af4f12eda01e1e29ce381b5cebc25"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_coach_profiles.sql": {
+    "mtime": 1788589553.1993833,
+    "seen": 1791289474.2327526,
+    "ast_hash": "8ffe3b3db09f96d8e7047ffd8943bc07",
+    "semantic_hash": "8ffe3b3db09f96d8e7047ffd8943bc07"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_coach_profiles0.sql": {
+    "mtime": 1788742743.6389384,
+    "seen": 1791289474.2327535,
+    "ast_hash": "cbac577cd531c77bead9e31a0ac99d8d",
+    "semantic_hash": "cbac577cd531c77bead9e31a0ac99d8d"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_documents.sql": {
+    "mtime": 1788589551.8602252,
+    "seen": 1791289474.2327542,
+    "ast_hash": "2bd2d61b417ade39ffaecd781f7cdc4d",
+    "semantic_hash": "2bd2d61b417ade39ffaecd781f7cdc4d"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_documents0.sql": {
+    "mtime": 1788742744.1713276,
+    "seen": 1791289474.232755,
+    "ast_hash": "b4c131e03d91e890d1c0aacd295e0f6f",
+    "semantic_hash": "b4c131e03d91e890d1c0aacd295e0f6f"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_eligibility_records.sql": {
+    "mtime": 1788589551.9522684,
+    "seen": 1791289474.232756,
+    "ast_hash": "771c9b190bcdf1b7361a985acf1ff1cc",
+    "semantic_hash": "771c9b190bcdf1b7361a985acf1ff1cc"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_eligibility_records0.sql": {
+    "mtime": 1788742742.9437351,
+    "seen": 1791289474.2327569,
+    "ast_hash": "8a487c27c467b24c625927a7e477fe11",
+    "semantic_hash": "8a487c27c467b24c625927a7e477fe11"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_notifications.sql": {
+    "mtime": 1788589551.5922055,
+    "seen": 1791289474.2327576,
+    "ast_hash": "24e8073cc898da61346b3f196a2919d5",
+    "semantic_hash": "24e8073cc898da61346b3f196a2919d5"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_notifications0.sql": {
+    "mtime": 1788742744.3398736,
+    "seen": 1791289474.2327585,
+    "ast_hash": "df214f6e1228e68f09f55b87366625bd",
+    "semantic_hash": "df214f6e1228e68f09f55b87366625bd"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_performance_metric_definitions.sql": {
+    "mtime": 1788589552.0408711,
+    "seen": 1791289474.2327592,
+    "ast_hash": "1a8202512e467dcb99d1bcf2fb694234",
+    "semantic_hash": "1a8202512e467dcb99d1bcf2fb694234"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_performance_metric_definitions0.sql": {
+    "mtime": 1788742742.7703953,
+    "seen": 1791289474.23276,
+    "ast_hash": "b5c924cb2a398c3cc1d1a452d7b1de0f",
+    "semantic_hash": "b5c924cb2a398c3cc1d1a452d7b1de0f"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_performance_records.sql": {
+    "mtime": 1788589552.477455,
+    "seen": 1791289474.232761,
+    "ast_hash": "36511afb4c82fc93d600d79c9d8c6aa4",
+    "semantic_hash": "36511afb4c82fc93d600d79c9d8c6aa4"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_performance_records0.sql": {
+    "mtime": 1788742744.0022619,
+    "seen": 1791289474.2327616,
+    "ast_hash": "08405bf5dc06b69357c2f1c5c1406a86",
+    "semantic_hash": "08405bf5dc06b69357c2f1c5c1406a86"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_portfolio_items.sql": {
+    "mtime": 1788589551.7756336,
+    "seen": 1791289474.2327623,
+    "ast_hash": "1c19fb3c94dcc7334f1206c29eb8fcec",
+    "semantic_hash": "1c19fb3c94dcc7334f1206c29eb8fcec"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_portfolio_items0.sql": {
+    "mtime": 1788742743.293861,
+    "seen": 1791289474.232763,
+    "ast_hash": "bc3497c043b29a622a6750ae518ebc9e",
+    "semantic_hash": "bc3497c043b29a622a6750ae518ebc9e"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_roles.sql": {
+    "mtime": 1788589553.29039,
+    "seen": 1791289474.232764,
+    "ast_hash": "77f1070bfb30207a755240dbeea4dc5d",
+    "semantic_hash": "77f1070bfb30207a755240dbeea4dc5d"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_roles0.sql": {
+    "mtime": 1788742744.255844,
+    "seen": 1791289474.2327647,
+    "ast_hash": "db6403cea5ee40606f22e2d6f8a882d8",
+    "semantic_hash": "db6403cea5ee40606f22e2d6f8a882d8"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_schedules.sql": {
+    "mtime": 1789577795.2347877,
+    "seen": 1791289474.2327654,
+    "ast_hash": "e8cedb08940345b85929885e3cdf11a0",
+    "semantic_hash": "e8cedb08940345b85929885e3cdf11a0"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_schedules0.sql": {
+    "mtime": 1788742744.4742773,
+    "seen": 1791289474.2327662,
+    "ast_hash": "deb19008f72a66525c6068151fc09c1a",
+    "semantic_hash": "deb19008f72a66525c6068151fc09c1a"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_sports.sql": {
+    "mtime": 1788589552.3903744,
+    "seen": 1791289474.2327669,
+    "ast_hash": "1fa13fa8682e46f1318eb5291248ec04",
+    "semantic_hash": "1fa13fa8682e46f1318eb5291248ec04"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_sports0.sql": {
+    "mtime": 1788742743.5516827,
+    "seen": 1791289474.2327678,
+    "ast_hash": "31f8b46cc9158e6ce1afaca429e5030d",
+    "semantic_hash": "31f8b46cc9158e6ce1afaca429e5030d"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_team_members.sql": {
+    "mtime": 1788589552.926834,
+    "seen": 1791289474.2327685,
+    "ast_hash": "c033c39793ea9e9fe6d81b2aabf8a476",
+    "semantic_hash": "c033c39793ea9e9fe6d81b2aabf8a476"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_team_members0.sql": {
+    "mtime": 1788742744.0892384,
+    "seen": 1791289474.2327693,
+    "ast_hash": "83a748ba30959ccc6796058d8a4772d3",
+    "semantic_hash": "83a748ba30959ccc6796058d8a4772d3"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_teams.sql": {
+    "mtime": 1788589552.564964,
+    "seen": 1791289474.23277,
+    "ast_hash": "6d6f068874c4e4f1d7bad100f324aefe",
+    "semantic_hash": "6d6f068874c4e4f1d7bad100f324aefe"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_teams0.sql": {
+    "mtime": 1788742743.8105752,
+    "seen": 1791289474.232771,
+    "ast_hash": "b935a4d777b74c4254503d2239da18d6",
+    "semantic_hash": "b935a4d777b74c4254503d2239da18d6"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_training_sessions.sql": {
+    "mtime": 1788589553.386906,
+    "seen": 1791289474.2327716,
+    "ast_hash": "7725f841ddbd09945e208f9d137ef34d",
+    "semantic_hash": "7725f841ddbd09945e208f9d137ef34d"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_training_sessions0.sql": {
+    "mtime": 1788742743.2081766,
+    "seen": 1791289474.2327726,
+    "ast_hash": "7a4775082c416d5e5f7571a5d42b1513",
+    "semantic_hash": "7a4775082c416d5e5f7571a5d42b1513"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_users.sql": {
+    "mtime": 1788589552.2121215,
+    "seen": 1791289474.232773,
+    "ast_hash": "6b6ad137397e1e7b61dbacbb9a9ccf84",
+    "semantic_hash": "6b6ad137397e1e7b61dbacbb9a9ccf84"
+  },
+  "Athlete_Hub/database/Database_data/athlete_hub_users0.sql": {
+    "mtime": 1788742743.4662776,
+    "seen": 1791289474.2327743,
+    "ast_hash": "bfb9f04944b7b1fbb69657c41e37b472",
+    "semantic_hash": "bfb9f04944b7b1fbb69657c41e37b472"
+  },
+  "Athlete_Hub/database/athlete_hub_schema.sql": {
+    "mtime": 1789762055.1577842,
+    "seen": 1791289474.232775,
+    "ast_hash": "d689adca1913255f53a7ae7e4c8360d4",
+    "semantic_hash": "d689adca1913255f53a7ae7e4c8360d4"
+  },
+  "Athlete_Hub/database/migrations/20260907_add_document_achievement.sql": {
+    "mtime": 1788741873.2863567,
+    "seen": 1791289474.2327757,
+    "ast_hash": "1dd3b168f0d5f46632b99ada3e422817",
+    "semantic_hash": "1dd3b168f0d5f46632b99ada3e422817"
+  },
+  "Athlete_Hub/database/migrations/20260918_add_universal_performance_tracking.sql": {
+    "mtime": 1789722293.3738654,
+    "seen": 1791289474.2327764,
+    "ast_hash": "47ff8638987d7a815226cffb54c793ab",
+    "semantic_hash": "47ff8638987d7a815226cffb54c793ab"
+  },
+  "Athlete_Hub/frontend/script.js": {
+    "mtime": 1789670298.4234188,
+    "seen": 1791289474.232777,
+    "ast_hash": "6f53226bbdcfd878fb7d238df33ee4e2",
+    "semantic_hash": "6f53226bbdcfd878fb7d238df33ee4e2"
+  },
+  "Athlete_Hub/mobile/.claude/settings.json": {
+    "mtime": 1788352527.9997578,
+    "seen": 1791289474.232778,
+    "ast_hash": "0e5fa9ee1de7421260d9f6695b5b6683",
+    "semantic_hash": "0e5fa9ee1de7421260d9f6695b5b6683"
+  },
+  "Athlete_Hub/mobile/App.tsx": {
+    "mtime": 1789720077.505245,
+    "seen": 1791289474.232779,
+    "ast_hash": "bd62a376218137fff8c3eb1f4750905d",
+    "semantic_hash": "bd62a376218137fff8c3eb1f4750905d"
+  },
+  "Athlete_Hub/mobile/app.json": {
+    "mtime": 1788352528.0489244,
+    "seen": 1791289474.2327797,
+    "ast_hash": "5dfe6ac1c05899707cb798e0b6b95597",
+    "semantic_hash": "5dfe6ac1c05899707cb798e0b6b95597"
+  },
+  "Athlete_Hub/mobile/index.ts": {
+    "mtime": 1788352528.1109247,
+    "seen": 1791289474.2327807,
+    "ast_hash": "b7e518b41e4e8caf95b01ee70d7745f2",
+    "semantic_hash": "b7e518b41e4e8caf95b01ee70d7745f2"
+  },
+  "Athlete_Hub/mobile/package.json": {
+    "mtime": 1789720101.0504875,
+    "seen": 1791289474.2327816,
+    "ast_hash": "ae580d9d07f3d4d3e251db4d2f5fd210",
+    "semantic_hash": "ae580d9d07f3d4d3e251db4d2f5fd210"
+  },
+  "Athlete_Hub/mobile/tsconfig.json": {
+    "mtime": 1788352528.1279292,
+    "seen": 1791289474.2327821,
+    "ast_hash": "2f567448d4f0c0f9fcec96fb1c4ea748",
+    "semantic_hash": "2f567448d4f0c0f9fcec96fb1c4ea748"
+  },
+  "Athlete_Hub/web/.oxlintrc.json": {
+    "mtime": 1788352528.1450553,
+    "seen": 1791289474.232783,
+    "ast_hash": "2d750bd852cf8fe072f64a62ab29084b",
+    "semantic_hash": "2d750bd852cf8fe072f64a62ab29084b"
+  },
+  "Athlete_Hub/web/package.json": {
+    "mtime": 1789769792.676908,
+    "seen": 1791289474.2327838,
+    "ast_hash": "f01f94e9b2ad55e9bd98560ea7d43f5f",
+    "semantic_hash": "f01f94e9b2ad55e9bd98560ea7d43f5f"
+  },
+  "Athlete_Hub/web/src/App.jsx": {
+    "mtime": 1790830376.5480678,
+    "seen": 1791289474.2327847,
+    "ast_hash": "21da39194c9bad1853ccb075b80e778d",
+    "semantic_hash": "21da39194c9bad1853ccb075b80e778d"
+  },
+  "Athlete_Hub/web/src/PerformanceTrendChart.jsx": {
+    "mtime": 1790804464.0985107,
+    "seen": 1791289474.2327855,
+    "ast_hash": "23b4dc670be83d0c1d14a7db504b910c",
+    "semantic_hash": "23b4dc670be83d0c1d14a7db504b910c"
+  },
+  "Athlete_Hub/web/src/api.js": {
+    "mtime": 1789706714.9102693,
+    "seen": 1791289474.2327862,
+    "ast_hash": "f39c0ff4cce649bb8edddee91cc2cd89",
+    "semantic_hash": "f39c0ff4cce649bb8edddee91cc2cd89"
+  },
+  "Athlete_Hub/web/src/main.jsx": {
+    "mtime": 1788352528.2475712,
+    "seen": 1791289474.2327871,
+    "ast_hash": "51fd21c378330142b61bf8d1ef3795ef",
+    "semantic_hash": "51fd21c378330142b61bf8d1ef3795ef"
+  },
+  "Athlete_Hub/web/vite.config.js": {
+    "mtime": 1789769735.479499,
+    "seen": 1791289474.232788,
+    "ast_hash": "3f39f0363502d282307e1fc645acde1d",
+    "semantic_hash": "3f39f0363502d282307e1fc645acde1d"
+  },
+  "Athlete_Hub/frontend/dashboard.html": {
+    "mtime": 1788352527.9272304,
+    "seen": 1791289474.2327886,
+    "ast_hash": "7f2cdbf37ef666b2c848a7fe2f51d49c",
+    "semantic_hash": "7f2cdbf37ef666b2c848a7fe2f51d49c"
+  },
+  "Athlete_Hub/frontend/index.html": {
+    "mtime": 1788352527.9357452,
+    "seen": 1791289474.2327895,
+    "ast_hash": "bab74eef58e2e62a0e45eacfe36a5323",
+    "semantic_hash": "bab74eef58e2e62a0e45eacfe36a5323"
+  },
+  "Athlete_Hub/frontend/student-dashboard.html": {
+    "mtime": 1788741873.2503572,
+    "seen": 1791289474.2327902,
+    "ast_hash": "1db0996c4a27a4df1248b16b179b14fb",
+    "semantic_hash": "1db0996c4a27a4df1248b16b179b14fb"
+  },
+  "Athlete_Hub/frontend/student-documents.html": {
+    "mtime": 1789670298.421411,
+    "seen": 1791289474.232791,
+    "ast_hash": "09dd9ebb069137504c36d23b6c731800",
+    "semantic_hash": "09dd9ebb069137504c36d23b6c731800"
+  },
+  "Athlete_Hub/frontend/student-grades.html": {
+    "mtime": 1788741873.2503572,
+    "seen": 1791289474.232792,
+    "ast_hash": "71cbc2c03aa269dae1cdeb245dd0696e",
+    "semantic_hash": "71cbc2c03aa269dae1cdeb245dd0696e"
+  },
+  "Athlete_Hub/frontend/student-notifications.html": {
+    "mtime": 1788741873.2513578,
+    "seen": 1791289474.2327926,
+    "ast_hash": "c6d29cf25dc20169b8e5883ddf07de29",
+    "semantic_hash": "c6d29cf25dc20169b8e5883ddf07de29"
+  },
+  "Athlete_Hub/frontend/student-portfolio.html": {
+    "mtime": 1788741873.2573617,
+    "seen": 1791289474.2327936,
+    "ast_hash": "7a7297caaeec6c8b30d47922f4e3112f",
+    "semantic_hash": "7a7297caaeec6c8b30d47922f4e3112f"
+  },
+  "Athlete_Hub/frontend/student-profile.html": {
+    "mtime": 1788741873.259364,
+    "seen": 1791289474.2327943,
+    "ast_hash": "44e0048c89648b29281ceb3ac92752c1",
+    "semantic_hash": "44e0048c89648b29281ceb3ac92752c1"
+  },
+  "Athlete_Hub/frontend/student-schedule.html": {
+    "mtime": 1789577795.2367895,
+    "seen": 1791289474.2327952,
+    "ast_hash": "8def1ccae23a6a2dd6290a5d1ee8cda6",
+    "semantic_hash": "8def1ccae23a6a2dd6290a5d1ee8cda6"
+  },
+  "Athlete_Hub/mobile/AGENTS.md": {
+    "mtime": 1788352528.019761,
+    "seen": 1791289474.2327962,
+    "ast_hash": "edb1a7757cff5f679b36fe90f839bce1",
+    "semantic_hash": "edb1a7757cff5f679b36fe90f839bce1"
+  },
+  "Athlete_Hub/mobile/CLAUDE.md": {
+    "mtime": 1788352528.0339246,
+    "seen": 1791289474.232797,
+    "ast_hash": "771faa62feb60b7de901a397aebb29b0",
+    "semantic_hash": "771faa62feb60b7de901a397aebb29b0"
+  },
+  "Athlete_Hub/web/README.md": {
+    "mtime": 1788352528.1530535,
+    "seen": 1791289474.2327979,
+    "ast_hash": "2e7344e9810cbd1b6fdb6aa7efe117e7",
+    "semantic_hash": "2e7344e9810cbd1b6fdb6aa7efe117e7"
+  },
+  "Athlete_Hub/web/index.html": {
+    "mtime": 1788352528.1630564,
+    "seen": 1791289474.2327988,
+    "ast_hash": "83fa797698ad77c2e251a0ceaf49ed77",
+    "semantic_hash": "83fa797698ad77c2e251a0ceaf49ed77"
+  }
+}

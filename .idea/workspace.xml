@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="0afd3116-9a75-4eb9-99fe-67d4b2575db8" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Controllers/DirectorController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Controllers/DirectorController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Controllers/EligibilityController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Controllers/EligibilityController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Data/TestDataSeeder.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Data/TestDataSeeder.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Services/DocumentStorage.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/backend/AthleteHub.API/Services/DocumentStorage.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/database/TEST_SCENARIOS.md" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/database/TEST_SCENARIOS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/docs/USER_TESTING_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/docs/USER_TESTING_GUIDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/components/AppLayout.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/components/AppLayout.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/components/icons.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/components/icons.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/components/ui.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/components/ui.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/admin/AdminPortal.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/admin/AdminPortal.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/auth/LoginPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/auth/LoginPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/coach/CoachPortal.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/coach/CoachPortal.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/director/DirectorPortal.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/director/DirectorPortal.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/parent/ParentPortal.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/parent/ParentPortal.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/registrar/RegistrarPortal.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/registrar/RegistrarPortal.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/staff/AthleteProfilePage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/staff/AthleteProfilePage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/staff/AthletesPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/staff/AthletesPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/staff/PerformancePage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/staff/PerformancePage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/staff/ScheduleModals.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/staff/ScheduleModals.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/student/StudentPortal.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/features/student/StudentPortal.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/lib/help.js" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/lib/help.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/lib/hooks.js" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/lib/hooks.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/Athlete_Hub/Athlete_Hub/web/src/styles.css" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3KZT1jX14XtkyAq7MphP5E5N3Bk" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "improve/audit-fixes-and-redesign",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/SMB/Documents/GitHub/Athlete_Hub",
+    "settings.editor.selected.configurable": "AndroidSdkUpdater"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="0afd3116-9a75-4eb9-99fe-67d4b2575db8" name="Changes" comment="" />
+      <created>1791763879379</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1791763879379</updated>
+    </task>
+    <servers />
+  </component>
+</project>
