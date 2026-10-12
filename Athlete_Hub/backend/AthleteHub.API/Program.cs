@@ -189,10 +189,30 @@ if (app.Environment.IsDevelopment())
 var forwardedHeaders = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor, ForwardLimit = 2 };
 forwardedHeaders.KnownProxies.Add(IPAddress.Loopback);
 forwardedHeaders.KnownProxies.Add(IPAddress.IPv6Loopback);
+
+// Hosted deployments (see Dockerfile) sit behind the platform's HTTPS proxy, whose address is not known in advance.
+// Only the last X-Forwarded-For entry is used: the proxy appends it, so a client cannot spoof it.
+if (builder.Configuration.GetValue<bool>("App:BehindProxy"))
+{
+    forwardedHeaders.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    forwardedHeaders.ForwardLimit = 1;
+    forwardedHeaders.KnownIPNetworks.Clear();
+    forwardedHeaders.KnownProxies.Clear();
+}
 app.UseForwardedHeaders(forwardedHeaders);
 
 // HTTPS redirection
 app.UseHttpsRedirection();
+
+// Hosted deployments serve the built web app from the same address as the API (the Dockerfile copies web/dist
+// into client/). It is a separate folder from wwwroot so old uploads there can never become public.
+var clientDirectory = Path.Combine(app.Environment.ContentRootPath, "client");
+if (Directory.Exists(clientDirectory))
+{
+    var clientFiles = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(clientDirectory);
+    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = clientFiles });
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = clientFiles });
+}
 
 app.UseCors("FrontendPolicy");
 
@@ -235,6 +255,18 @@ if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data") || 
     else if (args.Contains("--seed-parents")) await seeder.SeedParentsAsync();
     else await seeder.SeedAsync();
     return;
+}
+
+// Hosted test deployments set App:SeedTestDataIfEmpty so the first start fills an empty database with the
+// test accounts (and their sample files in private-uploads). Later starts keep testers' changes.
+if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))
+{
+    using var seedScope = app.Services.CreateScope();
+    var seeder = new TestDataSeeder(
+        seedScope.ServiceProvider.GetRequiredService<AthleteHubDbContext>(),
+        seedScope.ServiceProvider.GetRequiredService<AppClock>(),
+        app.Environment);
+    if (!await seeder.HasSeedDataAsync()) await seeder.SeedAsync();
 }
 
 // ==========================================

@@ -1,0 +1,18 @@
+.git
+.idea
+.vs
+build-validation*
+graphify-out
+**/graphify-out
+Athlete_Hub/mobile
+Athlete_Hub/frontend
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/*.log
+**/.env
+**/.env.local
+# Uploaded files contain student personal data and must never be baked into an image.
+**/private-uploads
+**/wwwroot/uploads

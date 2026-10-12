@@ -148,6 +148,8 @@ public class TestDataSeeder
         Console.WriteLine($"Removed seed data: {userIds.Count} users, {teamIds.Count} teams, {sessionIds.Count} training sessions.");
     }
 
+    public Task<bool> HasSeedDataAsync() => _context.Users.AnyAsync(user => user.Email.EndsWith(EmailDomain));
+
     public async Task SeedAsync()
     {
         await RemoveAsync();

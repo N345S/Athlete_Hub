@@ -80,6 +80,11 @@ Browsers fully install web apps only from `https://` addresses. A free tunnel gi
 > keep `VITE_SHOW_TEST_ACCOUNTS` **off** while tunnelling (otherwise anyone with the link gets one-click sign-in),
 > and hand participants their credentials instead.
 
+**C. Always-on hosted copy (unmoderated / remote testing)**
+
+To let testers use the app any time without the facilitator's PC, host it in the cloud: see
+[`DEPLOYMENT.md`](DEPLOYMENT.md).
+
 ---
 
 ## 2. Participant accounts
