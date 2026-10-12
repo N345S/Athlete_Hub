@@ -7,7 +7,8 @@ import CalendarView from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
 import { useToast } from '../../components/toast.jsx'
-import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, Modal, PageHeader, ProgressBar, SearchInput, StatCard, StatusBadge } from '../../components/ui.jsx'
+import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Loading, Modal, PageHeader, ProgressBar, SearchInput, StatCard, StatusBadge, Tabs } from '../../components/ui.jsx'
+import Icon from '../../components/icons.jsx'
 import { HELP } from '../../lib/help.js'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
@@ -18,53 +19,142 @@ import TrainingApprovals from '../staff/TrainingApprovals.jsx'
 const VIEWS = ['dashboard', 'coaches', 'athletes', 'schedule', 'performance', 'notifications']
 const TITLES = { dashboard: 'Dashboard', coaches: 'Coaches', athletes: 'All athletes', schedule: 'Schedule', performance: 'Performance', notifications: 'Notifications' }
 
-function AssignAthleteModal({ coach, session, onClose, onAssigned }) {
+/**
+ * The athlete's active teams. Assigned means on a coach's team. `currentTeams` lists every team;
+ * an API without it still sends `currentCoach` (their first coached team), so fall back to that
+ * instead of treating everyone as unassigned.
+ */
+const athleteTeams = (athlete) => athlete.currentTeams
+  ?? (athlete.currentCoach ? [{ teamName: athlete.currentCoach.teamName, coachId: athlete.currentCoach.coachId, coachName: athlete.currentCoach.coachName }] : [])
+
+/** A small selectable athlete card for the assign dialog. */
+function AssignAthleteCard({ athlete, selected, onToggle }) {
+  const teams = athleteTeams(athlete)
+  const details = [athlete.studentNumber || 'Student ID pending', athlete.course, athlete.yearLevel ? `Year ${athlete.yearLevel}` : null].filter(Boolean).join(' · ')
+  return (
+    <button type="button" className={`assign-card ${selected ? 'selected' : ''}`} aria-pressed={selected} onClick={onToggle}>
+      <Avatar firstName={athlete.firstName} lastName={athlete.lastName} size="md" />
+      <span className="assign-card-text">
+        <strong title={fullName(athlete)}>{fullName(athlete)}</strong>
+        <small title={details}>{details}</small>
+        {teams.length > 0 && (
+          <span className="assign-card-team" title={teams.map((team) => `${team.teamName}${team.coachName ? ` · Coach ${team.coachName}` : ''}`).join('\n')}>
+            <Icon name="team" size={13} />
+            <span>{teams[0].teamName}{teams[0].coachName ? ` · ${teams[0].coachName}` : ' · No coach'}{teams.length > 1 ? ` +${teams.length - 1}` : ''}</span>
+          </span>
+        )}
+        {!isActiveAccount(athlete) && <StatusBadge status={athlete.accountStatus} label={accountLabel(athlete)} />}
+      </span>
+      <span className="assign-check" aria-hidden="true">{selected && <Icon name="check" size={14} />}</span>
+    </button>
+  )
+}
+
+/**
+ * Pick one or more athletes for a coach's active team. Athletes without a team are shown first; the
+ * "On another team" filter is for reassigning, with a choice to move them or add a second team.
+ */
+function AssignAthleteModal({ coach, teamName, noTeam, session, onClose, onAssigned }) {
   const { data, loading, error } = useApiData('/api/Director/athletes', session.token)
-  const [athleteId, setAthleteId] = useState('')
+  const [filter, setFilter] = useState('unassigned')
   const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState([])
+  const [move, setMove] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const athletes = (data?.athletes || []).filter((athlete) => matchesSearch(search, athlete.firstName, athlete.lastName, athlete.studentNumber))
 
-  const submit = async (event) => {
-    event.preventDefault()
+  // Athletes this coach already coaches are left out; assigning them again would do nothing.
+  // Active accounts are listed before inactive or suspended ones.
+  const candidates = (data?.athletes || [])
+    .filter((athlete) => !athleteTeams(athlete).some((team) => team.coachId === coach.coachId))
+    .sort((a, b) => Number(!isActiveAccount(a)) - Number(!isActiveAccount(b)))
+  const unassigned = candidates.filter((athlete) => !athleteTeams(athlete).length)
+  const onOtherTeams = candidates.filter((athlete) => athleteTeams(athlete).length)
+  const shown = (filter === 'unassigned' ? unassigned : onOtherTeams).filter((athlete) => matchesSearch(search, athlete.firstName, athlete.lastName, athlete.studentNumber, athlete.course, ...athleteTeams(athlete).flatMap((team) => [team.teamName, team.coachName])))
+  const chosen = candidates.filter((athlete) => selected.includes(athlete.athleteId))
+  const chosenOnTeams = chosen.filter((athlete) => athleteTeams(athlete).length)
+  const oldTeams = [...new Set(chosenOnTeams.flatMap((athlete) => athleteTeams(athlete).map((team) => team.teamName)))]
+  const toggle = (athleteId) => setSelected((current) => current.includes(athleteId) ? current.filter((id) => id !== athleteId) : [...current, athleteId])
+
+  const submit = async () => {
     setSaving(true)
     setSaveError('')
+    const done = []
     try {
-      await api.post(`/api/Director/coaches/${coach.coachId}/assign-athlete`, { athleteId: Number(athleteId) }, session.token)
-      onAssigned()
+      for (const athlete of chosen) {
+        await api.post(`/api/Director/coaches/${coach.coachId}/assign-athlete`, { athleteId: athlete.athleteId, moveFromOtherTeams: move && athleteTeams(athlete).length > 0 }, session.token)
+        done.push(athlete)
+      }
+      onAssigned({ count: done.length, moved: move ? done.filter((athlete) => athleteTeams(athlete).length).length : 0 })
     } catch (err) {
-      setSaveError(err.message)
+      // Keep only the athletes that still need assigning selected, so retrying does not repeat the others.
+      setSelected((current) => current.filter((id) => !done.some((athlete) => athlete.athleteId === id)))
+      setSaveError(done.length ? `${done.length} assigned, then: ${err.message}` : err.message)
     } finally {
       setSaving(false)
     }
   }
 
+  const count = `${chosen.length} athlete${chosen.length === 1 ? '' : 's'}`
+  const actionLabel = !chosen.length ? 'Select athletes'
+    : move && chosenOnTeams.length === chosen.length ? `Move ${count}`
+    : `Assign ${count}`
+
   return (
-    <Modal title="Assign athlete" subtitle={`Add an athlete to ${fullName(coach)}'s active team.`} onClose={onClose} closeOnBackdrop={false}
+    <Modal title="Assign athletes" subtitle={teamName ? `Add athletes to ${teamName}, coached by ${fullName(coach)}.` : `Add athletes to ${fullName(coach)}’s active team.`} onClose={onClose} closeOnBackdrop={false} size="lg"
       footer={<>
         <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" type="submit" form="assign-form" disabled={saving || !athleteId}>{saving ? 'Assigning…' : 'Assign athlete'}</button>
+        <button className="btn btn-primary" type="button" onClick={submit} disabled={saving || !chosen.length || noTeam}>{saving ? 'Saving…' : actionLabel}</button>
       </>}>
-      <form id="assign-form" className="stack-sm" onSubmit={submit}>
-        <SearchInput value={search} onChange={setSearch} placeholder="Filter athletes…" label="Filter athletes" />
-        <Field label="Athlete" required hint={athletes.length ? `${athletes.length} athlete${athletes.length === 1 ? '' : 's'} shown. Select one, then “Assign athlete”.` : 'No athletes match the filter.'}>
-          <select value={athleteId} onChange={(event) => setAthleteId(event.target.value)} disabled={loading} required size={Math.min(8, Math.max(athletes.length, 2))}>
-            {athletes.map((athlete) => (
-              <option key={athlete.athleteId} value={athlete.athleteId}>
-                {fullName(athlete)} · {athlete.studentNumber}{isActiveAccount(athlete) ? '' : ` · ${athlete.accountStatus}`}{athlete.currentCoach ? ` · currently ${athlete.currentCoach.teamName}` : ''}
-              </option>
+      {noTeam && <Alert tone="warning">{fullName(coach)} has no active team yet, so athletes cannot be assigned. An administrator needs to create or activate a team first.</Alert>}
+      <div className="assign-toolbar">
+        <Tabs label="Show athletes" value={filter} onChange={setFilter} options={[['unassigned', `No team (${unassigned.length})`], ['assigned', `On another team (${onOtherTeams.length})`]]} />
+        <SearchInput value={search} onChange={setSearch} placeholder={filter === 'unassigned' ? 'Search name or ID…' : 'Search name, team, or coach…'} label="Search athletes" />
+      </div>
+      <p className="assign-hint">
+        {filter === 'unassigned' ? 'These athletes have no team or coach yet. Tap each one you want to add.' : 'These athletes already have a team. Select one to reassign them to this coach.'}
+      </p>
+      {loading && !data ? <Loading label="Loading athletes…" /> : shown.length ? (
+        <div className="assign-grid">
+          {shown.map((athlete) => <AssignAthleteCard key={athlete.athleteId} athlete={athlete} selected={selected.includes(athlete.athleteId)} onToggle={() => toggle(athlete.athleteId)} />)}
+        </div>
+      ) : search ? <EmptyState title="No matches" message="Try a different name, ID, or team." />
+        : filter === 'unassigned'
+          ? <EmptyState icon="check" title="Every athlete has a team" message="To reassign someone, look under “On another team”." action={<button className="btn btn-secondary btn-sm" type="button" onClick={() => setFilter('assigned')}>Show athletes on other teams</button>} />
+          : <EmptyState icon="users" title="No athletes on other teams" />}
+      {chosen.length > 0 && (
+        <div className="assign-selection">
+          <div className="assign-selection-header">
+            <strong>{chosen.length} selected</strong>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={() => setSelected([])}>Clear</button>
+          </div>
+          <ul className="selected-date-list">
+            {chosen.map((athlete) => (
+              <li key={athlete.athleteId}>{fullName(athlete)}<button type="button" aria-label={`Remove ${fullName(athlete)}`} onClick={() => toggle(athlete.athleteId)}>×</button></li>
             ))}
-          </select>
-        </Field>
-      </form>
+          </ul>
+          {chosenOnTeams.length > 0 && (
+            <fieldset className="choice-cards">
+              <legend className="field-label">{chosenOnTeams.length === 1 ? `${fullName(chosenOnTeams[0])} is already on ${oldTeams.join(', ')}` : `${chosenOnTeams.length} selected athletes already have a team`}</legend>
+              <label className={`choice-card ${move ? 'selected' : ''}`}>
+                <input type="radio" name="assign-mode" checked={move} onChange={() => setMove(true)} />
+                <span><strong>Move to {teamName || 'this team'}</strong><small>They leave {oldTeams.join(', ')}. Past attendance and records are kept.</small></span>
+              </label>
+              <label className={`choice-card ${!move ? 'selected' : ''}`}>
+                <input type="radio" name="assign-mode" checked={!move} onChange={() => setMove(false)} />
+                <span><strong>Add as an extra team</strong><small>They stay on their current team too, e.g. a multi-sport athlete.</small></span>
+              </label>
+            </fieldset>
+          )}
+        </div>
+      )}
       <Alert>{error || saveError}</Alert>
     </Modal>
   )
 }
 
 /** One coach's teams and athletes, with each athlete's attendance and eligibility. */
-function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
+function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack, onRosterChanged }) {
   const toast = useToast()
   const profile = useApiData(`/api/Director/coaches/${coach.coachId}`, session.token)
   const [showAssign, setShowAssign] = useState(false)
@@ -73,6 +163,7 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
   const [error, setError] = useState('')
   const data = profile.data
   const roster = (data?.assignedAthletes || []).map((athlete) => ({ ...athlete, ...athleteIndex.get(athlete.athleteId), teamName: athlete.teamName }))
+  const activeTeam = data?.teams?.find((team) => String(team.status).toUpperCase() === 'ACTIVE')
 
   const unassign = async () => {
     setBusy(true)
@@ -82,6 +173,7 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
       toast.success(`${fullName(unassigning)} removed from ${fullName(coach)}'s team.`)
       setUnassigning(null)
       profile.reload()
+      onRosterChanged?.()
     } catch (err) {
       setError(err.message)
       setUnassigning(null)
@@ -100,7 +192,7 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
           <p>{coach.specialization || 'Coach'} · {coach.email || 'Email unavailable'}</p>
         </div>
         {!isActiveAccount(coach) && <StatusBadge status={coach.accountStatus} label={accountLabel(coach)} />}
-        <button className="btn btn-primary hero-action" type="button" onClick={() => setShowAssign(true)}>+ Assign athlete</button>
+        <button className="btn btn-primary hero-action" type="button" onClick={() => setShowAssign(true)}>+ Assign athletes</button>
       </section>
       <Alert>{profile.error || error}</Alert>
       {profile.loading && !data ? <Loading label="Loading coach profile…" /> : <>
@@ -149,7 +241,21 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack }) {
           </Card>
         </div>
       </>}
-      {showAssign && <AssignAthleteModal coach={coach} session={session} onClose={() => setShowAssign(false)} onAssigned={() => { setShowAssign(false); toast.success(`Athlete assigned to ${fullName(coach)}'s team.`); profile.reload() }} />}
+      {showAssign && (
+        <AssignAthleteModal
+          coach={coach}
+          teamName={activeTeam?.teamName}
+          noTeam={Boolean(data) && !activeTeam}
+          session={session}
+          onClose={() => setShowAssign(false)}
+          onAssigned={({ count, moved }) => {
+            setShowAssign(false)
+            toast.success(`${count} athlete${count === 1 ? '' : 's'} ${moved === count ? 'moved' : 'assigned'} to ${activeTeam?.teamName || `${fullName(coach)}’s team`}.`)
+            profile.reload()
+            onRosterChanged?.()
+          }}
+        />
+      )}
       {unassigning && (
         <ConfirmDialog
           title="Unassign athlete"
@@ -188,15 +294,17 @@ function CoachesPage({ summaries, loading, onOpen }) {
       <PageHeader title="Coaches" subtitle="Coach accounts, their teams, and how their athletes are doing" actions={<span className="badge badge-neutral">{summaries.length} total</span>} />
       <div className="toolbar"><SearchInput value={search} onChange={setSearch} placeholder="Search coaches…" label="Search coaches" /></div>
       {loading && !summaries.length ? <Loading label="Loading coaches…" /> : filtered.length ? (
-        <div className="card-grid">
+        <div className="card-grid person-grid">
           {filtered.map(({ coach, athletes, attendance, ineligible }) => (
             <article className="person-card" key={coach.coachId}>
               <div className="person-card-top">
                 <Avatar firstName={coach.firstName} lastName={coach.lastName} size="lg" />
                 <div>
-                  <strong>{fullName(coach)}</strong>
-                  <small>{coach.email || 'Email unavailable'}</small>
-                  <span className="muted">{coach.teams?.[0]?.teamName || coach.specialization || 'No team'}</span>
+                  <strong className="person-card-name" title={fullName(coach)}>{fullName(coach)}</strong>
+                  <small className="person-card-meta" title={coach.email}>{coach.email || 'Email unavailable'}</small>
+                  <span className="person-card-team" title={(coach.teams || []).map((team) => team.teamName).join(', ')}>
+                    {coach.teams?.[0]?.teamName || coach.specialization || 'No team'}{coach.teams?.length > 1 ? ` +${coach.teams.length - 1} more` : ''}
+                  </span>
                   {!isActiveAccount(coach) && <StatusBadge status={coach.accountStatus} label={accountLabel(coach)} />}
                 </div>
               </div>
@@ -283,11 +391,11 @@ export default function DirectorPortal({ session, onLogout }) {
 
   let content
   if (view === 'athletes' && profileAthlete) {
-    content = <AthleteProfilePage athlete={profileAthlete} session={session} canEdit={false} onBack={() => setProfileAthlete(null)} />
+    content = <AthleteProfilePage athlete={profileAthlete} session={session} canEdit={false} canRequestEvaluation onBack={() => setProfileAthlete(null)} />
   } else if (view === 'athletes') {
-    content = <AthletesPage athletes={athletes} title="All athletes" subtitle="Every registered student-athlete — view only; coaches record athlete data" onViewProfile={setProfileAthlete} />
+    content = <AthletesPage athletes={athletes} title="All athletes" subtitle="Every registered student-athlete — open a profile to request a Grade Evaluation" onViewProfile={setProfileAthlete} />
   } else if (view === 'coaches' && profileCoach) {
-    content = <CoachProfile coach={profileCoach} session={session} athleteIndex={athleteIndex} onOpenAthlete={openAthlete} onBack={() => { setProfileCoach(null); coaches.reload(); dashboard.reload() }} />
+    content = <CoachProfile coach={profileCoach} session={session} athleteIndex={athleteIndex} onOpenAthlete={openAthlete} onRosterChanged={() => { coaches.reload(); dashboard.reload() }} onBack={() => { setProfileCoach(null); coaches.reload(); dashboard.reload() }} />
   } else if (view === 'coaches') {
     content = <CoachesPage summaries={summaries} loading={coaches.loading} onOpen={setProfileCoach} />
   } else if (view === 'schedule') {
@@ -389,11 +497,11 @@ export default function DirectorPortal({ session, onLogout }) {
       roleLabel="Sports Director"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', badge: pending.data?.length || 0 },
+        { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard', badge: pending.data?.length || 0 },
         { key: 'coaches', label: 'Coaches', icon: 'coach' },
-        { key: 'athletes', label: 'All athletes', icon: 'users' },
+        { key: 'athletes', label: 'All athletes', shortLabel: 'Athletes', icon: 'users' },
         { key: 'schedule', label: 'Schedule', icon: 'calendar' },
-        { key: 'performance', label: 'Performance', icon: 'chart' },
+        { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
         { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}

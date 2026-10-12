@@ -1,45 +1,164 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { api } from '../../lib/api.js'
-import { formatDate, localDateISO } from '../../lib/format.js'
-import { Alert, Field, Modal } from '../../components/ui.jsx'
+import { localDateISO } from '../../lib/format.js'
+import { Alert, Field, Modal, Tabs } from '../../components/ui.jsx'
 
-/** Lets the user build a list of distinct, non-past dates. */
-function DatePicker({ dates, onChange, label, hint }) {
-  const [pending, setPending] = useState('')
-  const [error, setError] = useState('')
+const WEEKDAYS = [['Sun', 'Sunday'], ['Mon', 'Monday'], ['Tue', 'Tuesday'], ['Wed', 'Wednesday'], ['Thu', 'Thursday'], ['Fri', 'Friday'], ['Sat', 'Saturday']]
+// One request creates one session per date; a cap stops a mistyped "until" date creating hundreds.
+const MAX_DATES = 60
+
+const parseISO = (value) => new Date(`${value}T00:00:00`)
+const shortDate = (value) => parseISO(value).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+const longDate = (value) => parseISO(value).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+const addDays = (value, days) => {
+  const date = parseISO(value)
+  date.setDate(date.getDate() + days)
+  return localDateISO(date)
+}
+
+/** Every date from `from` to `until` (inclusive) that falls on one of the chosen weekdays (0 = Sunday). */
+function weeklyDates(weekdays, from, until) {
+  if (!weekdays.length || !from || !until || until < from) return []
+  const result = []
+  for (let value = from; value <= until && result.length <= MAX_DATES; value = addDays(value, 1)) {
+    if (weekdays.includes(parseISO(value).getDay())) result.push(value)
+  }
+  return result
+}
+
+/**
+ * Builds a list of distinct, non-past dates: tap days on a month calendar, or generate a weekly
+ * pattern ("every Mon and Wed for 8 weeks"). Selected dates are listed below and can be removed.
+ */
+function DatePicker({ dates, onChange, label }) {
   const today = localDateISO()
+  const labelId = useId()
+  const [mode, setMode] = useState('calendar')
+  const [month, setMonth] = useState(() => {
+    const base = parseISO(dates[0] || today)
+    return new Date(base.getFullYear(), base.getMonth(), 1)
+  })
+  const [weekdays, setWeekdays] = useState([])
+  const [from, setFrom] = useState(today)
+  const [until, setUntil] = useState('')
+  const [message, setMessage] = useState('')
+  // Quick successive taps can arrive before the parent re-renders; always build on the latest list.
+  const latest = useRef(dates)
+  useEffect(() => { latest.current = dates }, [dates])
 
-  const add = (value = pending) => {
-    if (!value) return
-    if (value < today) {
-      setError('Dates cannot be in the past.')
-      return
+  const setDates = (next) => {
+    const unique = [...new Set(next)].filter((value) => value >= today).sort()
+    if (unique.length > MAX_DATES) {
+      setMessage(`You can add up to ${MAX_DATES} dates at a time.`)
+      return false
     }
-    setError('')
-    if (!dates.includes(value)) onChange([...dates, value].sort())
-    setPending('')
+    setMessage('')
+    latest.current = unique
+    onChange(unique)
+    return true
+  }
+  const toggle = (value) => {
+    const current = latest.current
+    setDates(current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
   }
 
+  // Month grid
+  const year = month.getFullYear()
+  const monthIndex = month.getMonth()
+  const now = new Date()
+  const isCurrentMonth = year === now.getFullYear() && monthIndex === now.getMonth()
+  const leadingBlanks = new Date(year, monthIndex, 1).getDay()
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
+  const days = Array.from({ length: daysInMonth }, (_, index) => localDateISO(new Date(year, monthIndex, index + 1)))
+  const shiftMonth = (offset) => setMonth(new Date(year, monthIndex + offset, 1))
+
+  // Weekly pattern
+  const pattern = weeklyDates(weekdays, from, until)
+  const newFromPattern = pattern.filter((value) => !dates.includes(value))
+  const tooMany = pattern.length > MAX_DATES || dates.length + newFromPattern.length > MAX_DATES
+  const addPattern = () => {
+    if (!setDates([...latest.current, ...pattern])) return
+    const first = parseISO(pattern[0])
+    setMonth(new Date(first.getFullYear(), first.getMonth(), 1))
+    setMode('calendar')
+  }
+  const patternLabel = !weekdays.length ? 'Choose at least one day'
+    : !until ? 'Choose when it ends'
+      : tooMany ? `More than ${MAX_DATES} dates — choose an earlier end date`
+        : newFromPattern.length ? `Add ${newFromPattern.length} date${newFromPattern.length === 1 ? '' : 's'}`
+          : 'No new dates in this range'
+
   return (
-    <div className="field">
-      <span className="field-label">{label}<span className="field-required" aria-hidden="true"> *</span></span>
-      <div className="inline-row">
-        <input type="date" min={today} value={pending} onChange={(event) => setPending(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); add() } }}
-          onBlur={() => { if (pending && pending >= today) add() }} aria-label={`${label} to add`} />
-        <button className="btn btn-secondary" type="button" onClick={() => add()} disabled={!pending}>Add date</button>
-      </div>
-      {error && <small className="text-danger">{error}</small>}
-      {!error && <small className="field-hint">{dates.length ? `${dates.length} date${dates.length === 1 ? '' : 's'} selected.` : hint || 'Pick a date, then select “Add date”. Repeat to add more.'}</small>}
-      {dates.length > 0 && (
-        <div className="chip-list">
-          {dates.map((date) => (
-            <span className="chip" key={date}>
-              {formatDate(date)}
-              <button type="button" onClick={() => onChange(dates.filter((item) => item !== date))} aria-label={`Remove ${formatDate(date)}`}>×</button>
-            </span>
-          ))}
+    <div className="field date-picker">
+      <span className="field-label" id={labelId}>{label}<span className="field-required" aria-hidden="true"> *</span></span>
+      <Tabs label="How to choose dates" value={mode} onChange={setMode} options={[['calendar', 'Pick on calendar'], ['weekly', 'Repeat weekly']]} />
+
+      <div className="date-picker-body">
+        {mode === 'calendar' ? (
+          <div className="mini-calendar" role="group" aria-labelledby={labelId}>
+            <div className="mini-calendar-nav">
+              <button className="icon-button" type="button" onClick={() => shiftMonth(-1)} disabled={isCurrentMonth} aria-label="Previous month">‹</button>
+              <strong aria-live="polite">{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
+              <button className="icon-button" type="button" onClick={() => shiftMonth(1)} aria-label="Next month">›</button>
+            </div>
+            <div className="mini-calendar-grid">
+              {WEEKDAYS.map(([short, long]) => <abbr className="mini-calendar-weekday" key={short} title={long}>{short.slice(0, 2)}</abbr>)}
+              {Array.from({ length: leadingBlanks }, (_, index) => <span key={`blank-${index}`} />)}
+              {days.map((value) => {
+                const selected = dates.includes(value)
+                return (
+                  <button key={value} type="button" className={`mini-day ${selected ? 'selected' : ''} ${value === today ? 'today' : ''}`}
+                    disabled={value < today} aria-pressed={selected} aria-label={`${longDate(value)}${value === today ? ' (today)' : ''}`} onClick={() => toggle(value)}>
+                    {Number(value.slice(8))}
+                  </button>
+                )
+              })}
+            </div>
+            <small className="field-hint">Tap every day the session happens. Tap a day again to remove it.</small>
+          </div>
+        ) : (
+          <div className="weekly-repeat">
+            <fieldset className="weekday-picker">
+              <legend className="field-label">Repeat every</legend>
+              {WEEKDAYS.map(([short, long], index) => (
+                <button key={short} type="button" className={`weekday-toggle ${weekdays.includes(index) ? 'selected' : ''}`} aria-pressed={weekdays.includes(index)} aria-label={long}
+                  onClick={() => setWeekdays((current) => (current.includes(index) ? current.filter((day) => day !== index) : [...current, index].sort()))}>
+                  {short}
+                </button>
+              ))}
+            </fieldset>
+            <div className="weekly-range">
+              <Field label="Starting"><input type="date" min={today} value={from} onChange={(event) => setFrom(event.target.value)} /></Field>
+              <Field label="Until"><input type="date" min={from || today} value={until} onChange={(event) => setUntil(event.target.value)} /></Field>
+            </div>
+            <div className="weekly-quick" role="group" aria-label="Quick end dates">
+              <span className="muted">For</span>
+              {[4, 8, 12].map((weeks) => (
+                <button key={weeks} type="button" className={`filter-chip ${until && from && until === addDays(from, weeks * 7 - 1) ? 'active' : ''}`} onClick={() => setUntil(addDays(from || today, weeks * 7 - 1))}>{weeks} weeks</button>
+              ))}
+            </div>
+            <button className="btn btn-primary" type="button" disabled={!newFromPattern.length || tooMany} onClick={addPattern}>{patternLabel}</button>
+          </div>
+        )}
+
+        <div className="selected-dates" aria-live="polite">
+          <div className="selected-dates-header">
+            <strong>{dates.length ? `${dates.length} date${dates.length === 1 ? '' : 's'} selected` : 'No dates selected yet'}</strong>
+            {dates.length > 0 && <button className="link-button" type="button" onClick={() => setDates([])}>Clear all</button>}
+          </div>
+          {dates.length > 0 ? (
+            <ul className="selected-date-list">
+              {dates.map((value) => (
+                <li key={value}>
+                  <span>{shortDate(value)}{value.slice(0, 4) !== String(now.getFullYear()) && <small className="muted"> {value.slice(0, 4)}</small>}</span>
+                  <button type="button" onClick={() => toggle(value)} aria-label={`Remove ${longDate(value)}`}>×</button>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="muted">{mode === 'calendar' ? 'Tap days on the calendar to add them.' : 'Choose the days and how long it repeats.'}</p>}
         </div>
-      )}
+      </div>
+      {message && <small className="text-danger" role="alert">{message}</small>}
     </div>
   )
 }
@@ -73,7 +192,7 @@ export function TrainingScheduleModal({ teams, session, onClose, onCreated }) {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    if (!form.teamId || !form.title.trim() || !form.dates.length) return setError('Team, title, and at least one date are required. Select “Add date” after picking each date.')
+    if (!form.teamId || !form.title.trim() || !form.dates.length) return setError('Team, title, and at least one date are required. Tap the dates on the calendar, or use “Repeat weekly”.')
     if (form.startTime && form.endTime && form.endTime <= form.startTime) return setError('End time must be after start time.')
     submit(() => api.post('/api/Training/sessions', {
       teamId: Number(form.teamId),
@@ -88,7 +207,7 @@ export function TrainingScheduleModal({ teams, session, onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Request training session" subtitle="Sessions are published to athletes after the Sports Director approves them." onClose={onClose} closeOnBackdrop={false}
+    <Modal title="Request training session" subtitle="Sessions are published to athletes after the Sports Director approves them." onClose={onClose} closeOnBackdrop={false} size="lg"
       footer={<>
         <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" type="submit" form="training-form" disabled={saving || !teams.length}>{saving ? 'Saving…' : 'Submit for approval'}</button>
@@ -120,7 +239,7 @@ export function EventScheduleModal({ session, onClose, onCreated }) {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    if (!form.title.trim() || !form.dates.length || !form.startTime) return setError('Title, at least one date, and a start time are required. Select “Add date” after picking each date.')
+    if (!form.title.trim() || !form.dates.length || !form.startTime) return setError('Title, at least one date, and a start time are required. Tap the dates on the calendar, or use “Repeat weekly”.')
     if (form.endTime && form.endTime <= form.startTime) return setError('End time must be after start time.')
     submit(() => api.post('/api/Schedules', {
       scheduleType: form.scheduleType,
@@ -136,7 +255,7 @@ export function EventScheduleModal({ session, onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Add sports event" subtitle="Create a sports event or competition on one or more dates. Every athlete will see it." onClose={onClose} closeOnBackdrop={false}
+    <Modal title="Add sports event" subtitle="Create a sports event or competition on one or more dates. Every athlete will see it." onClose={onClose} closeOnBackdrop={false} size="lg"
       footer={<>
         <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" type="submit" form="event-form" disabled={saving}>{saving ? 'Saving…' : 'Add event'}</button>

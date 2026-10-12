@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
 import { formatDate, fullName, matchesSearch } from '../../lib/format.js'
-import { useApiData } from '../../lib/hooks.js'
-import PerformanceTrendChart from '../../PerformanceTrendChart.jsx'
-import { ChartErrorBoundary } from '../../components/ErrorBoundary.jsx'
+import { useApiData, usePerformanceData } from '../../lib/hooks.js'
+import PerformanceOverview from '../../components/PerformanceOverview.jsx'
+import Icon from '../../components/icons.jsx'
 import { useToast } from '../../components/toast.jsx'
-import { Alert, Avatar, Card, EmptyState, Field, Loading, Modal, PageHeader, SearchInput, Tabs } from '../../components/ui.jsx'
+import { Alert, Avatar, EmptyState, Field, Modal, PageHeader, SearchInput } from '../../components/ui.jsx'
 
 const UNITS = [
   ['NUMBER', 'Number / repetitions'],
@@ -14,7 +14,6 @@ const UNITS = [
   ['PERCENT', 'Percent'],
 ]
 
-const UNIT_SUFFIX = { NUMBER: '', SECONDS: 's', METERS_PER_SECOND: 'm/s', PERCENT: '%' }
 
 function guessUnit(workoutName) {
   const name = String(workoutName || '').trim().toLowerCase().replace(/[-_]+/g, ' ')
@@ -94,59 +93,34 @@ function RecordPerformanceModal({ athlete, sessions, savedWorkouts, session, onC
 
 function AthletePerformance({ athlete, session, canEdit, onBack }) {
   const toast = useToast()
-  const [range, setRange] = useState('overall')
   const [showForm, setShowForm] = useState(false)
-  const records = useApiData(`/api/Performance/athlete/${athlete.athleteId}`, session.token)
-  const trend = useApiData(`/api/Performance/athlete/${athlete.athleteId}/trend?timeRange=${range}`, session.token)
+  const data = usePerformanceData(athlete.athleteId, session.token)
   const sessions = useApiData(canEdit ? '/api/Training/sessions' : null, session.token, { initialData: [] })
-  const rows = records.data?.records || []
-  const savedWorkouts = [...new Set(rows.map((record) => record.dataType).filter(Boolean))]
+  const savedWorkouts = [...new Set((data.records.data?.records || []).map((record) => record.dataType).filter(Boolean))]
 
   const onSaved = () => {
     setShowForm(false)
     toast.success(`Performance recorded for ${fullName(athlete)}.`)
-    records.reload()
-    trend.reload()
+    data.reload()
   }
 
   return (
     <>
       <button className="btn btn-ghost back-button" type="button" onClick={onBack}>← All athletes</button>
-      <PageHeader
-        title={fullName(athlete)}
-        subtitle={`${athlete.studentNumber || 'Student ID pending'}${athlete.teamName ? ` · ${athlete.teamName}` : ''}`}
-        actions={canEdit && <button className="btn btn-primary" type="button" onClick={() => setShowForm(true)}>+ Record performance</button>}
-      />
-      <Alert>{records.error || trend.error}</Alert>
-      <Card title="Performance trend" actions={<Tabs label="Time range" value={range} onChange={setRange} options={[['overall', 'Overall'], ['monthly', 'Last 30 days'], ['weekly', 'Last 7 days']]} />}>
-        <div className="chart-area">
-          {trend.loading ? <Loading label="Loading trend…" /> : trend.data?.labels?.length ? (
-            <ChartErrorBoundary data={trend.data}>
-              <PerformanceTrendChart data={trend.data} title="" />
-            </ChartErrorBoundary>
-          ) : <EmptyState icon="chart" title="No data for this range" message="Recorded performances will be charted here." />}
+      <section className="profile-hero">
+        <Avatar firstName={athlete.firstName} lastName={athlete.lastName} size="xl" />
+        <div>
+          <h1>{fullName(athlete)}</h1>
+          <p>{[athlete.studentNumber || 'Student ID pending', athlete.sport, athlete.teamName].filter(Boolean).join(' · ')}</p>
         </div>
-      </Card>
-      <Card title="Performance records" subtitle="Every measurement recorded for this athlete">
-        {records.loading && !records.data ? <Loading label="Loading records…" /> : rows.length ? (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Workout</th><th>Value</th><th>Date</th><th>Session</th><th>Notes</th></tr></thead>
-              <tbody>
-                {rows.map((record) => (
-                  <tr key={record.performanceRecordId}>
-                    <td><span className="badge badge-neutral">{record.dataType || record.metric?.metricName || '—'}</span></td>
-                    <td className="numeric">{record.recordedValue}{UNIT_SUFFIX[record.unit] ? ` ${UNIT_SUFFIX[record.unit]}` : ''}</td>
-                    <td>{formatDate(record.recordedDate)}</td>
-                    <td>{record.sessionTitle || (record.sessionId ? `Session ${record.sessionId}` : '—')}</td>
-                    <td>{record.notes || <span className="muted">—</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : <EmptyState icon="chart" title="No performance records" message={canEdit ? 'Use “Record performance” after a training session ends.' : 'The coach has not recorded any performance yet.'} />}
-      </Card>
+        {canEdit && <button className="btn btn-primary" type="button" onClick={() => setShowForm(true)}><Icon name="plus" />Record performance</button>}
+      </section>
+      <PerformanceOverview
+        data={data}
+        viewer="staff"
+        emptyTitle="No performance records"
+        emptyMessage={canEdit ? 'Use “Record performance” after a training session ends.' : 'The coach has not recorded any performance for this athlete yet.'}
+      />
       {showForm && <RecordPerformanceModal athlete={athlete} sessions={sessions.data || []} savedWorkouts={savedWorkouts} session={session} onClose={() => setShowForm(false)} onSaved={onSaved} />}
     </>
   )

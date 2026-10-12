@@ -112,7 +112,8 @@ export function Field({ label, hint, required, optional, children, className = '
 }
 
 /**
- * Accessible dialog. Pass `closeOnBackdrop={false}` for forms so a stray click outside
+ * Accessible dialog. On phones it slides up from the bottom as a sheet.
+ * Pass `closeOnBackdrop={false}` for forms so a stray tap outside (or a swipe down on a phone)
  * does not throw away what the user typed (Escape and the × button still close it).
  */
 export function Modal({ title, subtitle, onClose, children, footer, size = 'md', closeOnBackdrop = true }) {
@@ -121,22 +122,46 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md',
   // Only close when the press both started and ended on the backdrop, so selecting text
   // inside the dialog and releasing outside it does not dismiss the dialog.
   const pressedBackdrop = useRef(false)
+  const drag = useRef(null)
   // Callers usually pass an inline function; keep the latest without re-running the mount effect.
   const onCloseRef = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose }, [onClose])
 
   useEffect(() => {
     const previouslyFocused = document.activeElement
-    dialogRef.current?.querySelector('input, select, textarea, button:not(.modal-close)')?.focus()
+    // On touch screens, focusing a field would pop the keyboard over the sheet straight away.
+    const coarse = window.matchMedia?.('(pointer: coarse)').matches
+    const target = coarse ? dialogRef.current : dialogRef.current?.querySelector('input, select, textarea, button:not(.modal-close)')
+    target?.focus({ preventScroll: true })
     const onKey = (event) => { if (event.key === 'Escape') onCloseRef.current() }
     document.addEventListener('keydown', onKey)
     document.body.classList.add('modal-open')
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.classList.remove('modal-open')
-      previouslyFocused?.focus?.()
+      previouslyFocused?.focus?.({ preventScroll: true })
     }
   }, [])
+
+  // Swipe the sheet's handle or header down to close it (phones only, and not for forms).
+  const onTouchStart = (event) => {
+    if (!closeOnBackdrop) return
+    drag.current = { startY: event.touches[0].clientY, offset: 0 }
+    if (dialogRef.current) dialogRef.current.style.transition = 'none'
+  }
+  const onTouchMove = (event) => {
+    if (!drag.current || !dialogRef.current) return
+    drag.current.offset = Math.max(0, event.touches[0].clientY - drag.current.startY)
+    dialogRef.current.style.transform = `translateY(${drag.current.offset}px)`
+  }
+  const onTouchEnd = () => {
+    if (!drag.current || !dialogRef.current) return
+    const { offset } = drag.current
+    drag.current = null
+    dialogRef.current.style.transition = ''
+    if (offset > 90) onClose()
+    else dialogRef.current.style.transform = ''
+  }
 
   return (
     <div
@@ -147,13 +172,16 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md',
         pressedBackdrop.current = false
       }}
     >
-      <section ref={dialogRef} className={`modal modal-${size}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <div className="modal-header">
-          <div>
-            <h2 id={titleId}>{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
+      <section ref={dialogRef} className={`modal modal-${size}`} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <div className="modal-drag-area" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}>
+          <span className="modal-grabber" aria-hidden="true" />
+          <div className="modal-header">
+            <div>
+              <h2 id={titleId}>{title}</h2>
+              {subtitle && <p>{subtitle}</p>}
+            </div>
+            <button className="icon-button modal-close" type="button" onClick={onClose} aria-label="Close">×</button>
           </div>
-          <button className="icon-button modal-close" type="button" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
@@ -229,7 +257,7 @@ export function ActionMenu({ label = 'More', ariaLabel, items }) {
       if (event.key === 'Escape') { setOpen(false); rootRef.current?.querySelector('.action-menu-trigger')?.focus() }
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault()
-        const buttons = [...(rootRef.current?.querySelectorAll('.action-menu-item') || [])]
+        const buttons = [...(rootRef.current?.querySelectorAll('.action-menu-item:not(.action-menu-cancel)') || [])]
         const index = buttons.indexOf(document.activeElement)
         const next = event.key === 'ArrowDown' ? (index + 1) % buttons.length : (index - 1 + buttons.length) % buttons.length
         buttons[next]?.focus()
@@ -250,15 +278,19 @@ export function ActionMenu({ label = 'More', ariaLabel, items }) {
       <button type="button" className="btn btn-ghost btn-sm action-menu-trigger" aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} aria-label={ariaLabel} onClick={() => setOpen((value) => !value)}>
         {label} <span aria-hidden="true">▾</span>
       </button>
-      {open && (
+      {open && <>
+        {/* On phones the menu is an action sheet over a dimmed page; the scrim and Cancel only show there. */}
+        <button type="button" className="action-menu-scrim" aria-hidden="true" tabIndex={-1} onClick={() => setOpen(false)} />
         <div className="action-menu-list" role="menu" id={menuId}>
+          {ariaLabel && <span className="action-menu-title" aria-hidden="true">{ariaLabel}</span>}
           {visible.map((item) => (
             <button key={item.label} type="button" role="menuitem" className={`action-menu-item ${item.tone ? `tone-text-${item.tone}` : ''}`} onClick={() => { setOpen(false); item.onSelect() }}>
               {item.label}
             </button>
           ))}
+          <button type="button" className="action-menu-item action-menu-cancel" tabIndex={-1} onClick={() => setOpen(false)}>Cancel</button>
         </div>
-      )}
+      </>}
     </div>
   )
 }

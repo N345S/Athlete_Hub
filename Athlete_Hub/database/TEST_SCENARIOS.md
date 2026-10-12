@@ -6,6 +6,7 @@ Development-only sample data for exercising account states, team changes, and ev
 cd Athlete_Hub/backend/AthleteHub.API
 dotnet run -- --seed-test-data      # remove any earlier seed data, then create it fresh
 dotnet run -- --remove-test-data    # delete only seed data
+dotnet run -- --seed-parents        # add only the missing parent accounts (keeps everything else)
 ```
 
 Both commands exit after running and refuse to run outside the Development environment. Seed records are
@@ -57,7 +58,7 @@ The other 69 athletes are generated across all eight teams with a mix of the sam
 |---|---|---|
 | `juan.delacruz` | Model athlete | Eligible both terms, verified + pending achievements, improving performance trend |
 | `ana.reyes` | **Ineligible** (failing grades) | Rejected portfolio item with reason; warning on her dashboard |
-| `mark.villanueva` | Evaluation **requested, no PDF yet** | Registrar "Eligibility requests" → upload PDF; pending documents and portfolio |
+| `mark.villanueva` | Evaluation **requested, no PDF yet** | Registrar "Eligibility requests" → upload PDF; documents on file, pending portfolio |
 | `carla.bautista` | **Suspended** but still on the roster | Cannot sign in; coach cannot mark attendance or record performance |
 | `miguel.torres` | **Inactive** (left school), removed from team | Cannot sign in; still visible to Director and Registrar with an "inactive" badge |
 | `sofia.garcia` | **Quit** volleyball 20 days ago, still a student | Shows "No active team"; past attendance and verified achievement are kept |

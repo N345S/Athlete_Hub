@@ -384,7 +384,7 @@ export default function AdminPortal({ session, onLogout }) {
       roleLabel="Administrator"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Overview', icon: 'dashboard' },
+        { key: 'dashboard', label: 'Overview', shortLabel: 'Home', icon: 'dashboard' },
         { key: 'accounts', label: 'Accounts', icon: 'users' },
       ]}
       activeKey={view}

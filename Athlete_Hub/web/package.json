@@ -7,6 +7,8 @@
     "dev": "vite",
     "dev:phone": "vite --host",
     "phone": "vite build && vite preview --host",
+    "android": "node scripts/android.mjs",
+    "android:phone": "node scripts/android.mjs phone",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"

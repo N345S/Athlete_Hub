@@ -115,7 +115,7 @@ function AcademicEligibilityCard({ athlete, session, canRequest }) {
             </li>
           ))}
         </ul>
-      ) : <EmptyState icon="check" title="No evaluations yet" message={canRequest ? 'Request a Grade Evaluation to get a Registrar eligibility decision.' : 'The coach has not requested a Grade Evaluation for this athlete.'} />}
+      ) : <EmptyState icon="check" title="No evaluations yet" message={canRequest ? 'Request a Grade Evaluation to get a Registrar eligibility decision.' : 'The Director of Sports has not requested a Grade Evaluation for this athlete yet.'} />}
       {preview && <PdfPreview url={preview} token={session.token} onClose={() => setPreview(null)} />}
     </Card>
   )
@@ -206,7 +206,6 @@ function DocumentsCard({ athlete, session }) {
                 <span>{item.documentType} · Uploaded {formatDate(item.uploadedAt)}</span>
               </div>
               <div className="row-actions">
-                <StatusBadge status={item.status} />
                 <FileLink url={item.fileUrl} token={session.token} className="btn btn-ghost btn-sm">Open</FileLink>
               </div>
             </li>
@@ -218,10 +217,10 @@ function DocumentsCard({ athlete, session }) {
 }
 
 /**
- * Staff view of one athlete. Coaches (`canEdit`) request evaluations and verify portfolio items;
- * the director sees the same information read-only.
+ * Staff view of one athlete. Coaches (`canEdit`) verify portfolio items; the director
+ * (`canRequestEvaluation`) requests Grade Evaluations from the Registrar.
  */
-export default function AthleteProfilePage({ athlete, session, canEdit, onBack }) {
+export default function AthleteProfilePage({ athlete, session, canEdit, canRequestEvaluation, onBack }) {
   return (
     <>
       <button className="btn btn-ghost back-button" type="button" onClick={onBack}>← Back to athletes</button>
@@ -241,7 +240,7 @@ export default function AthleteProfilePage({ athlete, session, canEdit, onBack }
         <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
       </dl>
       <div className="stack">
-        <AcademicEligibilityCard athlete={athlete} session={session} canRequest={canEdit} />
+        <AcademicEligibilityCard athlete={athlete} session={session} canRequest={canRequestEvaluation} />
         <PortfolioReview athlete={athlete} session={session} canReview={canEdit} />
         <DocumentsCard athlete={athlete} session={session} />
       </div>

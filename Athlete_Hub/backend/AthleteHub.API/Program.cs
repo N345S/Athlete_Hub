@@ -216,8 +216,8 @@ using (var scope = app.Services.CreateScope())
 
 app.Services.GetRequiredService<DocumentStorage>().MoveLegacyFilesToPrivateStorage();
 
-// Development helpers: `dotnet run -- --seed-test-data` / `--remove-test-data` manage scenario data, then exit.
-if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data"))
+// Development helpers: `dotnet run -- --seed-test-data` / `--remove-test-data` / `--seed-parents` manage scenario data, then exit.
+if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data") || args.Contains("--seed-parents"))
 {
     if (!app.Environment.IsDevelopment())
     {
@@ -231,6 +231,7 @@ if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data"))
         seedScope.ServiceProvider.GetRequiredService<AppClock>(),
         app.Environment);
     if (args.Contains("--remove-test-data")) await seeder.RemoveAsync();
+    else if (args.Contains("--seed-parents")) await seeder.SeedParentsAsync();
     else await seeder.SeedAsync();
     return;
 }

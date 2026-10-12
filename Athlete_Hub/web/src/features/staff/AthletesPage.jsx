@@ -15,29 +15,32 @@ export default function AthletesPage({ athletes, title, subtitle, onViewProfile 
         <span className="muted">Showing {filtered.length} of {athletes.length}</span>
       </div>
       {filtered.length ? (
-        <div className="card-grid">
-          {filtered.map((athlete) => (
-            <article className="person-card" key={athlete.athleteId}>
-              <div className="person-card-top">
-                <Avatar firstName={athlete.firstName} lastName={athlete.lastName} size="lg" />
-                <div>
-                  <strong>{fullName(athlete)}</strong>
-                  <small>{athlete.studentNumber || 'Student ID pending'}</small>
-                  <span className="muted">{athlete.teamName ? [athlete.sport, athlete.teamName].filter(Boolean).join(' · ') : 'No active team'}</span>
-                  {!isActiveAccount(athlete) && <StatusBadge status={athlete.accountStatus} label={accountLabel(athlete)} />}
+        <div className="card-grid person-grid">
+          {filtered.map((athlete) => {
+            const team = athlete.teamName ? [athlete.sport, athlete.teamName].filter(Boolean).join(' · ') : 'No active team'
+            return (
+              <article className="person-card" key={athlete.athleteId}>
+                <div className="person-card-top">
+                  <Avatar firstName={athlete.firstName} lastName={athlete.lastName} size="lg" />
+                  <div>
+                    <strong className="person-card-name" title={fullName(athlete)}>{fullName(athlete)}</strong>
+                    <small className="person-card-meta">{athlete.studentNumber || 'Student ID pending'}</small>
+                    <span className="person-card-team" title={team}>{team}</span>
+                    {!isActiveAccount(athlete) && <StatusBadge status={athlete.accountStatus} label={accountLabel(athlete)} />}
+                  </div>
                 </div>
-              </div>
-              <dl className="person-card-stats">
-                <div>
-                  <dt>Academic eligibility</dt>
-                  <dd>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} label={athlete.eligibilityStatus === 'PENDING' ? 'Awaiting decision' : undefined} /> : <span className="muted">Not evaluated</span>}</dd>
-                  {athlete.eligibilityTerm && <small className="muted">{athlete.eligibilityTerm}</small>}
-                </div>
-                <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
-              </dl>
-              <button className="btn btn-secondary btn-block" type="button" onClick={() => onViewProfile(athlete)}>View profile</button>
-            </article>
-          ))}
+                <dl className="person-card-stats person-card-stats-wide">
+                  <div>
+                    <dt>Eligibility</dt>
+                    <dd>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} label={athlete.eligibilityStatus === 'PENDING' ? 'Awaiting decision' : undefined} /> : <span className="muted">Not evaluated</span>}</dd>
+                    {athlete.eligibilityTerm && <small className="muted" title={athlete.eligibilityTerm}>{athlete.eligibilityTerm}</small>}
+                  </div>
+                  <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
+                </dl>
+                <button className="btn btn-secondary btn-block" type="button" onClick={() => onViewProfile(athlete)}>View profile</button>
+              </article>
+            )
+          })}
         </div>
       ) : <EmptyState title={athletes.length ? 'No matches' : 'No athletes yet'} message={athletes.length ? 'Try a different search.' : 'Athletes appear here once they are assigned to a team.'} />}
     </>

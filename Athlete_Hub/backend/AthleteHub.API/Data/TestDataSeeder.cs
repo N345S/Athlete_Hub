@@ -14,6 +14,7 @@ namespace AthleteHub.API.Data;
 ///
 ///   dotnet run -- --seed-test-data     (re-creates everything; earlier seed data is removed first)
 ///   dotnet run -- --remove-test-data   (deletes only seed data)
+///   dotnet run -- --seed-parents       (adds only the missing parent accounts; nothing is removed)
 ///
 /// Seed rows are identifiable by the @seed.athletehub.test email domain and the "[Seed]" title prefix,
 /// so removal never touches real records. Every account uses the password <see cref="Password"/>, and the
@@ -50,6 +51,16 @@ public class TestDataSeeder
     ];
 
     private static readonly string[] IneligibleReasons = ["Failing Grades", "Academic Requirement Not Met", "Incomplete Academic Requirement"];
+
+    // Parent accounts and the seed athletes they are linked to (by the child's email name).
+    // Shared by --seed-test-data and --seed-parents so both create the same accounts.
+    private static readonly (string FirstName, string LastName, (string Child, string Relationship)[] Children, string Scenario)[] ParentPlans =
+    [
+        ("Rosario", "Dela Cruz", [("juan.delacruz", "Mother")], "Parent of the model athlete — good attendance, upcoming practice"),
+        ("Teresa", "Flores", [("jasmine.flores", "Mother")], "Parent of a low-attendance athlete (17%)"),
+        ("Roberto", "Aquino", [("kevin.aquino", "Father"), ("daniel.ramos", "Guardian")], "Two linked children on different teams — switch between them on Training sessions"),
+        ("Nora", "Lim", [], "No children linked yet — empty state; admin can link Bea Lim (SEED-A-008)"),
+    ];
 
     private readonly AthleteHubDbContext _context;
     private readonly string _contentRoot;
@@ -299,12 +310,12 @@ public class TestDataSeeder
         await AddAchievementAsync(miguel, "Varsity athlete of the year 2025", "Award", -300, "VERIFIED", eagles.Coach);
         await AddAchievementAsync(kevin, "Two-sport varsity letter", "Award", -20, "PENDING", null);
 
-        AddDocument(juan, "Medical Clearance", "APPROVED", -40);
-        AddDocument(mark, "Medical Clearance", "PENDING", -5);
-        AddDocument(mark, "Consent Form", "PENDING", -5);
-        AddDocument(jasmine, "Enrollment Form", "PENDING", -2);
-        AddDocument(carla, "Athletic Eligibility Form", "REJECTED", -50);
-        AddDocument(bea, "Medical Clearance", "PENDING", -1);
+        AddDocument(juan, "Medical Clearance", -40);
+        AddDocument(mark, "Medical Clearance", -5);
+        AddDocument(mark, "Consent Form", -5);
+        AddDocument(jasmine, "Enrollment Form", -2);
+        AddDocument(carla, "Athletic Eligibility Form", -50);
+        AddDocument(bea, "Medical Clearance", -1);
 
         Notify(juan.UserId, "Training session approved", "Team practice was approved and added to your schedule.", "TRAINING_APPROVED");
         Notify(ana.UserId, "Portfolio rejected", "Your submission \"Inter-school volleyball tournament MVP\" was rejected. Reason: certificate is unreadable.", "PORTFOLIO_REJECTED");
@@ -312,7 +323,7 @@ public class TestDataSeeder
 
         Describe(juan, "Blue Eagles Basketball", "Model athlete: eligible, verified achievement, improving performance");
         Describe(ana, "Lady Spikers Volleyball", "INELIGIBLE (failing grades); rejected portfolio item");
-        Describe(mark, "Blue Eagles Basketball", "Evaluation requested, Registrar has not uploaded the PDF; documents pending");
+        Describe(mark, "Blue Eagles Basketball", "Evaluation requested, Registrar has not uploaded the PDF; medical clearance and consent form on file");
         Describe(carla, "Blue Eagles Basketball", "SUSPENDED but still on the roster");
         Describe(miguel, "— (left Blue Eagles)", "INACTIVE: left the school, removed from team");
         Describe(sofia, "— (quit Lady Spikers)", "Quit the team 20 days ago, still an active student");
@@ -322,10 +333,9 @@ public class TestDataSeeder
         Describe(jasmine, "Lady Spikers Volleyball", "17% attendance; ineligible last term, eligible again now");
 
         // ---------------- Parents (no university ID; linked to their children's athlete profiles) ----------------
-        var rosario = await CreateParentAsync("Rosario", "Dela Cruz", [(juan, "Mother")], "Parent of the model athlete — good attendance, upcoming practice");
-        var teresa = await CreateParentAsync("Teresa", "Flores", [(jasmine, "Mother")], "Parent of a low-attendance athlete (17%)");
-        await CreateParentAsync("Roberto", "Aquino", [(kevin, "Father"), (daniel, "Guardian")], "Two linked children on different teams — switch between them on Training sessions");
-        await CreateParentAsync("Nora", "Lim", [], "No children linked yet — empty state; admin can link Bea Lim (SEED-A-008)");
+        var parents = await CreatePlannedParentsAsync(skipExisting: false);
+        var rosario = parents["Rosario"];
+        var teresa = parents["Teresa"];
         Notify(rosario.UserId, "Training attendance recorded", "Juan Dela Cruz was marked present for Training — week 6.", "TRAINING_ATTENDANCE");
         Notify(teresa.UserId, "Training attendance recorded", "Jasmine Flores was marked absent for Training — week 6.", "TRAINING_ATTENDANCE");
         await _context.SaveChangesAsync();
@@ -408,7 +418,7 @@ public class TestDataSeeder
                     reviewStatus == "REJECTED" ? "Please attach the official certificate." : null);
                 notes.Add($"achievement {reviewStatus.ToLowerInvariant()}");
             }
-            if (index % 4 == 1) AddDocument(athlete, index % 8 == 1 ? "Medical Clearance" : "Consent Form", index % 12 == 1 ? "APPROVED" : "PENDING", -(1 + index % 15));
+            if (index % 4 == 1) AddDocument(athlete, index % 8 == 1 ? "Medical Clearance" : "Consent Form", -(1 + index % 15));
             await _context.SaveChangesAsync();
 
             var teamLabel = unassigned
@@ -463,6 +473,56 @@ public class TestDataSeeder
         await _context.SaveChangesAsync();
         _accounts.Add(new AccountRow(role, $"{firstName} {lastName}", user.Email, status, "—", scenario));
         return user;
+    }
+
+    /// <summary>
+    /// Adds only the parent accounts that do not exist yet, linked to the seed athletes already in the
+    /// database. Unlike <see cref="SeedAsync"/>, nothing is removed, so testing progress is kept.
+    /// </summary>
+    public async Task SeedParentsAsync()
+    {
+        _roles = await _context.Roles.ToDictionaryAsync(role => role.RoleName, role => role.RoleId);
+        if (!_roles.ContainsKey("PARENT"))
+        {
+            Console.Error.WriteLine("The PARENT role is missing. Start the API once so the database migrations run, then try again.");
+            return;
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        var created = await CreatePlannedParentsAsync(skipExisting: true);
+        await transaction.CommitAsync();
+        Console.WriteLine($"Added {created.Count} parent account(s). Password for each: {Password}");
+    }
+
+    private async Task<Dictionary<string, User>> CreatePlannedParentsAsync(bool skipExisting)
+    {
+        var created = new Dictionary<string, User>();
+        foreach (var plan in ParentPlans)
+        {
+            var email = EmailFor(plan.FirstName, plan.LastName);
+            if (skipExisting && await _context.Users.AnyAsync(user => user.Email == email))
+            {
+                Console.WriteLine($"{email} already exists — skipped.");
+                continue;
+            }
+
+            var children = new List<(AthleteProfile Athlete, string Relationship)>();
+            foreach (var (child, relationship) in plan.Children)
+            {
+                var childEmail = child + EmailDomain;
+                var athlete = await _context.AthleteProfiles.Include(profile => profile.User).FirstOrDefaultAsync(profile => profile.User.Email == childEmail);
+                if (athlete == null)
+                {
+                    Console.WriteLine($"{childEmail} not found — {plan.FirstName} {plan.LastName} is created without that link.");
+                    continue;
+                }
+                children.Add((athlete, relationship));
+            }
+
+            created[plan.FirstName] = await CreateParentAsync(plan.FirstName, plan.LastName, [.. children], plan.Scenario);
+            Console.WriteLine($"Created {email} ({(children.Count == 0 ? "no linked children" : string.Join(", ", children.Select(item => item.Athlete.User.FirstName + " " + item.Athlete.User.LastName)))}).");
+        }
+        return created;
     }
 
     /// <summary>A parent account (no university ID) linked to the given children.</summary>
@@ -710,7 +770,7 @@ public class TestDataSeeder
         }
     }
 
-    private void AddDocument(AthleteProfile athlete, string type, string status, int daysOffset)
+    private void AddDocument(AthleteProfile athlete, string type, int daysOffset)
     {
         var fileName = $"{FilePrefix}{Guid.NewGuid():N}.pdf";
         WriteFile("documents", fileName, PlaceholderPdf($"{type} - {athlete.StudentNumber}"));
@@ -721,7 +781,7 @@ public class TestDataSeeder
             Title = $"{type} 2026-2027",
             DocumentName = $"{type.Replace(' ', '_')}.pdf",
             FileUrl = $"documents/{fileName}",
-            Status = status,
+            Status = "APPROVED",
             UploadedAt = DateTime.UtcNow.AddDays(daysOffset)
         });
     }

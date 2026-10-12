@@ -63,6 +63,20 @@ export function useApiData(endpoint, token, { initialData = null } = {}) {
   }
 }
 
+/**
+ * Loads an athlete's records and chart data. The page that owns it can call `reload` after
+ * recording a new result, and reuse `records` (e.g. for the coach's saved-workout suggestions).
+ */
+export function usePerformanceData(athleteId, token) {
+  const [range, setRange] = useState('overall')
+  const records = useApiData(athleteId ? `/api/Performance/athlete/${athleteId}` : null, token)
+  const trend = useApiData(athleteId ? `/api/Performance/athlete/${athleteId}/trend?timeRange=${range}` : null, token)
+  const { reload: reloadRecords } = records
+  const { reload: reloadTrend } = trend
+  const reload = useCallback(() => { reloadRecords(); reloadTrend() }, [reloadRecords, reloadTrend])
+  return { records, trend, range, setRange, reload }
+}
+
 /** Polls the signed-in user's unread notification count. */
 export function useUnreadNotifications(token) {
   const [count, setCount] = useState(0)

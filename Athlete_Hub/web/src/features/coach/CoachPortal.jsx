@@ -239,11 +239,11 @@ export default function CoachPortal({ session, onLogout }) {
       roleLabel="Coach"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-        { key: 'athletes', label: 'My athletes', icon: 'users' },
+        { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard' },
+        { key: 'athletes', label: 'My athletes', shortLabel: 'Athletes', icon: 'users' },
         { key: 'schedule', label: 'Schedule', icon: 'calendar' },
         { key: 'attendance', label: 'Attendance', icon: 'clipboard' },
-        { key: 'performance', label: 'Performance', icon: 'chart' },
+        { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
         { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}

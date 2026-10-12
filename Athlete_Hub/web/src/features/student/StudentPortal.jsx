@@ -10,9 +10,10 @@ import Icon from '../../components/icons.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, PageHeader, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
+import MyPerformancePage from './MyPerformancePage.jsx'
 
-const VIEWS = ['dashboard', 'schedule', 'documents', 'portfolio', 'profile', 'notifications']
-const TITLES = { dashboard: 'Dashboard', schedule: 'Schedule', documents: 'Documents', portfolio: 'Portfolio', profile: 'Profile', notifications: 'Notifications' }
+const VIEWS = ['dashboard', 'schedule', 'performance', 'documents', 'portfolio', 'profile', 'notifications']
+const TITLES = { dashboard: 'Dashboard', schedule: 'Schedule', performance: 'Performance', documents: 'Documents', portfolio: 'Portfolio', profile: 'Profile', notifications: 'Notifications' }
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx']
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const DOCUMENT_TYPES = ['Medical Clearance', 'Consent Form', 'Enrollment Form', 'Athletic Eligibility Form', 'Other']
@@ -114,7 +115,8 @@ function StudentDashboard({ session, profile, onNavigate }) {
     .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`))
   const nextTraining = nextEvents.find((item) => item.type === 'TRAINING')
   const verified = (portfolio.data || []).filter((item) => ['VERIFIED', 'APPROVED'].includes(String(item.achievementStatus || item.verificationStatus).toUpperCase())).length
-  const pendingDocuments = (documents.data || []).filter((item) => item.documentType !== 'Achievement Evidence' && item.status === 'PENDING').length
+  const clearanceDocuments = (documents.data || []).filter((item) => item.documentType !== 'Achievement Evidence')
+  const hasMedicalClearance = clearanceDocuments.some((item) => item.documentType === 'Medical Clearance')
   // Records arrive newest first; the latest decision is what determines eligibility today.
   const records = evaluations.data?.records || []
   const latestDecision = records.find((item) => item.academicStatus !== 'PENDING')
@@ -138,7 +140,7 @@ function StudentDashboard({ session, profile, onNavigate }) {
         />
         <StatCard icon="calendar" label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" onClick={() => onNavigate('schedule')} />
         <StatCard icon="trophy" label="Verified achievements" value={verified} hint={`${(portfolio.data || []).length} submitted`} tone="warning" onClick={() => onNavigate('portfolio')} />
-        <StatCard icon="file" label="Documents in review" value={pendingDocuments} hint="Awaiting staff approval" tone="info" onClick={() => onNavigate('documents')} />
+        <StatCard icon="file" label="Documents on file" value={clearanceDocuments.length} hint={hasMedicalClearance ? 'Medical clearance uploaded' : 'Medical clearance not uploaded yet'} tone={hasMedicalClearance ? 'info' : 'warning'} onClick={() => onNavigate('documents')} />
       </div>
       <div className="dashboard-grid">
         <Card title="Coming up" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('schedule')}>Full schedule →</button>}>
@@ -188,7 +190,7 @@ function StudentDashboard({ session, profile, onNavigate }) {
                 </li>
               ))}
             </ul>
-          ) : <EmptyState icon="check" title="No decision yet" message="Your coach requests a Grade Evaluation from the Registrar each term." />}
+          ) : <EmptyState icon="check" title="No decision yet" message="The Director of Sports requests a Grade Evaluation from the Registrar each term." />}
         </Card>
       </div>
     </>
@@ -224,8 +226,8 @@ function DocumentsPage({ session }) {
       setFiles([])
       setForm({ ...form, title: '', description: '' })
       const count = files.length
-      setMessage('Documents uploaded and awaiting review.')
-      toast.success(`${count} file${count === 1 ? '' : 's'} uploaded. Staff will review ${count === 1 ? 'it' : 'them'} soon.`)
+      setMessage('Documents uploaded. Your coach and the Sports Director can now see them.')
+      toast.success(`${count} file${count === 1 ? '' : 's'} uploaded.`)
       reload()
     } catch (err) {
       setActionError(err.message)
@@ -251,7 +253,7 @@ function DocumentsPage({ session }) {
 
   return (
     <>
-      <PageHeader title="Documents" subtitle="Upload and track your clearance documents" />
+      <PageHeader title="Documents" subtitle="Keep your clearance and consent forms on file — no approval needed" />
       <div className="stack">
         <Card title="Upload documents">
           <form className="form-grid" onSubmit={upload}>
@@ -281,7 +283,6 @@ function DocumentsPage({ session }) {
                     {item.title && <small>File: {item.documentName}</small>}
                   </div>
                   <div className="row-actions">
-                    <StatusBadge status={item.status} />
                     <FileLink url={item.fileUrl} token={session.token} className="btn btn-ghost btn-sm">Open</FileLink>
                     <button className="btn btn-ghost btn-sm text-danger" type="button" onClick={() => setDeleting(item)}>Delete</button>
                   </div>
@@ -500,6 +501,7 @@ export default function StudentPortal({ session, onLogout }) {
       <Alert>{schedule.error}</Alert>
       <Card><CalendarView events={schedule.data || []} loading={schedule.loading} /></Card>
     </>,
+    performance: <MyPerformancePage session={session} profile={profile.data} />,
     documents: <DocumentsPage session={session} />,
     portfolio: <PortfolioPage session={session} profile={profile.data} />,
     profile: <ProfilePage key={profile.data ? 'loaded' : 'loading'} session={session} profile={profile.data} onSaved={profile.reload} />,
@@ -512,9 +514,10 @@ export default function StudentPortal({ session, onLogout }) {
       roleLabel="Student-athlete"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+        { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard' },
         { key: 'schedule', label: 'Schedule', icon: 'calendar' },
-        { key: 'documents', label: 'Documents', icon: 'file' },
+        { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
+        { key: 'documents', label: 'Documents', shortLabel: 'Docs', icon: 'file' },
         { key: 'portfolio', label: 'Portfolio', icon: 'trophy' },
         { key: 'profile', label: 'Profile', icon: 'user' },
         { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },

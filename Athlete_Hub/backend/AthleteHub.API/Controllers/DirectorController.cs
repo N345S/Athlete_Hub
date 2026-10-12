@@ -202,11 +202,30 @@ public class DirectorController : ControllerBase
         };
 
         _context.TeamMembers.Add(teamMember);
+
+        // Reassigning: the athlete leaves every other active team (their history on those teams is kept).
+        var movedFrom = new List<string>();
+        if (request.MoveFromOtherTeams)
+        {
+            var otherMemberships = await _context.TeamMembers
+                .Include(tm => tm.Team)
+                .Where(tm => tm.AthleteId == athleteId && tm.DateLeft == null && tm.TeamId != team.TeamId)
+                .ToListAsync();
+            foreach (var membership in otherMemberships)
+            {
+                membership.DateLeft = DateTime.UtcNow;
+                movedFrom.Add(membership.Team.TeamName);
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
-            message = $"Athlete assigned to coach '{coach.User.FirstName} {coach.User.LastName}' on team '{team.TeamName}'.",
+            message = movedFrom.Count > 0
+                ? $"Athlete moved from '{string.Join("', '", movedFrom)}' to team '{team.TeamName}'."
+                : $"Athlete assigned to coach '{coach.User.FirstName} {coach.User.LastName}' on team '{team.TeamName}'.",
+            movedFrom,
             teamId = team.TeamId,
             teamName = team.TeamName,
             athleteId = athlete.AthleteId,
@@ -306,7 +325,18 @@ public class DirectorController : ControllerBase
                         teamName = tm.Team.TeamName,
                         tm.DateJoined
                     })
-                    .FirstOrDefault()
+                    .FirstOrDefault(),
+                // Every active team, including teams without a coach, so "unassigned" means no team at all.
+                currentTeams = a.TeamMembers
+                    .Where(tm => tm.DateLeft == null)
+                    .Select(tm => new
+                    {
+                        tm.TeamId,
+                        teamName = tm.Team.TeamName,
+                        coachId = tm.Team.CoachId,
+                        coachName = tm.Team.Coach != null ? tm.Team.Coach.User.FirstName + " " + tm.Team.Coach.User.LastName : null
+                    })
+                    .ToList()
             })
             .OrderBy(a => a.lastName)
             .ThenBy(a => a.firstName)
@@ -319,4 +349,7 @@ public class DirectorController : ControllerBase
 public class AssignAthleteRequest
 {
     public int AthleteId { get; set; }
+
+    /// <summary>When true, the athlete leaves their other active teams (a move rather than a second team).</summary>
+    public bool MoveFromOtherTeams { get; set; }
 }

@@ -1,0 +1,22 @@
+{
+  // Terminal > Run Task... > "Athlete-Hub: Run on Android"
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Athlete-Hub: Run on Android",
+      "detail": "Starts the API and phone web app, opens the Android emulator (or a USB phone), and loads Athlete-Hub",
+      "type": "shell",
+      "command": "npm run android",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Athlete-Hub: Run on my phone (USB)",
+      "detail": "Same as above but only uses the phone plugged into this laptop (USB debugging on); never opens the emulator",
+      "type": "shell",
+      "command": "npm run android:phone",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -26,7 +26,7 @@ Create `web/.env.local`:
 # Always on in `npm run dev`; set this only for a production build used in testing.
 VITE_SHOW_TEST_ACCOUNTS=true
 
-# Adds a "Give feedback" link to every portal's sidebar (e.g. a Google Form with the SUS questions below).
+# Adds a "Give feedback" link to every portal's sidebar (and the phone account sheet) (e.g. a Google Form with the SUS questions below).
 VITE_FEEDBACK_URL=https://forms.gle/your-form-id
 ```
 
@@ -124,11 +124,12 @@ Record: **Completed** (unaided / with assist / failed), **time**, **errors** (wr
 |---|---|---|---|
 | A1 | "Sign in to Athlete-Hub with the account on your card." | Dashboard is shown. | 1 min |
 | A2 | "Find out when and where your next training session is." | Participant states the date, time, and location (dashboard card or Schedule → event details). | 1 min |
-| A3 | "Upload your medical clearance (use the PDF on the Desktop)." | Document appears in **My documents** as *Pending*; success message shown. | 2 min |
+| A3 | "Upload your medical clearance (use the PDF on the Desktop)." | Document appears in **My documents**; success message shown (no approval needed). | 2 min |
 | A4 | "Add your latest achievement — 1st place at the Intramurals — with the photo as proof." | Item appears under **Achievements & awards** as *Pending*. | 3 min |
 | A5 | "Update your phone number to 0917 000 1234." | Profile shows the new number; "Profile saved" message. | 1 min |
 | A6 | "Check whether you are academically eligible this semester." | Participant reads the eligibility status from the dashboard. | 1 min |
 | A7 | "Read your unread notifications, then mark them all as read." | Bell badge clears. | 1 min |
+| A8 | "Did your vertical jump improve in your latest training session? What is your best sprint time?" | Participant opens **Performance** and reads the change (▲/▼) and the best value. | 2 min |
 
 ### Coach (`maria.santos`)
 
@@ -137,9 +138,8 @@ Record: **Completed** (unaided / with assist / failed), **time**, **errors** (wr
 | C1 | "Request a team practice for your team next Tuesday and Thursday, 4–6 PM, at the gym." | Request shows *Awaiting approval* in the schedule. | 3 min |
 | C2 | "Record attendance for the most recent training: everyone was present except one athlete who was late." | All active athletes marked; the late athlete is *Late*. | 3 min |
 | C3 | "Juan Dela Cruz submitted a new achievement. Review and verify it." | Item status becomes *Verified*. | 2 min |
-| C4 | "Request a Grade Evaluation for Daniel Ramos for the Summer term of 2026-2027." | Request appears as *Under review / Pending* on his profile. | 2 min |
-| C5 | "Record a vertical jump of 57 for Juan from the latest session, and see his progress." | New record in the table and on the chart. | 3 min |
-| C6 | "Which of your athletes need attention, and why?" | Participant names at least one athlete and the reason (dashboard). | 1 min |
+| C4 | "Record a vertical jump of 57 for Juan from the latest session, and see his progress." | New record in the table and on the chart. | 3 min |
+| C5 | "Which of your athletes need attention, and why?" | Participant names at least one athlete and the reason (dashboard). | 1 min |
 
 ### Sports Director (`elena.navarro`)
 
@@ -149,6 +149,7 @@ Record: **Completed** (unaided / with assist / failed), **time**, **errors** (wr
 | D2 | "Publish a competition: Inter-School Meet, two Saturdays from now, 8 AM, City Stadium." | Event appears on the calendar. | 3 min |
 | D3 | "Assign Bea Lim to Coach Maria Santos's team." | Bea appears in Maria's roster. | 3 min |
 | D4 | "How many athletes are currently ineligible? Open one of their profiles." | Participant gives the number and opens a profile. | 2 min |
+| D5 | "Request a Grade Evaluation for Daniel Ramos for the Summer term of 2026-2027." | Request appears as *Under review / Pending* on his profile (All athletes → View profile). | 2 min |
 
 ### Registrar (`grace.tan`)
 
@@ -232,7 +233,7 @@ Report the mean, standard deviation, and per-role means.
 
 ## 7. Resetting between participants
 
-1. Sign out (sidebar → **Sign out**).
+1. Sign out (sidebar → **Sign out**; on a phone: tap your initials at the top right → **Sign out**).
 2. Re-seed: `dotnet run -- --seed-test-data` in `backend/AthleteHub.API` (about 10 seconds).
 3. Clear the browser's site data for `localhost:5173` so the "Getting started" list and saved sign-in reset.
 

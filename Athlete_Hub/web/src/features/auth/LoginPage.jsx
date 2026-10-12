@@ -7,6 +7,8 @@ import InstallApp from '../../components/InstallApp.jsx'
 // and user-testing sessions. Hidden in production builds unless VITE_SHOW_TEST_ACCOUNTS=true.
 const SHOW_TEST_ACCOUNTS = import.meta.env.DEV || import.meta.env.VITE_SHOW_TEST_ACCOUNTS === 'true'
 const TEST_PASSWORD = 'Seed123!'
+// Phones open the keyboard for an autofocused field, covering the page before people have read it.
+const TOUCH_SCREEN = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
 const TEST_ACCOUNTS = [
   { role: 'Student-athlete', name: 'Juan Dela Cruz', email: 'juan.delacruz@seed.athletehub.test' },
   { role: 'Coach', name: 'Maria Santos', email: 'maria.santos@seed.athletehub.test' },
@@ -103,7 +105,7 @@ export default function LoginPage({ notice, onSignedIn }) {
                 autoComplete="email"
                 aria-invalid={invalid.email || undefined}
                 required
-                autoFocus
+                autoFocus={!TOUCH_SCREEN}
               />
             </label>
             <label className="field">

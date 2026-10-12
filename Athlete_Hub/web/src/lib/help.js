@@ -22,7 +22,7 @@ export const HELP = {
         'Select a summary card (for example “Next training”) to open that page.',
         'Review “Coming up” for your next approved training and events.',
       ],
-      tips: ['Academic eligibility is decided by the Registrar after your coach requests a Grade Evaluation. You do not need to upload grades yourself.'],
+      tips: ['Academic eligibility is decided by the Registrar after the Director of Sports requests a Grade Evaluation. You do not need to upload grades yourself.'],
     },
     schedule: {
       title: 'Schedule',
@@ -35,13 +35,24 @@ export const HELP = {
       ],
       tips: ['Use the coloured filter buttons to show or hide training, sports events, and competitions.'],
     },
+    performance: {
+      title: 'My performance',
+      intro: 'Your results from each training session, recorded by your coach.',
+      steps: [
+        'Check the summary cards for how many sessions are recorded and how many workouts improved last time.',
+        'Use the chart’s time-range buttons to see all time, the last 30 days, or the last 7 days.',
+        'Under “Session by session”, each result shows ▲ (better) or ▼ (worse) compared with your previous result for that workout. “PB” marks a personal best.',
+        'Select a workout above the session list to follow only that workout.',
+      ],
+      tips: ['For timed runs such as sprints, a lower time counts as an improvement.', 'Results appear after your coach records them following an approved session.'],
+    },
     documents: {
       title: 'Documents',
-      intro: 'Upload clearance and consent forms for staff to review.',
+      intro: 'Keep your clearance and consent forms on file for your coach and the Sports Director.',
       steps: [
         'Choose the document type.',
         'Drag files into the box, or click it to browse. You can add several files.',
-        'Select “Upload”. Each document shows “Pending” until staff review it.',
+        'Select “Upload”. The document is filed right away — no approval is needed — and your coach and the Sports Director can open it.',
       ],
       tips: ['Accepted: PDF, PNG, JPG, DOC, DOCX up to 10 MB each.', 'Files marked in red cannot be uploaded — remove them first.'],
     },
@@ -81,15 +92,15 @@ export const HELP = {
       intro: 'Every student-athlete on the teams you coach.',
       steps: [
         'Search by name, student ID, team, or sport.',
-        'Select “View profile” to request a Grade Evaluation, verify portfolio items, and see documents.',
+        'Select “View profile” to verify portfolio items, see documents, and check eligibility.',
       ],
-      tips: ['Request a Grade Evaluation once per term; the Registrar records the eligibility decision.'],
+      tips: ['The Director of Sports requests Grade Evaluations; you are notified when one is requested and when the Registrar decides.'],
     },
     schedule: {
       title: 'Schedule',
       intro: 'Your training sessions plus the Director’s sports events and competitions.',
       steps: [
-        'Select “Request training session”, choose a team, add one or more dates, and submit.',
+        'Select “Request training session”, choose a team, then tap each date on the calendar (or use “Repeat weekly” for a regular schedule) and submit.',
         'New sessions show “Awaiting approval” until the Sports Director approves them.',
         'To withdraw a pending request, open it in the calendar and select “Cancel request”.',
       ],
@@ -112,6 +123,7 @@ export const HELP = {
         'Select an athlete.',
         'Select “Record performance”, enter the workout, value, and unit, and choose the training session.',
         'Use the time-range buttons to change the chart.',
+        'Under “Session by session”, ▲ means better and ▼ means worse than the athlete’s previous result; “PB” marks a personal best.',
       ],
       tips: ['Performance can only be recorded for approved sessions that have already ended.'],
     },
@@ -131,28 +143,42 @@ export const HELP = {
     coaches: {
       title: 'Coaches',
       intro: 'Coach accounts, their teams, and their athletes.',
-      steps: ['Select “View coach” to see their roster.', 'Use “Assign athlete” to add an athlete to the coach’s active team, or “Unassign” to remove one.'],
-      tips: ['A coach without a team cannot be assigned athletes.'],
+      steps: [
+        'Select “View coach” to see their roster.',
+        'Select “Assign athletes”. Athletes with no team are shown first — tap each one you want to add.',
+        'To reassign someone, switch to “On another team”, select them, and choose “Move” (they leave their old team) or “Add as an extra team”.',
+        'Use “Unassign” in the roster to remove an athlete from the team.',
+      ],
+      tips: ['You can select several athletes and assign them in one step.', 'A coach without an active team cannot be assigned athletes.'],
     },
     athletes: {
       title: 'All athletes',
-      intro: 'Every registered student-athlete (view only).',
-      steps: ['Search for an athlete.', 'Select “View profile” to see eligibility, portfolio, and documents.'],
-      tips: ['Coaches record athlete data; directors monitor it.'],
+      intro: 'Every registered student-athlete, and their academic eligibility.',
+      steps: [
+        'Search for an athlete.',
+        'Select “View profile” to see eligibility, portfolio, and documents.',
+        'Under “Academic eligibility”, select “Request evaluation”, enter the academic year and semester, and select “Send request”.',
+      ],
+      tips: ['Request a Grade Evaluation once per term. The Registrar and the athlete’s coach are notified, and you are told when the decision is made.'],
     },
     schedule: {
       title: 'Schedule',
       intro: 'Publish events and approve coaches’ training sessions.',
       steps: [
         'Review pending training sessions at the top of the page.',
-        'Select “Add sports event” and choose one or more dates.',
+        'Select “Add sports event” then tap each date on the calendar, or use “Repeat weekly” for a recurring event.',
         'Open an event in the calendar to delete it.',
       ],
     },
     performance: {
       title: 'Performance',
       intro: 'View any athlete’s performance records and trends.',
-      steps: ['Select an athlete.', 'Use the time-range buttons to change the chart.'],
+      steps: [
+        'Select an athlete.',
+        'Use the time-range buttons to change the chart.',
+        'Under “Session by session”, ▲ means better and ▼ means worse than the athlete’s previous result; “PB” marks a personal best.',
+      ],
+      tips: ['Athletes see this same page for their own results.'],
     },
     notifications: NOTIFICATIONS,
   },
@@ -160,12 +186,12 @@ export const HELP = {
   registrar: {
     dashboard: {
       title: 'Registrar dashboard',
-      intro: 'Grade Evaluation requests from coaches and your eligibility decisions.',
+      intro: 'Grade Evaluation requests from the Director of Sports and your eligibility decisions.',
       steps: ['“Ready for decision” lists requests that already have a PDF. Select “Review”.', 'Requests still needing a PDF are under “Eligibility requests”.'],
     },
     requests: {
       title: 'Eligibility requests',
-      intro: 'Coach requests waiting for the official Grade Evaluation or your decision.',
+      intro: 'Director of Sports requests waiting for the official Grade Evaluation or your decision.',
       steps: [
         'Select “Upload PDF” and attach the Registrar-issued Grade Evaluation.',
         'Choose Eligible or Ineligible. Ineligible needs at least one reason.',

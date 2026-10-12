@@ -33,7 +33,9 @@ public class DocumentStorage
     }
 
     /// <summary>
-    /// Writes each file to private storage and builds (unsaved) PENDING Document rows for them.
+    /// Writes each file to private storage and builds (unsaved) Document rows for them. Clearance
+    /// documents are filed as soon as they are uploaded (no approval step); achievement evidence stays
+    /// PENDING because it is reviewed with the athlete's portfolio item.
     /// </summary>
     public async Task<List<Document>> CreateDocumentsAsync(
         IEnumerable<IFormFile> files, int athleteId, string documentType, string? title, string? description, int? achievementId)
@@ -50,7 +52,7 @@ public class DocumentStorage
                 Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
                 DocumentName = Path.GetFileName(file.FileName),
                 FileUrl = await SaveAsync(file),
-                Status = "PENDING",
+                Status = achievementId.HasValue ? "PENDING" : "APPROVED",
                 UploadedAt = DateTime.UtcNow
             });
         }

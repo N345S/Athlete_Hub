@@ -24,6 +24,14 @@ Athlete-Hub to their home screen. The service worker caches only the app's own f
 and is registered only in production builds served over https or localhost. Full installation from a phone
 needs https; see "Testing on phones and tablets" in the user-testing guide.
 
+## Phone layout
+
+On screens up to 760px wide the portals switch to an app-style layout instead of a shrunken website:
+a maroon app bar (logo, help, notifications, avatar → account sheet), a bottom tab bar (nav items' optional
+`shortLabel` is used there), dialogs that slide up as bottom sheets, action menus shown as action sheets,
+and tables shown as lists of cards. Tables need no extra markup: `AppLayout` labels each cell with its
+column header. The styles are in the "Phone layout" section at the end of `src/styles.css`.
+
 ## Settings (`.env.local`)
 
 | Variable | Purpose |

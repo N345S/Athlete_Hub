@@ -63,8 +63,9 @@ public class EligibilityController : ControllerBase
         return Ok(new { evaluations = await MapEvaluationsAsync(records) });
     }
 
+    // The Director of Sports requests Grade Evaluations; coaches only see the resulting decisions.
     [HttpPost("request")]
-    [Authorize(Roles = "COACH")]
+    [Authorize(Roles = "DIRECTOR")]
     public async Task<IActionResult> RequestGradeEvaluation(GradeEvaluationRequest request)
     {
         if (!await CanViewAthleteAsync(request.AthleteId)) return Forbid();
@@ -111,6 +112,11 @@ public class EligibilityController : ControllerBase
                 await _notifications.ActiveUserIdsInRoleAsync("REGISTRAR"),
                 "Grade evaluation requested",
                 $"A grade evaluation was requested for {record.Athlete.User.FirstName} {record.Athlete.User.LastName} ({term.AcademicYear}, {term.Semester}).",
+                "GRADE_EVALUATION_REQUEST");
+            _notifications.Notify(
+                await _notifications.CoachUserIdsForAthleteAsync(record.AthleteId),
+                "Grade evaluation requested",
+                $"The Director of Sports requested a grade evaluation for {record.Athlete.User.FirstName} {record.Athlete.User.LastName} ({term.AcademicYear}, {term.Semester}). You will be notified of the Registrar's decision.",
                 "GRADE_EVALUATION_REQUEST");
             await _context.SaveChangesAsync();
         }
@@ -264,7 +270,7 @@ public class EligibilityController : ControllerBase
         record.ReviewedAt = DateTime.UtcNow;
         record.EvaluatedAt = record.ReviewedAt;
 
-        // The athlete's coaches (and whoever requested it) need the decision to plan their roster.
+        // The athlete's coaches need the decision to plan their roster; the requesting director is told too.
         var recipients = await _notifications.CoachUserIdsForAthleteAsync(record.AthleteId);
         if (record.RequestedBy.HasValue) recipients.Add(record.RequestedBy.Value);
         var athleteName = $"{record.Athlete.User.FirstName} {record.Athlete.User.LastName}";

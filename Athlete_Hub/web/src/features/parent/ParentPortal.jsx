@@ -197,8 +197,8 @@ export default function ParentPortal({ session, onLogout }) {
       roleLabel="Parent"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-        { key: 'training', label: 'Training sessions', icon: 'calendar' },
+        { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard' },
+        { key: 'training', label: 'Training sessions', shortLabel: 'Training', icon: 'calendar' },
         { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}

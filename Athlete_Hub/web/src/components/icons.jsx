@@ -24,6 +24,10 @@ const PATHS = {
   circle: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20',
   arrowRight: 'M5 12h14M12 5l7 7-7 7',
   download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
+  help: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01',
+  chevronRight: 'M9 18l6-6-6-6',
+  chevronLeft: 'M15 18l-6-6 6-6',
 }
 
 export default function Icon({ name, size = 18, className = '' }) {

@@ -203,7 +203,7 @@ export default function RegistrarPortal({ session, onLogout }) {
     content = <ReviewPage key={reviewing.eligibilityId} evaluation={reviewing} session={session} onBack={() => setReviewingId(null)} onUpdated={updateEvaluation} />
   } else if (view === 'requests') {
     content = <>
-      <PageHeader title="Eligibility requests" subtitle="Coach requests waiting for the official Grade Evaluation or your decision" />
+      <PageHeader title="Eligibility requests" subtitle="Director of Sports requests waiting for the official Grade Evaluation or your decision" />
       {searchBar}
       <Card><EvaluationTable items={pending.filter(searchFilter)} emptyTitle="No pending requests" actionLabel={(item) => item.document ? 'Review' : 'Upload PDF'} onOpen={(item) => setReviewingId(item.eligibilityId)} /></Card>
     </>
@@ -266,8 +266,8 @@ export default function RegistrarPortal({ session, onLogout }) {
       roleLabel="Registrar"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-        { key: 'requests', label: 'Eligibility requests', icon: 'inbox', badge: pending.length },
+        { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard' },
+        { key: 'requests', label: 'Eligibility requests', shortLabel: 'Requests', icon: 'inbox', badge: pending.length },
         { key: 'evaluations', label: 'Decisions', icon: 'check' },
         { key: 'students', label: 'Students', icon: 'users' },
         { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
