@@ -228,6 +228,15 @@ app.UseAuthorization();
 // Map controller routes
 app.MapControllers();
 
+// Say which database is used (never the password), so a hosted deployment that did not receive its
+// connection string is obvious in the log instead of failing with a bare "connection refused".
+var database = new MySql.Data.MySqlClient.MySqlConnectionStringBuilder(connectionString);
+app.Logger.LogInformation("Database: {Server}:{Port}/{Database} as {User}", database.Server, database.Port, database.Database, database.UserID);
+if (database.Password == "__SET_IN_USER_SECRETS__")
+{
+    app.Logger.LogCritical("The database password is the placeholder from appsettings.json: ConnectionStrings__DefaultConnection is not set for this environment.");
+}
+
 // Apply pending schema changes, including performance measurement units.
 using (var scope = app.Services.CreateScope())
 {
