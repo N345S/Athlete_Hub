@@ -18,6 +18,21 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration
     .GetConnectionString("DefaultConnection");
 
+// Hosting platforms show the database as one URL (mysql://user:password@host:port/database); accept it as is.
+if (connectionString != null && connectionString.StartsWith("mysql://", StringComparison.OrdinalIgnoreCase))
+{
+    var url = new Uri(connectionString.Trim());
+    var credentials = url.UserInfo.Split(':', 2);
+    connectionString = new MySql.Data.MySqlClient.MySqlConnectionStringBuilder
+    {
+        Server = url.Host,
+        Port = (uint)(url.IsDefaultPort ? 3306 : url.Port),
+        Database = Uri.UnescapeDataString(url.AbsolutePath.TrimStart('/')),
+        UserID = Uri.UnescapeDataString(credentials[0]),
+        Password = credentials.Length > 1 ? Uri.UnescapeDataString(credentials[1]) : ""
+    }.ConnectionString;
+}
+
 builder.Services.AddDbContext<AthleteHubDbContext>(options =>
     options.UseMySQL(connectionString!));
 
