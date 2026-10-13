@@ -93,6 +93,8 @@ Password for every seeded account: **`Seed123!`** (full list in [`database/TEST_
 
 | Role | Account | Why this account |
 |---|---|---|
+| Coach (easy sign-in) | `coach1@athletehub.test`, `coach2@athletehub.test` | Each leads their own test team with one student and a month of training history |
+| Student-athlete (easy sign-in) | `student1@athletehub.test`, `student2@athletehub.test` | Coached by coach1 / coach2 respectively |
 | Student-athlete | `juan.delacruz@seed.athletehub.test` | Eligible, has upcoming training, verified + pending achievements |
 | Student-athlete (new) | `bea.lim@seed.athletehub.test` | No team, mostly empty — tests first-time experience and the "Getting started" list |
 | Coach | `maria.santos@seed.athletehub.test` | Blue Eagles Basketball; pending portfolio items, attendance to record |

@@ -13,8 +13,10 @@ Both commands exit after running and refuse to run outside the Development envir
 identified by the `@seed.athletehub.test` email domain and the `[Seed]` prefix on team and event names, so
 removal never touches real data. Placeholder PDFs are written to `private-uploads/` with a `seed-` prefix.
 
-Every seeded account uses the password **`Seed123!`**. Emails are `first.last@seed.athletehub.test`.
-The seeder creates **104 accounts** — 1 director, 5 admins, 5 registrars, 10 coaches, 79 athletes, 4 parents — and writes
+Every seeded account uses the password **`Seed123!`**. Emails are `first.last@seed.athletehub.test`, except four
+short ones for hands-on testing: `coach1@athletehub.test` / `coach2@athletehub.test`, each leading their own team with
+`student1@athletehub.test` / `student2@athletehub.test`.
+The seeder creates **108 accounts** — 1 director, 5 admins, 5 registrars, 12 coaches, 81 athletes, 4 parents — and writes
 the complete list with each account's status and scenario to [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md).
 
 ## Staff

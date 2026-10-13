@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore;
 namespace AthleteHub.API.Data;
 
 /// <summary>
-/// Development-only test data: 104 sign-in-ready accounts (1 director, 5 admins, 5 registrars, 10 coaches,
-/// 79 athletes, 4 parents) spread across eight teams, covering active, suspended, inactive, quit, transferred,
+/// Development-only test data: 108 sign-in-ready accounts (1 director, 5 admins, 5 registrars, 12 coaches,
+/// 81 athletes, 4 parents) spread across ten teams, covering active, suspended, inactive, quit, transferred,
 /// unassigned, and multi-sport athletes, every eligibility outcome, approval workflows in each state, and
 /// parents linked to one child, to two children, or to none.
 ///
@@ -100,7 +100,7 @@ public class TestDataSeeder
 
     public async Task RemoveAsync()
     {
-        var userIds = await _context.Users.Where(user => user.Email.EndsWith(EmailDomain)).Select(user => user.UserId).ToListAsync();
+        var userIds = await _context.Users.Where(user => user.Email.EndsWith(EmailDomain) || EasyEmails.Contains(user.Email)).Select(user => user.UserId).ToListAsync();
         var athleteIds = await _context.AthleteProfiles.Where(athlete => userIds.Contains(athlete.UserId)).Select(athlete => athlete.AthleteId).ToListAsync();
         var coachIds = await _context.CoachProfiles.Where(coach => userIds.Contains(coach.UserId)).Select(coach => coach.CoachId).ToListAsync();
         var teamIds = await _context.Teams.Where(team => team.TeamName.StartsWith(Prefix)).Select(team => team.TeamId).ToListAsync();
@@ -218,6 +218,9 @@ public class TestDataSeeder
 
         // ---------------- Generated athletes, spread evenly across the active teams ----------------
         await SeedGeneratedAthletesAsync(activeTeams);
+
+        // ---------------- Easy-to-type accounts for hands-on testing ----------------
+        await CreateEasyAccountsAsync();
 
         // ---------------- Schedules ----------------
         _context.Schedules.AddRange(
@@ -450,9 +453,9 @@ public class TestDataSeeder
     private static string EmailFor(string firstName, string lastName) =>
         $"{firstName}.{lastName.Replace(" ", string.Empty)}".ToLowerInvariant() + EmailDomain;
 
-    private User NewUser(string role, string? universityId, string firstName, string lastName, string status)
+    private User NewUser(string role, string? universityId, string firstName, string lastName, string status, string? email = null)
     {
-        var email = EmailFor(firstName, lastName);
+        email ??= EmailFor(firstName, lastName);
         _usedEmails.Add(email);
         return new User
         {
@@ -494,6 +497,57 @@ public class TestDataSeeder
         var created = await CreatePlannedParentsAsync(skipExisting: true);
         await transaction.CommitAsync();
         Console.WriteLine($"Added {created.Count} parent account(s). Password for each: {Password}");
+    }
+
+    /// <summary>Short sign-ins for hands-on testing: two coaches, each with their own team and one student.</summary>
+    private static readonly string[] EasyEmails =
+        ["coach1@athletehub.test", "coach2@athletehub.test", "student1@athletehub.test", "student2@athletehub.test"];
+
+    /// <summary>
+    /// Adds the easy test accounts to a database that already has seed data. Like <see cref="SeedParentsAsync"/>,
+    /// nothing is removed, so testing progress is kept; if any of the accounts exists, nothing is added.
+    /// </summary>
+    public async Task SeedEasyAccountsAsync()
+    {
+        if (await _context.Users.AnyAsync(user => EasyEmails.Contains(user.Email))) return;
+
+        _roles = await _context.Roles.ToDictionaryAsync(role => role.RoleName, role => role.RoleId);
+        _director = await _context.Users.FirstAsync(user => user.Role.RoleName == "DIRECTOR" && user.AccountStatus == "ACTIVE");
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await CreateEasyAccountsAsync();
+        await transaction.CommitAsync();
+        Console.WriteLine($"Added the easy test accounts ({string.Join(", ", EasyEmails)}). Password for each: {Password}");
+    }
+
+    private async Task CreateEasyAccountsAsync()
+    {
+        await CreateEasyPairAsync(1, ("Rico", "Valdez"), ("Leo", "Castillo"), "Basketball", "Vertical Jump", "NUMBER", 42, 1);
+        await CreateEasyPairAsync(2, ("Tess", "Manalastas"), ("Mia", "Santiago"), "Volleyball", "Serve Accuracy", "PERCENT", 60, 2.5m);
+    }
+
+    /// <summary>coach{n} leads their own team with student{n} on it, with a month of training history between them.</summary>
+    private async Task CreateEasyPairAsync(int number, (string First, string Last) coachName, (string First, string Last) studentName,
+        string sport, string workout, string unit, decimal baseValue, decimal step)
+    {
+        var teamName = $"Test Team {number} {sport}";
+        var coach = await CreateCoachAsync($"TEST-C-00{number}", coachName.First, coachName.Last, "ACTIVE", sport, $"coach{number}@athletehub.test");
+        var plan = await PlanTeamAsync(sport, "TEAM", coach, teamName, workout, unit, baseValue, step);
+        var student = await CreateAthleteAsync($"TEST-A-00{number}", studentName.First, studentName.Last, "ACTIVE", "BS Information Technology", 2, $"student{number}@athletehub.test");
+
+        AddMember(plan, student, _today.AddMonths(-2));
+        for (var week = 4; week >= 1; week--)
+        {
+            plan.PastSessions.Add(AddSession(plan, $"Training — week {5 - week}", _today.AddDays(-7 * week), "APPROVED"));
+        }
+        AddSession(plan, "Team practice", _today.AddDays(2), "APPROVED");
+        AddSession(plan, "Extra conditioning (awaiting approval)", _today.AddDays(6), "PENDING");
+        await _context.SaveChangesAsync();
+
+        MarkAttendance(plan.PastSessions, student, ["PRESENT", "PRESENT", "LATE", "PRESENT"]);
+        AddPerformance(student, plan, plan.PastSessions, [baseValue, baseValue + step, baseValue + step * 2, baseValue + step * 3]);
+        await _context.SaveChangesAsync();
+        Describe(student, teamName, $"Easy sign-in for testing; coached by coach{number}@athletehub.test");
     }
 
     private async Task<Dictionary<string, User>> CreatePlannedParentsAsync(bool skipExisting)
@@ -543,18 +597,18 @@ public class TestDataSeeder
         return user;
     }
 
-    private async Task<CoachProfile> CreateCoachAsync(string universityId, string firstName, string lastName, string status, string specialization)
+    private async Task<CoachProfile> CreateCoachAsync(string universityId, string firstName, string lastName, string status, string specialization, string? email = null)
     {
-        var user = NewUser("COACH", universityId, firstName, lastName, status);
+        var user = NewUser("COACH", universityId, firstName, lastName, status, email);
         var coach = new CoachProfile { User = user, Specialization = specialization };
         _context.CoachProfiles.Add(coach);
         await _context.SaveChangesAsync();
         return coach;
     }
 
-    private async Task<AthleteProfile> CreateAthleteAsync(string universityId, string firstName, string lastName, string status, string course, int yearLevel)
+    private async Task<AthleteProfile> CreateAthleteAsync(string universityId, string firstName, string lastName, string status, string course, int yearLevel, string? email = null)
     {
-        var user = NewUser("ATHLETE", universityId, firstName, lastName, status);
+        var user = NewUser("ATHLETE", universityId, firstName, lastName, status, email);
         var athlete = new AthleteProfile
         {
             User = user,

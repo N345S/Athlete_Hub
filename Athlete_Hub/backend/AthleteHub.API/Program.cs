@@ -290,7 +290,8 @@ if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data") || 
 }
 
 // Hosted test deployments set App:SeedTestDataIfEmpty so the first start fills an empty database with the
-// test accounts (and their sample files in private-uploads). Later starts keep testers' changes.
+// test accounts (and their sample files in private-uploads). Later starts keep testers' changes and only add
+// the easy-to-type accounts (coach1@athletehub.test, ...) if they are missing.
 if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))
 {
     using var seedScope = app.Services.CreateScope();
@@ -299,6 +300,7 @@ if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))
         seedScope.ServiceProvider.GetRequiredService<AppClock>(),
         app.Environment);
     if (!await seeder.HasSeedDataAsync()) await seeder.SeedAsync();
+    else await seeder.SeedEasyAccountsAsync();
 }
 
 // ==========================================
