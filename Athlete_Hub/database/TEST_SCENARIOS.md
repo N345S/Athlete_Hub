@@ -16,6 +16,9 @@ removal never touches real data. Placeholder PDFs are written to `private-upload
 Every seeded account uses the password **`Seed123!`**. Emails are `first.last@seed.athletehub.test`, except short ones
 for hands-on testing: `coach1@athletehub.test` and `coach2@athletehub.test` each lead their own team of ten students,
 `student1@athletehub.test` … `student20@athletehub.test` (odd numbers play for coach1, even numbers for coach2).
+Each test team has eight weeks of approved training. Every student has a portfolio entry waiting for the coach's
+verification (some also have an earlier verified or rejected one), documents such as a medical clearance, and
+results in four workouts per sport; student7 and student8 have no results or documents yet.
 The seeder creates **126 accounts** — 1 director, 5 admins, 5 registrars, 12 coaches, 99 athletes, 4 parents — and writes
 the complete list with each account's status and scenario to [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md).
 

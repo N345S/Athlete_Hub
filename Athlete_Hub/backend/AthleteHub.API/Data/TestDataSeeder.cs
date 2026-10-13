@@ -27,6 +27,7 @@ public class TestDataSeeder
     private const string Prefix = "[Seed] ";
     private const string FilePrefix = "seed-";
     private const int GeneratedAthleteCount = 69;
+    private const string SeedAchievementDescription = "Seeded achievement with placeholder evidence.";
 
     private static readonly string[] FirstNames =
     [
@@ -503,10 +504,28 @@ public class TestDataSeeder
     /// Short sign-ins for hands-on testing: coach{n}@athletehub.test leads their own team. Students are
     /// student1 … student20@athletehub.test; odd numbers play for coach1, even numbers for coach2.
     /// </summary>
-    private static readonly (string First, string Last, string Sport, string Workout, string Unit, decimal BaseValue, decimal Step)[] EasyCoaches =
+    private static readonly (string First, string Last, string Sport, string Workout, string Unit, decimal BaseValue, decimal Step,
+        (string Workout, string Unit, decimal BaseValue, decimal Step)[] MoreWorkouts)[] EasyCoaches =
     [
-        ("Rico", "Valdez", "Basketball", "Vertical Jump", "NUMBER", 42, 1),
-        ("Tess", "Manalastas", "Volleyball", "Serve Accuracy", "PERCENT", 60, 2.5m),
+        ("Rico", "Valdez", "Basketball", "Vertical Jump", "NUMBER", 42, 1,
+            [("Sprint 20m", "SECONDS", 3.9m, -0.04m), ("Free Throws Made (of 10)", "NUMBER", 5, 0.4m), ("Push Ups", "NUMBER", 25, 1.5m)]),
+        ("Tess", "Manalastas", "Volleyball", "Serve Accuracy", "PERCENT", 60, 2.5m,
+            [("Passing Accuracy", "PERCENT", 64, 2), ("Block Jump", "NUMBER", 48, 0.8m), ("Sprint 20m", "SECONDS", 4.2m, -0.04m)]),
+    ];
+
+    private const string EasyRecentTitle = "Training — week";
+    private const string EasyPreSeasonTitle = "Pre-season training";
+
+    private static readonly (string Title, string Category)[] EasyAchievements =
+    [
+        ("{0} intramurals — 1st place", "Competition"),
+        ("Most Valuable Player, {0} invitational", "Award"),
+        ("Sports first aid certificate", "Certification"),
+        ("Team captain, 2026-2027", "Leadership"),
+        ("Dean's list — 1st semester", "Academic"),
+        ("Regional {0} qualifier", "Competition"),
+        ("Best defensive player, {0} league", "Award"),
+        ("Coaching clinic certificate", "Certification"),
     ];
 
     private static readonly (string First, string Last)[] EasyStudents =
@@ -533,39 +552,65 @@ public class TestDataSeeder
     ];
 
     /// <summary>
-    /// Adds the easy test accounts that are missing to a database that already has seed data. Like
-    /// <see cref="SeedParentsAsync"/>, nothing is removed or changed, so testing progress is kept.
+    /// Adds what is missing of the easy test accounts to a database that already has seed data: accounts that do
+    /// not exist yet, and (once, together with the pre-season sessions) the portfolio, documents, and extra results
+    /// of students seeded before those existed. Like <see cref="SeedParentsAsync"/>, nothing is removed or
+    /// changed, so testing progress is kept.
     /// </summary>
     public async Task SeedEasyAccountsAsync()
     {
-        var existing = await _context.Users.CountAsync(user => EasyEmails.Contains(user.Email));
-        if (existing == EasyEmails.Length) return;
-
         _roles = await _context.Roles.ToDictionaryAsync(role => role.RoleName, role => role.RoleId);
-        _director = await _context.Users.FirstAsync(user => user.Role.RoleName == "DIRECTOR" && user.AccountStatus == "ACTIVE");
+        var director = await _context.Users.FirstOrDefaultAsync(user => user.Role.RoleName == "DIRECTOR" && user.AccountStatus == "ACTIVE");
+        if (director == null)
+        {
+            Console.WriteLine("Easy test accounts were not checked: there is no active Sports Director to approve their training sessions.");
+            return;
+        }
+        _director = director;
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
-        await CreateEasyAccountsAsync();
+        var changed = await CreateEasyAccountsAsync();
         await transaction.CommitAsync();
-        Console.WriteLine($"Added {EasyEmails.Length - existing} easy test account(s) (coach1/coach2, student1 to student{EasyStudents.Length}@athletehub.test). Password for each: {Password}");
+        if (changed > 0)
+        {
+            Console.WriteLine($"Added or completed {changed} easy test student(s) (coach1/coach2, student1 to student{EasyStudents.Length}@athletehub.test). Password for each: {Password}");
+        }
     }
 
-    private async Task CreateEasyAccountsAsync()
+    /// <summary>Creates or completes the easy accounts; returns how many students were added or completed.</summary>
+    private async Task<int> CreateEasyAccountsAsync()
     {
+        var changed = 0;
         for (var number = 1; number <= EasyCoaches.Length; number++)
         {
             var plan = await GetOrCreateEasyTeamAsync(number);
+            var newHistory = await AddEasyPreSeasonAsync(plan);
+            plan.PastSessions.AddRange(await _context.TrainingSessions
+                .Where(session => session.TeamId == plan.Team.TeamId && (session.Title.StartsWith(EasyRecentTitle) || session.Title.StartsWith(EasyPreSeasonTitle)))
+                .OrderBy(session => session.TrainingDate)
+                .ToListAsync());
+
+            var submitted = 0;
             for (var student = number; student <= EasyStudents.Length; student += EasyCoaches.Length)
             {
-                await AddEasyStudentAsync(plan, number, student);
+                var pending = await AddEasyStudentAsync(plan, number, student, newHistory);
+                if (pending == null) continue;
+                changed++;
+                submitted += pending.Value;
+            }
+            if (submitted > 0)
+            {
+                Notify(plan.Coach.UserId, "New portfolio submissions", $"{submitted} of your athletes submitted achievements for verification.", "PORTFOLIO_SUBMITTED");
+                await _context.SaveChangesAsync();
             }
         }
+        return changed;
     }
 
     /// <summary>coach{n} and their team with a month of approved training, or the existing ones if already seeded.</summary>
     private async Task<TeamPlan> GetOrCreateEasyTeamAsync(int number)
     {
-        var (first, last, sport, workout, unit, baseValue, step) = EasyCoaches[number - 1];
+        var (first, last, sport, workout, unit, baseValue, step, _) = EasyCoaches[number - 1];
         var teamName = $"Test Team {number} {sport}";
         var email = $"coach{number}@athletehub.test";
 
@@ -574,19 +619,14 @@ public class TestDataSeeder
         if (coach != null && team != null)
         {
             var metric = await _context.PerformanceMetricDefinitions.FirstAsync(item => item.SportId == team.SportId);
-            var existing = new TeamPlan { Team = team, Coach = coach, Metric = metric, Workout = workout, Unit = unit, BaseValue = baseValue, Step = step };
-            existing.PastSessions.AddRange(await _context.TrainingSessions
-                .Where(session => session.TeamId == team.TeamId && session.ApprovalStatus == "APPROVED" && session.TrainingDate < _today)
-                .OrderBy(session => session.TrainingDate)
-                .ToListAsync());
-            return existing;
+            return new TeamPlan { Team = team, Coach = coach, Metric = metric, Workout = workout, Unit = unit, BaseValue = baseValue, Step = step };
         }
 
         coach ??= await CreateCoachAsync($"TEST-C-{number:D3}", first, last, "ACTIVE", sport, email);
         var plan = await PlanTeamAsync(sport, "TEAM", coach, teamName, workout, unit, baseValue, step);
         for (var week = 4; week >= 1; week--)
         {
-            plan.PastSessions.Add(AddSession(plan, $"Training — week {5 - week}", _today.AddDays(-7 * week), "APPROVED"));
+            AddSession(plan, $"{EasyRecentTitle} {5 - week}", _today.AddDays(-7 * week), "APPROVED");
         }
         AddSession(plan, "Team practice", _today.AddDays(2), "APPROVED");
         AddSession(plan, "Extra conditioning (awaiting approval)", _today.AddDays(6), "PENDING");
@@ -594,28 +634,154 @@ public class TestDataSeeder
         return plan;
     }
 
-    /// <summary>student{n} on coach{coachNumber}'s team, with attendance and results that differ from student to student.</summary>
-    private async Task AddEasyStudentAsync(TeamPlan plan, int coachNumber, int number)
+    /// <summary>Four approved weeks before the recent ones, for a longer performance trend; false if they already exist.</summary>
+    private async Task<bool> AddEasyPreSeasonAsync(TeamPlan plan)
     {
-        var email = $"student{number}@athletehub.test";
-        if (await _context.Users.AnyAsync(user => user.Email == email)) return;
+        var teamId = plan.Team.TeamId;
+        if (await _context.TrainingSessions.AnyAsync(session => session.TeamId == teamId && session.Title.StartsWith(EasyPreSeasonTitle))) return false;
+        var firstRecent = await _context.TrainingSessions
+            .Where(session => session.TeamId == teamId && session.Title.StartsWith(EasyRecentTitle))
+            .OrderBy(session => session.TrainingDate)
+            .FirstOrDefaultAsync();
+        if (firstRecent == null) return false;
 
-        var (first, last) = EasyStudents[number - 1];
-        var position = (number - 1) / EasyCoaches.Length;
-        var student = await CreateAthleteAsync($"TEST-A-{number:D3}", first, last, "ACTIVE", Courses[number % Courses.Length], 1 + number % 4, email);
-
-        AddMember(plan, student, _today.AddMonths(-2));
-        await _context.SaveChangesAsync();
-
-        MarkAttendance(plan.PastSessions, student, EasyAttendance[position % EasyAttendance.Length]);
-        // Every fourth student has no results yet, so the coach can record the first ones.
-        if (position % 4 != 3)
+        for (var week = 4; week >= 1; week--)
         {
-            var start = plan.BaseValue + plan.Step * (position % 5);
-            AddPerformance(student, plan, plan.PastSessions, [.. Enumerable.Range(0, plan.PastSessions.Count).Select(step => start + plan.Step * step)]);
+            AddSession(plan, $"{EasyPreSeasonTitle} {5 - week}", firstRecent.TrainingDate.AddDays(-7 * week), "APPROVED");
         }
         await _context.SaveChangesAsync();
-        Describe(student, plan.Team.TeamName.Replace(Prefix, string.Empty), $"Easy sign-in for testing; coached by coach{coachNumber}@athletehub.test");
+        return true;
+    }
+
+    /// <summary>
+    /// student{n} on coach{coachNumber}'s team with attendance, results in several workouts, portfolio entries, and
+    /// documents that differ from student to student. An existing student is only completed together with the
+    /// pre-season sessions (<paramref name="newHistory"/>), so later starts never touch testers' changes.
+    /// Returns the number of portfolio entries now waiting for the coach, or null if nothing was done.
+    /// </summary>
+    private async Task<int?> AddEasyStudentAsync(TeamPlan plan, int coachNumber, int number, bool newHistory)
+    {
+        var email = $"student{number}@athletehub.test";
+        var position = (number - 1) / EasyCoaches.Length;
+        var student = await _context.AthleteProfiles.Include(profile => profile.User).FirstOrDefaultAsync(profile => profile.User.Email == email);
+        if (student == null)
+        {
+            var (first, last) = EasyStudents[number - 1];
+            student = await CreateAthleteAsync($"TEST-A-{number:D3}", first, last, "ACTIVE", Courses[number % Courses.Length], 1 + number % 4, email);
+            AddMember(plan, student, _today.AddMonths(-2));
+            await _context.SaveChangesAsync();
+        }
+        else if (!newHistory || !await _context.TeamMembers.AnyAsync(member => member.TeamId == plan.Team.TeamId && member.AthleteId == student.AthleteId && member.DateLeft == null))
+        {
+            // Already complete, or a tester moved the student off the team: leave it as it is.
+            return null;
+        }
+        var athleteId = student.AthleteId;
+        var sessions = plan.PastSessions;
+        var notes = new List<string>();
+
+        // Attendance: a pre-season pattern, then the recent four weeks; sessions already marked are kept.
+        string[] statuses = [.. EasyAttendance[(position + 1) % EasyAttendance.Length], .. EasyAttendance[position % EasyAttendance.Length]];
+        var marked = new Dictionary<int, string>();
+        foreach (var row in await _context.Attendances.Where(item => item.AthleteId == athleteId).ToListAsync()) marked.TryAdd(row.TrainingSessionId, row.AttendanceStatus);
+        for (var index = 0; index < sessions.Count; index++)
+        {
+            var statusIndex = statuses.Length - sessions.Count + index;
+            if (statusIndex < 0 || marked.ContainsKey(sessions[index].TrainingSessionId)) continue;
+            var status = statuses[statusIndex];
+            _context.Attendances.Add(new Attendance { TrainingSessionId = sessions[index].TrainingSessionId, AthleteId = athleteId, AttendanceStatus = status, Remarks = status == "EXCUSED" ? "Medical appointment" : null });
+            marked[sessions[index].TrainingSessionId] = status;
+        }
+
+        // Results in every workout for each attended session. One student per team (student7, student8) has none
+        // yet, so the coach can record the first ones.
+        if (position == 3)
+        {
+            notes.Add("no results or documents yet");
+        }
+        else
+        {
+            var recorded = (await _context.PerformanceRecords
+                    .Where(record => record.AthleteId == athleteId && record.SessionId != null)
+                    .Select(record => new { record.SessionId, record.DataType })
+                    .ToListAsync())
+                .Select(record => (record.SessionId!.Value, record.DataType))
+                .ToHashSet();
+            var workouts = EasyCoaches[coachNumber - 1].MoreWorkouts.Prepend((plan.Workout, plan.Unit, plan.BaseValue, plan.Step));
+            foreach (var (workout, unit, baseValue, step) in workouts)
+            {
+                // Stronger students start higher; everyone improves week by week with a little variation.
+                var start = baseValue + step * (position % 5);
+                for (var index = 0; index < sessions.Count; index++)
+                {
+                    var session = sessions[index];
+                    if (marked.GetValueOrDefault(session.TrainingSessionId) is not ("PRESENT" or "LATE")) continue;
+                    if (recorded.Contains((session.TrainingSessionId, workout))) continue;
+                    var variation = ((number * 7 + index * 3) % 5 - 2) * Math.Abs(step) * 0.4m;
+                    var value = start + step * (index - (sessions.Count - 4)) + variation;
+                    _context.PerformanceRecords.Add(new PerformanceRecord
+                    {
+                        AthleteId = athleteId,
+                        MetricId = plan.Metric.MetricId,
+                        CoachId = plan.Coach.CoachId,
+                        RecordedValue = Math.Round(value, unit == "SECONDS" ? 2 : unit == "PERCENT" ? 1 : 0),
+                        RecordedDate = session.TrainingDate,
+                        DataType = workout,
+                        Unit = unit,
+                        SessionId = session.TrainingSessionId,
+                        Notes = index == sessions.Count - 1 ? "Most recent test." : null
+                    });
+                }
+            }
+            notes.Add($"results in {workouts.Count()} workouts");
+        }
+        await _context.SaveChangesAsync();
+
+        // Portfolio: one entry waiting for the coach, plus an earlier verified or rejected one for some students.
+        var pending = 0;
+        if (!await _context.Achievements.AnyAsync(item => item.AthleteId == athleteId && item.Description == SeedAchievementDescription))
+        {
+            var sport = EasyCoaches[coachNumber - 1].Sport;
+            (string Title, string Category) Achievement(int offset)
+            {
+                var (title, category) = EasyAchievements[(number + offset * 3) % EasyAchievements.Length];
+                return (string.Format(title, sport), category);
+            }
+
+            var (newTitle, newCategory) = Achievement(0);
+            await AddAchievementAsync(student, newTitle, newCategory, -(5 + number), "PENDING", null);
+            pending++;
+            var (oldTitle, oldCategory) = Achievement(1);
+            if (position % 3 == 0)
+            {
+                await AddAchievementAsync(student, oldTitle, oldCategory, -(40 + number), "VERIFIED", plan.Coach);
+                notes.Add("portfolio: 1 pending, 1 verified");
+            }
+            else if (position % 3 == 2)
+            {
+                await AddAchievementAsync(student, oldTitle, oldCategory, -(25 + number), "REJECTED", plan.Coach, "The certificate is blurry; please upload a clearer copy.");
+                notes.Add("portfolio: 1 pending, 1 rejected");
+            }
+            else
+            {
+                notes.Add("portfolio: 1 pending");
+            }
+        }
+
+        // Documents the coach can open; student7/student8 have none (no medical clearance yet).
+        if (!await _context.Documents.AnyAsync(item => item.AthleteId == athleteId && item.AchievementId == null && item.FileUrl.StartsWith("documents/" + FilePrefix)))
+        {
+            var types = new List<string>();
+            if (position != 3) types.Add("Medical Clearance");
+            if (position % 2 == 0) types.Add("Consent Form");
+            if (position % 3 == 1) types.Add("Athletic Eligibility Form");
+            foreach (var (type, index) in types.Select((type, index) => (type, index))) AddDocument(student, type, -(3 + number + index * 4));
+            if (types.Count > 0) notes.Add(string.Join(", ", types).ToLowerInvariant());
+        }
+        await _context.SaveChangesAsync();
+
+        Describe(student, plan.Team.TeamName.Replace(Prefix, string.Empty), $"Easy sign-in; coached by coach{coachNumber}@athletehub.test; {string.Join("; ", notes)}");
+        return pending;
     }
 
     private async Task<Dictionary<string, User>> CreatePlannedParentsAsync(bool skipExisting)
@@ -849,7 +1015,7 @@ public class TestDataSeeder
         {
             AthleteId = athlete.AthleteId,
             Title = title,
-            Description = "Seeded achievement with placeholder evidence.",
+            Description = SeedAchievementDescription,
             AchievementDate = _today.AddDays(daysOffset),
             Category = category,
             VerificationStatus = status,

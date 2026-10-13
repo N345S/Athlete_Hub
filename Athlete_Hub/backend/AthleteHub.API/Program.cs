@@ -291,7 +291,7 @@ if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data") || 
 
 // Hosted test deployments set App:SeedTestDataIfEmpty so the first start fills an empty database with the
 // test accounts (and their sample files in private-uploads). Later starts keep testers' changes and only add
-// the easy-to-type accounts (coach1@athletehub.test, ...) if they are missing.
+// what is missing of the easy-to-type accounts (coach1@athletehub.test, ...) and their sample data.
 if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))
 {
     using var seedScope = app.Services.CreateScope();
