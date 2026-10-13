@@ -7,71 +7,22 @@ namespace AthleteHub.API.Migrations;
 
 public partial class ReconcileLegacySchema : Migration
 {
+    // Brings databases created from the old SQL dump up to date. A database created from scratch already has
+    // all of this from InitialAthleteHubSchema, so each step is skipped when it is already there.
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AddColumn<int>(
-            name: "achievement_id",
-            table: "documents",
-            type: "int",
-            nullable: true);
+        migrationBuilder.AddColumnIfMissing("documents", "achievement_id", "int NULL");
+        migrationBuilder.AddColumnIfMissing("documents", "title", "varchar(200) NULL");
+        migrationBuilder.AddColumnIfMissing("documents", "description", "text NULL");
+        migrationBuilder.CreateIndexIfMissing("documents", "fk_document_achievement", "achievement_id");
+        migrationBuilder.AddForeignKeyIfMissing("documents", "fk_document_achievement",
+            "FOREIGN KEY (`achievement_id`) REFERENCES `achievements` (`achievement_id`) ON DELETE SET NULL");
 
-        migrationBuilder.AddColumn<string>(
-            name: "title",
-            table: "documents",
-            type: "varchar(200)",
-            maxLength: 200,
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "description",
-            table: "documents",
-            type: "text",
-            nullable: true);
-
-        migrationBuilder.CreateIndex(
-            name: "fk_document_achievement",
-            table: "documents",
-            column: "achievement_id");
-
-        migrationBuilder.AddForeignKey(
-            name: "fk_document_achievement",
-            table: "documents",
-            column: "achievement_id",
-            principalTable: "achievements",
-            principalColumn: "achievement_id",
-            onDelete: ReferentialAction.SetNull);
-
-        migrationBuilder.AddColumn<string>(
-            name: "approval_status",
-            table: "training_sessions",
-            type: "varchar(20)",
-            maxLength: 20,
-            nullable: false,
-            defaultValue: "APPROVED");
-
-        migrationBuilder.AddColumn<DateTime>(
-            name: "submitted_at",
-            table: "training_sessions",
-            type: "timestamp",
-            nullable: true);
-
-        migrationBuilder.AddColumn<DateTime>(
-            name: "reviewed_at",
-            table: "training_sessions",
-            type: "timestamp",
-            nullable: true);
-
-        migrationBuilder.AddColumn<int>(
-            name: "reviewed_by",
-            table: "training_sessions",
-            type: "int",
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "rejection_reason",
-            table: "training_sessions",
-            type: "text",
-            nullable: true);
+        migrationBuilder.AddColumnIfMissing("training_sessions", "approval_status", "varchar(20) NOT NULL DEFAULT 'APPROVED'");
+        migrationBuilder.AddColumnIfMissing("training_sessions", "submitted_at", "timestamp NULL");
+        migrationBuilder.AddColumnIfMissing("training_sessions", "reviewed_at", "timestamp NULL");
+        migrationBuilder.AddColumnIfMissing("training_sessions", "reviewed_by", "int NULL");
+        migrationBuilder.AddColumnIfMissing("training_sessions", "rejection_reason", "text NULL");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)

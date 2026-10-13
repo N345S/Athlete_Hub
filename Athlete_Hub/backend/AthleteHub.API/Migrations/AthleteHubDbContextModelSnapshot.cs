@@ -157,8 +157,8 @@ namespace AthleteHub.API.Migrations
 
                     b.Property<string>("Semester")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("semester");
 
                     b.Property<DateTime?>("StartDate")
@@ -835,7 +835,7 @@ namespace AthleteHub.API.Migrations
 
                     b.Property<string>("ScheduleType")
                         .IsRequired()
-                        .HasColumnType("enum('TRAINING','COMPETITION','ACADEMIC','MEETING','OTHER')")
+                        .HasColumnType("enum('TRAINING','COMPETITION','ACADEMIC','MEETING','OTHER','SCHOOL_EVENT','SPORTS_EVENT')")
                         .HasColumnName("schedule_type");
 
                     b.Property<DateTime>("StartDatetime")

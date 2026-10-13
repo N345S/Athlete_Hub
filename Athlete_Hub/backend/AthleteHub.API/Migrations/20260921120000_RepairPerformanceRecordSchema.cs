@@ -12,12 +12,8 @@ public partial class RepairPerformanceRecordSchema : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AddColumn<string>(
-            name: "unit",
-            table: "performance_records",
-            type: "varchar(30)",
-            maxLength: 30,
-            nullable: true);
+        // A database created from scratch already has this column from InitialAthleteHubSchema.
+        migrationBuilder.AddColumnIfMissing("performance_records", "unit", "varchar(30) NULL");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)

@@ -168,7 +168,7 @@ public partial class AthleteHubDbContext : DbContext
                 .HasColumnType("date")
                 .HasColumnName("start_date");
             entity.Property(e => e.Semester)
-                .HasMaxLength(50)
+                .HasMaxLength(100)
                 .HasColumnName("semester");
         });
 
@@ -681,7 +681,7 @@ public partial class AthleteHubDbContext : DbContext
                 .HasMaxLength(200)
                 .HasColumnName("location");
             entity.Property(e => e.ScheduleType)
-                .HasColumnType("enum('TRAINING','COMPETITION','ACADEMIC','MEETING','OTHER')")
+                .HasColumnType("enum('TRAINING','COMPETITION','ACADEMIC','MEETING','OTHER','SCHOOL_EVENT','SPORTS_EVENT')")
                 .HasColumnName("schedule_type");
             entity.Property(e => e.StartDatetime)
                 .HasColumnType("datetime")
