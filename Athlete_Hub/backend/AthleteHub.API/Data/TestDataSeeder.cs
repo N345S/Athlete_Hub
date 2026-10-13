@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore;
 namespace AthleteHub.API.Data;
 
 /// <summary>
-/// Development-only test data: 108 sign-in-ready accounts (1 director, 5 admins, 5 registrars, 12 coaches,
-/// 81 athletes, 4 parents) spread across ten teams, covering active, suspended, inactive, quit, transferred,
+/// Development-only test data: 126 sign-in-ready accounts (1 director, 5 admins, 5 registrars, 12 coaches,
+/// 99 athletes, 4 parents) spread across ten teams, covering active, suspended, inactive, quit, transferred,
 /// unassigned, and multi-sport athletes, every eligibility outcome, approval workflows in each state, and
 /// parents linked to one child, to two children, or to none.
 ///
@@ -499,17 +499,47 @@ public class TestDataSeeder
         Console.WriteLine($"Added {created.Count} parent account(s). Password for each: {Password}");
     }
 
-    /// <summary>Short sign-ins for hands-on testing: two coaches, each with their own team and one student.</summary>
+    /// <summary>
+    /// Short sign-ins for hands-on testing: coach{n}@athletehub.test leads their own team. Students are
+    /// student1 … student20@athletehub.test; odd numbers play for coach1, even numbers for coach2.
+    /// </summary>
+    private static readonly (string First, string Last, string Sport, string Workout, string Unit, decimal BaseValue, decimal Step)[] EasyCoaches =
+    [
+        ("Rico", "Valdez", "Basketball", "Vertical Jump", "NUMBER", 42, 1),
+        ("Tess", "Manalastas", "Volleyball", "Serve Accuracy", "PERCENT", 60, 2.5m),
+    ];
+
+    private static readonly (string First, string Last)[] EasyStudents =
+    [
+        ("Leo", "Castillo"), ("Mia", "Santiago"), ("Josh", "Mercado"), ("Ella", "Torralba"), ("Miko", "Santillan"),
+        ("Rina", "Galang"), ("Enzo", "Villareal"), ("Trisha", "Mendez"), ("Paulo", "Cabrera"), ("Kaye", "Rosales"),
+        ("Jerome", "Aguilar"), ("Lara", "Pineda"), ("Renz", "Medina"), ("Nicole", "Vergara"), ("Aldrin", "Sison"),
+        ("Shane", "Lozada"), ("Jomar", "Padilla"), ("Alyssa", "Gomez"), ("Cedric", "Ventura"), ("Jessa", "Morales"),
+    ];
+
+    private static readonly string[][] EasyAttendance =
+    [
+        ["PRESENT", "PRESENT", "LATE", "PRESENT"],
+        ["PRESENT", "PRESENT", "PRESENT", "PRESENT"],
+        ["PRESENT", "ABSENT", "PRESENT", "LATE"],
+        ["LATE", "PRESENT", "PRESENT", "EXCUSED"],
+        ["ABSENT", "ABSENT", "PRESENT", "ABSENT"],
+    ];
+
     private static readonly string[] EasyEmails =
-        ["coach1@athletehub.test", "coach2@athletehub.test", "student1@athletehub.test", "student2@athletehub.test"];
+    [
+        .. EasyCoaches.Select((_, index) => $"coach{index + 1}@athletehub.test"),
+        .. EasyStudents.Select((_, index) => $"student{index + 1}@athletehub.test"),
+    ];
 
     /// <summary>
-    /// Adds the easy test accounts to a database that already has seed data. Like <see cref="SeedParentsAsync"/>,
-    /// nothing is removed, so testing progress is kept; if any of the accounts exists, nothing is added.
+    /// Adds the easy test accounts that are missing to a database that already has seed data. Like
+    /// <see cref="SeedParentsAsync"/>, nothing is removed or changed, so testing progress is kept.
     /// </summary>
     public async Task SeedEasyAccountsAsync()
     {
-        if (await _context.Users.AnyAsync(user => EasyEmails.Contains(user.Email))) return;
+        var existing = await _context.Users.CountAsync(user => EasyEmails.Contains(user.Email));
+        if (existing == EasyEmails.Length) return;
 
         _roles = await _context.Roles.ToDictionaryAsync(role => role.RoleName, role => role.RoleId);
         _director = await _context.Users.FirstAsync(user => user.Role.RoleName == "DIRECTOR" && user.AccountStatus == "ACTIVE");
@@ -517,25 +547,43 @@ public class TestDataSeeder
         await using var transaction = await _context.Database.BeginTransactionAsync();
         await CreateEasyAccountsAsync();
         await transaction.CommitAsync();
-        Console.WriteLine($"Added the easy test accounts ({string.Join(", ", EasyEmails)}). Password for each: {Password}");
+        Console.WriteLine($"Added {EasyEmails.Length - existing} easy test account(s) (coach1/coach2, student1 to student{EasyStudents.Length}@athletehub.test). Password for each: {Password}");
     }
 
     private async Task CreateEasyAccountsAsync()
     {
-        await CreateEasyPairAsync(1, ("Rico", "Valdez"), ("Leo", "Castillo"), "Basketball", "Vertical Jump", "NUMBER", 42, 1);
-        await CreateEasyPairAsync(2, ("Tess", "Manalastas"), ("Mia", "Santiago"), "Volleyball", "Serve Accuracy", "PERCENT", 60, 2.5m);
+        for (var number = 1; number <= EasyCoaches.Length; number++)
+        {
+            var plan = await GetOrCreateEasyTeamAsync(number);
+            for (var student = number; student <= EasyStudents.Length; student += EasyCoaches.Length)
+            {
+                await AddEasyStudentAsync(plan, number, student);
+            }
+        }
     }
 
-    /// <summary>coach{n} leads their own team with student{n} on it, with a month of training history between them.</summary>
-    private async Task CreateEasyPairAsync(int number, (string First, string Last) coachName, (string First, string Last) studentName,
-        string sport, string workout, string unit, decimal baseValue, decimal step)
+    /// <summary>coach{n} and their team with a month of approved training, or the existing ones if already seeded.</summary>
+    private async Task<TeamPlan> GetOrCreateEasyTeamAsync(int number)
     {
+        var (first, last, sport, workout, unit, baseValue, step) = EasyCoaches[number - 1];
         var teamName = $"Test Team {number} {sport}";
-        var coach = await CreateCoachAsync($"TEST-C-00{number}", coachName.First, coachName.Last, "ACTIVE", sport, $"coach{number}@athletehub.test");
-        var plan = await PlanTeamAsync(sport, "TEAM", coach, teamName, workout, unit, baseValue, step);
-        var student = await CreateAthleteAsync($"TEST-A-00{number}", studentName.First, studentName.Last, "ACTIVE", "BS Information Technology", 2, $"student{number}@athletehub.test");
+        var email = $"coach{number}@athletehub.test";
 
-        AddMember(plan, student, _today.AddMonths(-2));
+        var coach = await _context.CoachProfiles.Include(profile => profile.User).FirstOrDefaultAsync(profile => profile.User.Email == email);
+        var team = coach == null ? null : await _context.Teams.FirstOrDefaultAsync(item => item.CoachId == coach.CoachId && item.TeamName == Prefix + teamName);
+        if (coach != null && team != null)
+        {
+            var metric = await _context.PerformanceMetricDefinitions.FirstAsync(item => item.SportId == team.SportId);
+            var existing = new TeamPlan { Team = team, Coach = coach, Metric = metric, Workout = workout, Unit = unit, BaseValue = baseValue, Step = step };
+            existing.PastSessions.AddRange(await _context.TrainingSessions
+                .Where(session => session.TeamId == team.TeamId && session.ApprovalStatus == "APPROVED" && session.TrainingDate < _today)
+                .OrderBy(session => session.TrainingDate)
+                .ToListAsync());
+            return existing;
+        }
+
+        coach ??= await CreateCoachAsync($"TEST-C-{number:D3}", first, last, "ACTIVE", sport, email);
+        var plan = await PlanTeamAsync(sport, "TEAM", coach, teamName, workout, unit, baseValue, step);
         for (var week = 4; week >= 1; week--)
         {
             plan.PastSessions.Add(AddSession(plan, $"Training — week {5 - week}", _today.AddDays(-7 * week), "APPROVED"));
@@ -543,11 +591,31 @@ public class TestDataSeeder
         AddSession(plan, "Team practice", _today.AddDays(2), "APPROVED");
         AddSession(plan, "Extra conditioning (awaiting approval)", _today.AddDays(6), "PENDING");
         await _context.SaveChangesAsync();
+        return plan;
+    }
 
-        MarkAttendance(plan.PastSessions, student, ["PRESENT", "PRESENT", "LATE", "PRESENT"]);
-        AddPerformance(student, plan, plan.PastSessions, [baseValue, baseValue + step, baseValue + step * 2, baseValue + step * 3]);
+    /// <summary>student{n} on coach{coachNumber}'s team, with attendance and results that differ from student to student.</summary>
+    private async Task AddEasyStudentAsync(TeamPlan plan, int coachNumber, int number)
+    {
+        var email = $"student{number}@athletehub.test";
+        if (await _context.Users.AnyAsync(user => user.Email == email)) return;
+
+        var (first, last) = EasyStudents[number - 1];
+        var position = (number - 1) / EasyCoaches.Length;
+        var student = await CreateAthleteAsync($"TEST-A-{number:D3}", first, last, "ACTIVE", Courses[number % Courses.Length], 1 + number % 4, email);
+
+        AddMember(plan, student, _today.AddMonths(-2));
         await _context.SaveChangesAsync();
-        Describe(student, teamName, $"Easy sign-in for testing; coached by coach{number}@athletehub.test");
+
+        MarkAttendance(plan.PastSessions, student, EasyAttendance[position % EasyAttendance.Length]);
+        // Every fourth student has no results yet, so the coach can record the first ones.
+        if (position % 4 != 3)
+        {
+            var start = plan.BaseValue + plan.Step * (position % 5);
+            AddPerformance(student, plan, plan.PastSessions, [.. Enumerable.Range(0, plan.PastSessions.Count).Select(step => start + plan.Step * step)]);
+        }
+        await _context.SaveChangesAsync();
+        Describe(student, plan.Team.TeamName.Replace(Prefix, string.Empty), $"Easy sign-in for testing; coached by coach{coachNumber}@athletehub.test");
     }
 
     private async Task<Dictionary<string, User>> CreatePlannedParentsAsync(bool skipExisting)
