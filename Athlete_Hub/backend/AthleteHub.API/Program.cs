@@ -92,6 +92,13 @@ var jwtKey = builder.Configuration["Jwt:Key"];
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
 
+// HS256 needs a key of at least 256 bits; a shorter one only fails later, on every sign-in, as a bare 500.
+if (jwtKey == null || jwtKey == "__SET_IN_USER_SECRETS__" || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+{
+    throw new InvalidOperationException(
+        "Jwt:Key must be set to a random string of at least 32 characters (on a hosted deployment: the Jwt__Key variable).");
+}
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
