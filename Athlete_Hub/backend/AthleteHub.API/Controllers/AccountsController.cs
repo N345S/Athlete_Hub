@@ -2,34 +2,42 @@ using System.Security.Claims;
 using AthleteHub.API.Data;
 using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace AthleteHub.API.Controllers;
 
+/// <summary>
+/// Account management. The Sports Director creates accounts and controls who can sign in; the Admin role is
+/// hidden (see <see cref="HiddenRoles"/>) and is only listed here so its portal keeps working if it comes back.
+/// Accounts with a hidden role are left out everywhere, as if they did not exist.
+/// </summary>
 [ApiController]
-[Route("api/[controller]")]
-[Authorize(Roles = "ADMIN")]
-public class AdminController : ControllerBase
+[Route("api/Accounts")]
+[Authorize(Roles = "DIRECTOR,ADMIN")]
+public class AccountsController : ControllerBase
 {
     private static readonly string[] ValidStatuses = ["ACTIVE", "INACTIVE", "SUSPENDED"];
     private readonly AthleteHubDbContext _context;
 
-    public AdminController(AthleteHubDbContext context)
+    public AccountsController(AthleteHubDbContext context)
     {
         _context = context;
     }
 
+    private IQueryable<User> VisibleUsers => _context.Users.Where(u => !HiddenRoles.Names.Contains(u.Role.RoleName));
+
     // ==========================================
     // GET ALL USERS
-    // GET: /api/Admin/users
+    // GET: /api/Accounts/users
     // ==========================================
 
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers()
     {
-        var users = await _context.Users
+        var users = await VisibleUsers
             .Include(u => u.Role)
             .Select(u => new
             {
@@ -57,7 +65,7 @@ public class AdminController : ControllerBase
 
         return Ok(new
         {
-            endpoint = "GET /api/Admin/users",
+            endpoint = "GET /api/Accounts/users",
             count = users.Count,
             users
         });
@@ -66,7 +74,7 @@ public class AdminController : ControllerBase
     [HttpGet("users/{userId}")]
     public async Task<IActionResult> GetUser(int userId)
     {
-        var user = await _context.Users
+        var user = await VisibleUsers
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.UserId == userId);
 
@@ -80,7 +88,7 @@ public class AdminController : ControllerBase
     {
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
 
-        if (role == null)
+        if (role == null || HiddenRoles.Contains(role.RoleName))
         {
             return BadRequest(new { message = "The specified role does not exist." });
         }
@@ -164,7 +172,7 @@ public class AdminController : ControllerBase
     [HttpPut("users/{userId}")]
     public async Task<IActionResult> UpdateUser(int userId, UpdateAdminUserRequest request)
     {
-        var user = await _context.Users
+        var user = await VisibleUsers
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.UserId == userId);
 
@@ -184,14 +192,13 @@ public class AdminController : ControllerBase
         {
             targetRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId.Value);
 
-            if (targetRole == null)
+            if (targetRole == null || HiddenRoles.Contains(targetRole.RoleName))
             {
                 return BadRequest(new { message = "The specified role does not exist." });
             }
-
         }
 
-        var guard = await GuardAdminChangeAsync(user, targetRole.RoleName, newStatus);
+        var guard = await GuardSelfLockoutAsync(user, targetRole.RoleName, newStatus);
         if (guard != null) return guard;
         user.RoleId = targetRole.RoleId;
 
@@ -263,14 +270,14 @@ public class AdminController : ControllerBase
             return BadRequest(new { message = "You cannot delete the account you are currently using." });
         }
 
-        var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
+        var user = await VisibleUsers.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
 
         if (user == null)
         {
             return NotFound(new { message = "User not found." });
         }
 
-        var guard = await GuardAdminChangeAsync(user, "NONE", "DELETED");
+        var guard = await GuardSelfLockoutAsync(user, "NONE", "DELETED");
         if (guard != null) return guard;
 
         _context.Users.Remove(user);
@@ -303,13 +310,13 @@ public class AdminController : ControllerBase
             return BadRequest(new { message = "Status must be ACTIVE, INACTIVE, or SUSPENDED." });
         }
 
-        var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
+        var user = await VisibleUsers.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
         {
             return NotFound(new { message = "User not found." });
         }
 
-        var guard = await GuardAdminChangeAsync(user, user.Role.RoleName, status);
+        var guard = await GuardSelfLockoutAsync(user, user.Role.RoleName, status);
         if (guard != null) return guard;
 
         user.AccountStatus = status;
@@ -407,26 +414,28 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Stops an admin from locking themselves out and keeps at least one active administrator.
+    /// Stops the signed-in user from changing their own role or status, and keeps at least one active
+    /// Sports Director, since directors are the ones who manage accounts.
     /// Returns an error result when the change is not allowed, otherwise null.
     /// </summary>
-    private async Task<IActionResult?> GuardAdminChangeAsync(User user, string newRole, string newStatus)
+    private async Task<IActionResult?> GuardSelfLockoutAsync(User user, string newRole, string newStatus)
     {
         var currentUserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
-        var stillActiveAdmin = newRole == "ADMIN" && newStatus == "ACTIVE";
+        var keepsRoleAndStatus = newRole == user.Role.RoleName && newStatus == "ACTIVE";
 
-        if (user.UserId == currentUserId && !stillActiveAdmin)
+        if (user.UserId == currentUserId && !keepsRoleAndStatus)
         {
-            return BadRequest(new { message = "You cannot change your own role or status. Ask another administrator." });
+            return BadRequest(new { message = "You cannot change your own role or status. Ask another Sports Director." });
         }
 
-        if (user.Role.RoleName == "ADMIN" && user.AccountStatus == "ACTIVE" && !stillActiveAdmin)
+        var stillActiveDirector = newRole == "DIRECTOR" && newStatus == "ACTIVE";
+        if (user.Role.RoleName == "DIRECTOR" && user.AccountStatus == "ACTIVE" && !stillActiveDirector)
         {
-            var otherActiveAdmins = await _context.Users.CountAsync(u =>
-                u.UserId != user.UserId && u.Role.RoleName == "ADMIN" && u.AccountStatus == "ACTIVE");
-            if (otherActiveAdmins == 0)
+            var otherActiveDirectors = await _context.Users.CountAsync(u =>
+                u.UserId != user.UserId && u.Role.RoleName == "DIRECTOR" && u.AccountStatus == "ACTIVE");
+            if (otherActiveDirectors == 0)
             {
-                return BadRequest(new { message = "At least one active administrator is required." });
+                return BadRequest(new { message = "At least one active Sports Director is required to manage accounts." });
             }
         }
 

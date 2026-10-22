@@ -9,6 +9,7 @@ import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Card, ConfirmDialog, EmptyState, Loading, PageHeader, ProgressBar, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
+import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import AttendancePage from '../staff/AttendancePage.jsx'
@@ -43,13 +44,14 @@ export default function CoachPortal({ session, onLogout }) {
   const pendingPortfolio = (dashboard.data?.portfolioItems || []).filter((item) => String(item.achievementStatus || item.verificationStatus || 'PENDING').toUpperCase() === 'PENDING')
   const awaiting = athletes.filter((athlete) => athlete.eligibilityStatus === 'PENDING')
   const notEvaluated = activeAthletes.filter((athlete) => !athlete.eligibilityStatus)
+  const teamAttendance = average(activeAthletes.map((athlete) => athlete.attendanceRate))
   const pendingSessions = (upcoming.data || []).filter((item) => item.type === 'TRAINING' && item.approvalStatus === 'PENDING')
   // One row per athlete, most serious issue first, listing every issue that applies.
   const attentionRows = athletes
     .map((athlete) => {
       const issues = []
       if (!isActiveAccount(athlete)) issues.push({ label: `Account ${athlete.accountStatus.toLowerCase()}`, status: athlete.accountStatus })
-      if (athlete.eligibilityStatus === 'INELIGIBLE') issues.push({ label: 'Ineligible', status: 'INELIGIBLE' })
+      if (REGISTRAR_ELIGIBILITY && athlete.eligibilityStatus === 'INELIGIBLE') issues.push({ label: 'Ineligible', status: 'INELIGIBLE' })
       if (isActiveAccount(athlete) && athlete.attendanceRate != null && athlete.attendanceRate < 60) issues.push({ label: `${athlete.attendanceRate}% attendance`, status: 'LATE' })
       return { athlete, issues }
     })
@@ -126,16 +128,18 @@ export default function CoachPortal({ session, onLogout }) {
         {dashboard.data?.message && <Alert tone="info">{dashboard.data.message}</Alert>}
         <div className="stat-grid">
           <StatCard icon="users" label="My athletes" value={activeAthletes.length} hint={`Across ${teams.length} team${teams.length === 1 ? '' : 's'}`} onClick={() => navigate('athletes')} />
-          <StatCard icon="check" label="Eligible" value={athletes.filter((athlete) => athlete.eligibilityStatus === 'ELIGIBLE').length} hint={`${notEvaluated.length} not yet evaluated`} tone="success" />
-          <StatCard icon="alert" label="Need attention" value={attentionRows.length} hint="Ineligible, low attendance, or inactive" tone="warning" onClick={() => document.getElementById('coach-attention')?.scrollIntoView({ behavior: 'smooth' })} />
+          {REGISTRAR_ELIGIBILITY
+            ? <StatCard icon="check" label="Eligible" value={athletes.filter((athlete) => athlete.eligibilityStatus === 'ELIGIBLE').length} hint={`${notEvaluated.length} not yet evaluated`} tone="success" />
+            : <StatCard icon="check" label="Avg. attendance" value={teamAttendance == null ? '—' : `${teamAttendance}%`} hint="Across your active athletes" tone="success" onClick={() => navigate('attendance')} />}
+          <StatCard icon="alert" label="Need attention" value={attentionRows.length} hint={REGISTRAR_ELIGIBILITY ? 'Ineligible, low attendance, or inactive' : 'Low attendance or inactive'} tone="warning" onClick={() => document.getElementById('coach-attention')?.scrollIntoView({ behavior: 'smooth' })} />
           <StatCard icon="trophy" label="Portfolio reviews" value={pendingPortfolio.length} hint="Waiting for your verification" tone="info" onClick={() => document.getElementById('coach-portfolio')?.scrollIntoView({ behavior: 'smooth' })} />
         </div>
 
-        <Card title="Team overview" subtitle="Average attendance and eligibility per team">
+        <Card title="Team overview" subtitle={REGISTRAR_ELIGIBILITY ? 'Average attendance and eligibility per team' : 'Average attendance per team'}>
           {teams.length ? (
             <div className="table-wrap">
               <table className="table">
-                <thead><tr><th>Team</th><th className="numeric">Athletes</th><th>Avg. attendance</th><th className="numeric">Eligible</th><th className="numeric">Ineligible</th><th className="numeric">Awaiting / not evaluated</th></tr></thead>
+                <thead><tr><th>Team</th><th className="numeric">Athletes</th><th>Avg. attendance</th>{REGISTRAR_ELIGIBILITY && <><th className="numeric">Eligible</th><th className="numeric">Ineligible</th><th className="numeric">Awaiting / not evaluated</th></>}</tr></thead>
                 <tbody>
                   {teams.map((team) => {
                     const members = (team.athletes || []).filter(isActiveAccount)
@@ -144,9 +148,11 @@ export default function CoachPortal({ session, onLogout }) {
                         <td><strong>{team.teamName}</strong><br /><small className="muted">{team.sport}</small></td>
                         <td className="numeric">{members.length}</td>
                         <td><ProgressBar value={average(members.map((member) => member.attendanceRate))} /></td>
-                        <td className="numeric">{members.filter((member) => member.eligibilityStatus === 'ELIGIBLE').length}</td>
-                        <td className="numeric">{members.filter((member) => member.eligibilityStatus === 'INELIGIBLE').length}</td>
-                        <td className="numeric">{members.filter((member) => !member.eligibilityStatus || member.eligibilityStatus === 'PENDING').length}</td>
+                        {REGISTRAR_ELIGIBILITY && <>
+                          <td className="numeric">{members.filter((member) => member.eligibilityStatus === 'ELIGIBLE').length}</td>
+                          <td className="numeric">{members.filter((member) => member.eligibilityStatus === 'INELIGIBLE').length}</td>
+                          <td className="numeric">{members.filter((member) => !member.eligibilityStatus || member.eligibilityStatus === 'PENDING').length}</td>
+                        </>}
                       </tr>
                     )
                   })}
@@ -157,7 +163,7 @@ export default function CoachPortal({ session, onLogout }) {
         </Card>
 
         <div className="dashboard-grid">
-          <Card className="scroll-target" id="coach-attention" title="Athletes needing attention" subtitle="Eligibility, attendance, or account issues">
+          <Card className="scroll-target" id="coach-attention" title="Athletes needing attention" subtitle={REGISTRAR_ELIGIBILITY ? 'Eligibility, attendance, or account issues' : 'Attendance or account issues'}>
             {attentionRows.length ? (
               <ul className="row-list">
                 {attentionRows.slice(0, 8).map(({ athlete, issues }) => (
@@ -173,8 +179,8 @@ export default function CoachPortal({ session, onLogout }) {
                   </li>
                 ))}
               </ul>
-            ) : <EmptyState icon="check" title="All clear" message="No athlete is ineligible, inactive, or below 60% attendance." />}
-            {awaiting.length > 0 && <p className="card-footnote">{awaiting.length} athlete{awaiting.length === 1 ? ' is' : 's are'} awaiting a Registrar decision.</p>}
+            ) : <EmptyState icon="check" title="All clear" message={REGISTRAR_ELIGIBILITY ? 'No athlete is ineligible, inactive, or below 60% attendance.' : 'No athlete is inactive or below 60% attendance.'} />}
+            {REGISTRAR_ELIGIBILITY && awaiting.length > 0 && <p className="card-footnote">{awaiting.length} athlete{awaiting.length === 1 ? ' is' : 's are'} awaiting a Registrar decision.</p>}
           </Card>
 
           <Card className="scroll-target" id="coach-portfolio" title="Portfolio verification" subtitle="Submissions waiting for your review">

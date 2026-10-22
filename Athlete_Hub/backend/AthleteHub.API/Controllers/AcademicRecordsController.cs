@@ -9,9 +9,12 @@ using AthleteHub.API.Services;
 
 namespace AthleteHub.API.Controllers;
 
+/// <summary>
+/// Grades pulled from the ICTD university database. Only the Sports Director can see them.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "DIRECTOR")]
 public class AcademicRecordsController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
@@ -56,6 +59,7 @@ public class AcademicRecordsController : ControllerBase
 
                 subjectCode = a.SubjectCode,
                 subjectName = a.SubjectName,
+                sectionCode = a.SectionCode,
                 units = a.Units,
                 grade = a.Grade,
                 remarks = a.Remarks,
@@ -80,6 +84,7 @@ public class AcademicRecordsController : ControllerBase
                 },
                 record.subjectCode,
                 record.subjectName,
+                record.sectionCode,
                 record.units,
                 record.grade,
                 record.remarks,
@@ -143,6 +148,7 @@ public class AcademicRecordsController : ControllerBase
                 record.AcademicRecordId,
                 record.SubjectCode,
                 record.SubjectName,
+                record.SectionCode,
                 record.Units,
                 record.Grade,
                 record.Remarks,

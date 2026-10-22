@@ -1500,6 +1500,60 @@ button.day-number:hover { background: var(--brand-100); color: var(--brand-700);
   .test-account { background: var(--surface); }
 }
 
+/* ICTD grades: each subject takes two lines, code and name over section and units, grade and remark on the right. */
+.grade-terms { display: flex; flex-direction: column; }
+.grade-term { border-top: 1px solid var(--line); padding: var(--space-3) 0; }
+.grade-term:first-child { border-top: 0; padding-top: 0; }
+.grade-term:last-child { padding-bottom: 0; }
+.grade-term > summary {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  cursor: pointer; list-style: none; border-radius: var(--radius-sm);
+}
+.grade-term > summary::-webkit-details-marker { display: none; }
+.grade-term > summary::before { content: "▸"; color: var(--ink-400); transition: transform 0.15s ease; }
+.grade-term[open] > summary::before { transform: rotate(90deg); }
+.grade-term > summary > .row-main { flex: 1; }
+.grade-term > .btn { margin-top: var(--space-2); }
+.grade-summary { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.grade-sheet { margin-top: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+.grade-sheet-head {
+  display: flex; justify-content: space-between; padding: var(--space-2) var(--space-4);
+  background: var(--surface-muted); border-bottom: 1px solid var(--line);
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-500);
+}
+.grade-list { list-style: none; margin: 0; padding: 0; }
+.grade-line {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-4); row-gap: 2px;
+  padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line);
+}
+.grade-line:first-child { border-top: 0; }
+.grade-subject { color: var(--ink-900); overflow-wrap: anywhere; }
+.grade-value { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-900); }
+.grade-section { color: var(--ink-500); font-size: 0.86rem; }
+.grade-remark { text-align: right; }
+
+/* Coach evaluation: one 1–5 scale per statement. */
+.rating-question { border: 0; margin: 0; padding: var(--space-3) 0; border-top: 1px solid var(--line); }
+.rating-question:first-of-type { border-top: 0; padding-top: 0; }
+.rating-question legend { padding: 0; margin-bottom: var(--space-2); font-weight: 600; color: var(--ink-900); }
+.rating-scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-2); }
+.rating-scale label {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; text-align: center;
+}
+.rating-scale label strong { font-size: 1.05rem; }
+.rating-scale label small { color: var(--ink-500); font-size: 0.72rem; line-height: 1.2; }
+.rating-scale input { position: absolute; opacity: 0; pointer-events: none; }
+.rating-scale label:has(input:checked) { border-color: var(--brand-600); background: var(--brand-50); color: var(--brand-700); }
+.rating-scale label:has(input:focus-visible) { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.rating-results { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.card-subheading { margin: var(--space-5) 0 var(--space-2); font-size: 0.95rem; }
+.rating-results li { display: flex; flex-direction: column; gap: 4px; }
+.rating-results li > span { color: var(--ink-700); font-size: 0.92rem; }
+@media (max-width: 640px) {
+  .rating-scale label small { display: none; }
+}
+
 /* Touch screens have no hover: avoid "stuck" hover effects after a tap. */
 @media (hover: none) {
   .stat-card-button:hover { transform: none; }

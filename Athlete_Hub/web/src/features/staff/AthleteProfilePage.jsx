@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { api, fetchFileUrl } from '../../lib/api.js'
-import { accountLabel, formatDate, fullName, isActiveAccount } from '../../lib/format.js'
+import { accountLabel, currentAcademicYear, formatDate, fullName, isActiveAccount } from '../../lib/format.js'
 import { useApiData } from '../../lib/hooks.js'
 import FileLink from '../../components/FileLink.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, EmptyState, Field, Loading, Modal, ReasonDialog, StatusBadge } from '../../components/ui.jsx'
+import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
+import { AthleteGradesCard } from '../director/GradesPage.jsx'
 
 const SEMESTERS = ['1st Semester', '2nd Semester', 'Summer']
 
@@ -28,12 +30,6 @@ export function PdfPreview({ url, token, onClose }) {
       {objectUrl ? <iframe className="pdf-frame" title="Grade Evaluation PDF" src={objectUrl} /> : !error && <Loading label="Loading PDF…" />}
     </Modal>
   )
-}
-
-/** "2026-2027" during June–December, otherwise the year that started last June. */
-function currentAcademicYear(date = new Date()) {
-  const start = date.getMonth() >= 5 ? date.getFullYear() : date.getFullYear() - 1
-  return `${start}-${start + 1}`
 }
 
 function AcademicEligibilityCard({ athlete, session, canRequest }) {
@@ -218,10 +214,11 @@ function DocumentsCard({ athlete, session }) {
 }
 
 /**
- * Staff view of one athlete. Coaches (`canEdit`) verify portfolio items; the director
- * (`canRequestEvaluation`) requests Grade Evaluations from the Registrar.
+ * Staff view of one athlete. Coaches (`canEdit`) verify portfolio items; the director (`canViewGrades`) sees
+ * the grades pulled from the ICTD database. `canRequestEvaluation` (Grade Evaluations from the Registrar) only
+ * applies while the Registrar role is switched on.
  */
-export default function AthleteProfilePage({ athlete, session, canEdit, canRequestEvaluation, onBack }) {
+export default function AthleteProfilePage({ athlete, session, canEdit, canRequestEvaluation, canViewGrades, onBack }) {
   return (
     <>
       <button className="btn btn-ghost back-button" type="button" onClick={onBack}>← Back to athletes</button>
@@ -233,7 +230,7 @@ export default function AthleteProfilePage({ athlete, session, canEdit, canReque
         </div>
         {!isActiveAccount(athlete) && <StatusBadge status={athlete.accountStatus} label={accountLabel(athlete)} />}
       </section>
-      {!isActiveAccount(athlete) && <Alert tone="warning">This athlete's account is {String(athlete.accountStatus).toLowerCase()}. They cannot sign in, and attendance or performance cannot be recorded until an administrator reactivates the account.</Alert>}
+      {!isActiveAccount(athlete) && <Alert tone="warning">This athlete's account is {String(athlete.accountStatus).toLowerCase()}. They cannot sign in, and attendance or performance cannot be recorded until the Sports Director reactivates the account.</Alert>}
       <dl className="detail-grid">
         <div><dt>Program</dt><dd>{athlete.course || '—'}</dd></div>
         <div><dt>Year level</dt><dd>{athlete.yearLevel || '—'}</dd></div>
@@ -241,7 +238,8 @@ export default function AthleteProfilePage({ athlete, session, canEdit, canReque
         <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
       </dl>
       <div className="stack">
-        <AcademicEligibilityCard athlete={athlete} session={session} canRequest={canRequestEvaluation} />
+        {REGISTRAR_ELIGIBILITY && <AcademicEligibilityCard athlete={athlete} session={session} canRequest={canRequestEvaluation} />}
+        {canViewGrades && <AthleteGradesCard athlete={athlete} session={session} />}
         <PortfolioReview athlete={athlete} session={session} canReview={canEdit} />
         <DocumentsCard athlete={athlete} session={session} />
       </div>

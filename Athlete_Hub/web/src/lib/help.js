@@ -16,13 +16,13 @@ export const HELP = {
   athlete: {
     dashboard: {
       title: 'Your dashboard',
-      intro: 'A summary of your eligibility, schedule, achievements, and documents.',
+      intro: 'A summary of your schedule, achievements, documents, and coach evaluations.',
       steps: [
         'Check the “Getting started” list and finish any step that is not ticked.',
         'Select a summary card (for example “Next training”) to open that page.',
         'Review “Coming up” for your next approved training and events.',
       ],
-      tips: ['Academic eligibility is decided by the Registrar after the Director of Sports requests a Grade Evaluation. You do not need to upload grades yourself.'],
+      tips: ['Your grades come from the ICTD university database. You do not need to upload them yourself.'],
     },
     schedule: {
       title: 'Schedule',
@@ -67,11 +67,21 @@ export const HELP = {
       ],
       tips: ['Verified achievements cannot be deleted.'],
     },
+    evaluations: {
+      title: 'Coach evaluation',
+      intro: 'Rate how your team coach did this semester.',
+      steps: [
+        'When a semester’s final grades are released, a form for each of your team coaches appears under “To do”.',
+        'Select “Evaluate”, choose 1 (strongly disagree) to 5 (strongly agree) for every statement, and add an optional comment.',
+        'Select “Submit evaluation”. You can submit each form once.',
+      ],
+      tips: ['Your answers are anonymous: the Sports Director sees averages and comments, never your name.'],
+    },
     profile: {
       title: 'Profile',
       intro: 'Your account and personal details.',
       steps: ['Update your program, year level, birth date, or phone.', 'Select “Save changes”.'],
-      tips: ['Your name, email, and student ID are managed by the school. Contact an administrator to change them.'],
+      tips: ['Your name, email, and student ID are managed by the school. Contact the Sports Director to change them.'],
     },
     notifications: NOTIFICATIONS,
   },
@@ -81,7 +91,7 @@ export const HELP = {
       title: 'Coach dashboard',
       intro: 'How your teams are doing and what needs your action.',
       steps: [
-        '“Athletes needing attention” lists ineligible, inactive, or low-attendance athletes. Select “View” to open one.',
+        '“Athletes needing attention” lists inactive or low-attendance athletes. Select “View” to open one.',
         '“Portfolio verification” lists achievements waiting for you. Select “Review”.',
         'Use “Request training session” to schedule practice.',
       ],
@@ -92,9 +102,9 @@ export const HELP = {
       intro: 'Every student-athlete on the teams you coach.',
       steps: [
         'Search by name, student ID, team, or sport.',
-        'Select “View profile” to verify portfolio items, see documents, and check eligibility.',
+        'Select “View profile” to verify portfolio items and see documents.',
       ],
-      tips: ['The Director of Sports requests Grade Evaluations; you are notified when one is requested and when the Registrar decides.'],
+      tips: ['After each semester’s final grades are released, your athletes evaluate you anonymously. The Sports Director sees the results.'],
     },
     schedule: {
       title: 'Schedule',
@@ -136,7 +146,8 @@ export const HELP = {
       intro: 'Program-wide overview and the training sessions waiting for your approval.',
       steps: [
         'Approve or reject coach training requests in “Training approvals”. A rejection needs a reason.',
-        'Use the “Coach overview” table to compare rosters, attendance, and eligibility.',
+        'Use the “Coach overview” table to compare rosters and attendance.',
+        '“Failed or INC subjects” counts the latest semester pulled from the ICTD database. Select it to open Grades.',
         'Select “Add sports event” to publish an event or competition to every athlete.',
       ],
     },
@@ -149,17 +160,27 @@ export const HELP = {
         'To reassign someone, switch to “On another team”, select them, and choose “Move” (they leave their old team) or “Add as an extra team”.',
         'Use “Unassign” in the roster to remove an athlete from the team.',
       ],
-      tips: ['You can select several athletes and assign them in one step.', 'A coach without an active team cannot be assigned athletes.'],
+      tips: ['You can select several athletes and assign them in one step.', 'A coach without an active team cannot be assigned athletes.', '“Student evaluations” on a coach’s page shows what their athletes said after each semester, without names.'],
     },
     athletes: {
       title: 'All athletes',
-      intro: 'Every registered student-athlete, and their academic eligibility.',
+      intro: 'Every registered student-athlete.',
       steps: [
         'Search for an athlete.',
-        'Select “View profile” to see eligibility, portfolio, and documents.',
-        'Under “Academic eligibility”, select “Request evaluation”, enter the academic year and semester, and select “Send request”.',
+        'Select “View profile” to see their grades, portfolio, and documents.',
       ],
-      tips: ['Request a Grade Evaluation once per term. The Registrar and the athlete’s coach are notified, and you are told when the decision is made.'],
+      tips: ['Grades on a profile come from the ICTD database. Pull a new semester on the Grades page.'],
+    },
+    grades: {
+      title: 'Grades',
+      intro: 'Final grades pulled from the ICTD university database. Only you can see them.',
+      steps: [
+        'Under “Pull from the ICTD database”, enter the academic year, choose the semester, and select “Pull grades”.',
+        'Choose a pulled semester, then select a student-athlete to see their subjects.',
+        'Each subject shows “Code : Subject” with the grade, and “Section: code - (units)” with Passed, Failed, or INC.',
+        'Use “Failed or INC” to list only student-athletes with a failed or incomplete subject.',
+      ],
+      tips: ['Pulling a semester’s final grades sends every student a form to evaluate their team coach. Pulling it again updates the grades but does not send the forms twice.'],
     },
     schedule: {
       title: 'Schedule',
@@ -180,9 +201,21 @@ export const HELP = {
       ],
       tips: ['Athletes see this same page for their own results.'],
     },
+    accounts: {
+      title: 'User accounts',
+      intro: 'Create accounts, reset passwords, and control who can sign in.',
+      steps: [
+        'Select “Create account”, choose the role, and fill in the required fields (marked *).',
+        'For a parent, enter the child’s University ID instead of the parent’s own.',
+        'Use “Edit” to change details or reset a password.',
+        'Use “More” to suspend, deactivate, reactivate, link children, or delete.',
+      ],
+      tips: ['Suspended and inactive users are signed out immediately.', 'Accounts with existing records cannot be deleted — deactivate them instead.', 'You cannot change your own role or status, and at least one Sports Director must stay active.'],
+    },
     notifications: NOTIFICATIONS,
   },
 
+  // The Registrar and Admin portals are hidden (see lib/features.js); their help stays for when they return.
   registrar: {
     dashboard: {
       title: 'Registrar dashboard',

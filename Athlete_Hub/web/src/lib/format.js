@@ -64,6 +64,10 @@ const STATUS_LABELS = {
   INACTIVE: 'Inactive',
   SUSPENDED: 'Suspended',
   PRESENT: 'Present',
+  PASSED: 'Passed',
+  FAILED: 'Failed',
+  INC: 'INC',
+  SUBMITTED: 'Submitted',
   ABSENT: 'Absent',
   LATE: 'Late',
   EXCUSED: 'Excused',
@@ -82,15 +86,19 @@ export function statusTone(status) {
     case 'ELIGIBLE':
     case 'ACTIVE':
     case 'PRESENT':
+    case 'PASSED':
+    case 'SUBMITTED':
       return 'success'
     case 'REJECTED':
     case 'INELIGIBLE':
     case 'SUSPENDED':
     case 'ABSENT':
+    case 'FAILED':
       return 'danger'
     case 'AT_RISK':
     case 'LATE':
     case 'INACTIVE':
+    case 'INC':
       return 'warning'
     default:
       return 'neutral'
@@ -148,4 +156,18 @@ export function timeAgo(value) {
 export function average(values) {
   const numbers = values.filter((value) => typeof value === 'number')
   return numbers.length ? Math.round(numbers.reduce((sum, value) => sum + value, 0) / numbers.length) : null
+}
+
+/** "2026-2027" during June–December, otherwise the year that started last June. */
+export function currentAcademicYear(date = new Date()) {
+  const start = date.getMonth() >= 5 ? date.getFullYear() : date.getFullYear() - 1
+  return `${start}-${start + 1}`
+}
+
+/** The semester running now: 1st Semester from August, 2nd Semester from January, Summer in June and July. */
+export function currentSemester(date = new Date()) {
+  const month = date.getMonth()
+  if (month >= 7) return '1st Semester'
+  if (month >= 5) return 'Summer'
+  return '2nd Semester'
 }

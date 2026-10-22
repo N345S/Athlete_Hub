@@ -99,10 +99,10 @@ Password for every seeded account: **`Seed123!`** (full list in [`database/TEST_
 | Student-athlete (new) | `bea.lim@seed.athletehub.test` | No team, mostly empty — tests first-time experience and the "Getting started" list |
 | Coach | `maria.santos@seed.athletehub.test` | Blue Eagles Basketball; pending portfolio items, attendance to record |
 | Sports Director | `elena.navarro@seed.athletehub.test` | Pending training approvals, coaches to manage |
-| Registrar | `grace.tan@seed.athletehub.test` | Requests waiting for a PDF and requests ready for a decision |
+| Registrar (hidden — cannot sign in) | `grace.tan@seed.athletehub.test` | Role switched off; grades now come from ICTD (Director → Grades) |
 | Parent | `rosario.delacruz@seed.athletehub.test` | One child (Juan) |
 | Parent (two children) | `roberto.aquino@seed.athletehub.test` | Kevin Aquino and Daniel Ramos |
-| Administrator | `victor.lopez@seed.athletehub.test` | Full account management |
+| Administrator (hidden — cannot sign in) | `victor.lopez@seed.athletehub.test` | Role switched off; the Sports Director manages accounts (Director → Accounts) |
 
 Bring a small PDF and a JPG on the test machine's Desktop for upload tasks.
 

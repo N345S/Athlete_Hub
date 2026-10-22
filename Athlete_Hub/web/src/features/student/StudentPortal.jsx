@@ -10,13 +10,16 @@ import Icon from '../../components/icons.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, PageHeader, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
+import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
+import CoachEvaluationsPage from './CoachEvaluationsPage.jsx'
 import MyPerformancePage from './MyPerformancePage.jsx'
 
-const VIEWS = ['dashboard', 'schedule', 'performance', 'documents', 'portfolio', 'profile', 'notifications']
-const TITLES = { dashboard: 'Dashboard', schedule: 'Schedule', performance: 'Performance', documents: 'Documents', portfolio: 'Portfolio', profile: 'Profile', notifications: 'Notifications' }
+const VIEWS = ['dashboard', 'schedule', 'performance', 'documents', 'portfolio', 'evaluations', 'profile', 'notifications']
+const TITLES = { dashboard: 'Dashboard', schedule: 'Schedule', performance: 'Performance', documents: 'Documents', portfolio: 'Portfolio', evaluations: 'Coach evaluation', profile: 'Profile', notifications: 'Notifications' }
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx']
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const DOCUMENT_TYPES = ['Medical Clearance', 'Consent Form', 'Enrollment Form', 'Athletic Eligibility Form', 'Other']
+const termLabel = (term) => `${term.semester} ${term.academicYear}`
 const ACHIEVEMENT_CATEGORIES = ['Competition', 'Award', 'Certification', 'Leadership', 'Academic', 'Other']
 
 function fileProblem(file) {
@@ -104,8 +107,8 @@ function GettingStarted({ session, profile, documents, portfolio, onNavigate }) 
   )
 }
 
-function StudentDashboard({ session, profile, onNavigate }) {
-  const evaluations = useApiData(profile?.athleteId ? `/api/Eligibility/athlete/${profile.athleteId}` : null, session.token)
+function StudentDashboard({ session, profile, pendingEvaluations, onNavigate }) {
+  const evaluations = useApiData(REGISTRAR_ELIGIBILITY && profile?.athleteId ? `/api/Eligibility/athlete/${profile.athleteId}` : null, session.token)
   const upcoming = useApiData(`/api/Schedules/athlete?from=${localDateISO()}`, session.token, { initialData: [] })
   const portfolio = useApiData('/api/Portfolio/me', session.token, { initialData: [] })
   const documents = useApiData('/api/Documents/me', session.token, { initialData: [] })
@@ -126,18 +129,35 @@ function StudentDashboard({ session, profile, onNavigate }) {
   return (
     <>
       <PageHeader title={`${greeting()}, ${session.firstName || 'Athlete'}`} subtitle={longToday()} />
-      {latestDecision?.academicStatus === 'INELIGIBLE' && (
+      {pendingEvaluations.length > 0 && (
+        <Alert tone="info">
+          Final grades for {termLabel(pendingEvaluations[0].term)} have been released. Please evaluate your coach{pendingEvaluations.length > 1 ? 'es' : ''}.{' '}
+          <button className="link-button" type="button" onClick={() => onNavigate('evaluations')}>Evaluate now →</button>
+        </Alert>
+      )}
+      {REGISTRAR_ELIGIBILITY && latestDecision?.academicStatus === 'INELIGIBLE' && (
         <Alert tone="warning">The Registrar marked you ineligible for {termOf(latestDecision)}. Please coordinate with your coach.</Alert>
       )}
       <GettingStarted session={session} profile={profile} documents={documents.data || []} portfolio={portfolio.data || []} onNavigate={onNavigate} />
       <div className="stat-grid">
-        <StatCard
-          icon="check"
-          label="Academic eligibility"
-          value={latestDecision ? statusLabel(latestDecision.academicStatus) : pendingRequest ? 'Under review' : 'Not evaluated'}
-          hint={latestDecision ? `Registrar decision · ${termOf(latestDecision)}` : pendingRequest ? `Requested for ${termOf(pendingRequest)}` : 'No Grade Evaluation requested yet'}
-          tone={latestDecision?.academicStatus === 'ELIGIBLE' ? 'success' : latestDecision?.academicStatus === 'INELIGIBLE' ? 'danger' : 'info'}
-        />
+        {REGISTRAR_ELIGIBILITY ? (
+          <StatCard
+            icon="check"
+            label="Academic eligibility"
+            value={latestDecision ? statusLabel(latestDecision.academicStatus) : pendingRequest ? 'Under review' : 'Not evaluated'}
+            hint={latestDecision ? `Registrar decision · ${termOf(latestDecision)}` : pendingRequest ? `Requested for ${termOf(pendingRequest)}` : 'No Grade Evaluation requested yet'}
+            tone={latestDecision?.academicStatus === 'ELIGIBLE' ? 'success' : latestDecision?.academicStatus === 'INELIGIBLE' ? 'danger' : 'info'}
+          />
+        ) : (
+          <StatCard
+            icon="chat"
+            label="Coach evaluation"
+            value={pendingEvaluations.length ? `${pendingEvaluations.length} to do` : 'All done'}
+            hint={pendingEvaluations.length ? `For ${termLabel(pendingEvaluations[0].term)}` : 'Sent when final grades are released'}
+            tone={pendingEvaluations.length ? 'warning' : 'success'}
+            onClick={() => onNavigate('evaluations')}
+          />
+        )}
         <StatCard icon="calendar" label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" onClick={() => onNavigate('schedule')} />
         <StatCard icon="trophy" label="Verified achievements" value={verified} hint={`${(portfolio.data || []).length} submitted`} tone="warning" onClick={() => onNavigate('portfolio')} />
         <StatCard icon="file" label="Documents on file" value={clearanceDocuments.length} hint={hasMedicalClearance ? 'Medical clearance uploaded' : 'Medical clearance not uploaded yet'} tone={hasMedicalClearance ? 'info' : 'warning'} onClick={() => onNavigate('documents')} />
@@ -174,7 +194,7 @@ function StudentDashboard({ session, profile, onNavigate }) {
             </ul>
           ) : <EmptyState icon="bell" title="No updates yet" message="You'll be notified when your portfolio is reviewed or new events are scheduled." />}
         </Card>
-        <Card title="Academic eligibility" subtitle="Registrar decisions from your official Grade Evaluation">
+        {REGISTRAR_ELIGIBILITY && <Card title="Academic eligibility" subtitle="Registrar decisions from your official Grade Evaluation">
           <Alert>{evaluations.error}</Alert>
           {evaluations.loading && !evaluations.data ? <Loading /> : records.length ? (
             <ul className="row-list">
@@ -191,7 +211,7 @@ function StudentDashboard({ session, profile, onNavigate }) {
               ))}
             </ul>
           ) : <EmptyState icon="check" title="No decision yet" message="The Director of Sports requests a Grade Evaluation from the Registrar each term." />}
-        </Card>
+        </Card>}
       </div>
     </>
   )
@@ -459,7 +479,7 @@ function ProfilePage({ session, profile, onSaved }) {
     <>
       <PageHeader title="Profile" subtitle="Your personal and academic information" />
       <div className="stack">
-        <Card title="Account" subtitle="Managed by the school. Contact an administrator to change these.">
+        <Card title="Account" subtitle="Managed by the school. Contact the Sports Director to change these.">
           <dl className="detail-grid">
             <div><dt>Name</dt><dd>{[profile.firstName, profile.middleName, profile.lastName].filter(Boolean).join(' ')}</dd></div>
             <div><dt>Email</dt><dd>{profile.email}</dd></div>
@@ -492,10 +512,12 @@ export default function StudentPortal({ session, onLogout }) {
   const [view, setView] = useHashView('dashboard', VIEWS)
   const [unread, refreshUnread] = useUnreadNotifications(session.token)
   const profile = useApiData('/api/AthleteProfile/me', session.token)
+  const evaluations = useApiData('/api/CoachEvaluations/me', session.token)
+  const pendingEvaluations = (evaluations.data?.evaluations || []).filter((item) => item.status === 'PENDING')
   const schedule = useApiData(view === 'schedule' ? '/api/Schedules/athlete' : null, session.token, { initialData: [] })
 
   const pages = {
-    dashboard: <StudentDashboard session={session} profile={profile.data} onNavigate={setView} />,
+    dashboard: <StudentDashboard session={session} profile={profile.data} pendingEvaluations={pendingEvaluations} onNavigate={setView} />,
     schedule: <>
       <PageHeader title="Schedule" subtitle="Approved training sessions, sports events, and competitions" />
       <Alert>{schedule.error}</Alert>
@@ -504,6 +526,7 @@ export default function StudentPortal({ session, onLogout }) {
     performance: <MyPerformancePage session={session} profile={profile.data} />,
     documents: <DocumentsPage session={session} />,
     portfolio: <PortfolioPage session={session} profile={profile.data} />,
+    evaluations: <CoachEvaluationsPage session={session} evaluations={evaluations} onChanged={evaluations.reload} />,
     profile: <ProfilePage key={profile.data ? 'loaded' : 'loading'} session={session} profile={profile.data} onSaved={profile.reload} />,
     notifications: <NotificationsPage session={session} onChanged={refreshUnread} />,
   }
@@ -519,6 +542,7 @@ export default function StudentPortal({ session, onLogout }) {
         { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
         { key: 'documents', label: 'Documents', shortLabel: 'Docs', icon: 'file' },
         { key: 'portfolio', label: 'Portfolio', icon: 'trophy' },
+        { key: 'evaluations', label: 'Coach evaluation', shortLabel: 'Evaluate', icon: 'chat', badge: pendingEvaluations.length },
         { key: 'profile', label: 'Profile', icon: 'user' },
         { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}

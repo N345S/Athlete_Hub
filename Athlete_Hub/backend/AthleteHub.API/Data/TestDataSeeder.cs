@@ -123,6 +123,7 @@ public class TestDataSeeder
         await _context.Attendances.Where(item => athleteIds.Contains(item.AthleteId) || sessionIds.Contains(item.TrainingSessionId)).ExecuteDeleteAsync();
         await _context.PerformanceRecords.Where(item => athleteIds.Contains(item.AthleteId) || (item.SessionId != null && sessionIds.Contains(item.SessionId.Value))).ExecuteDeleteAsync();
         await _context.EligibilityRecords.Where(item => athleteIds.Contains(item.AthleteId)).ExecuteDeleteAsync();
+        await _context.CoachEvaluations.Where(item => athleteIds.Contains(item.AthleteId) || coachIds.Contains(item.CoachId) || (item.TeamId != null && teamIds.Contains(item.TeamId.Value))).ExecuteDeleteAsync();
         await _context.AcademicRecords.Where(item => athleteIds.Contains(item.AthleteId)).ExecuteDeleteAsync();
         await _context.PortfolioItems.Where(item => athleteIds.Contains(item.AthleteId)).ExecuteDeleteAsync();
         await _context.Documents.Where(item => athleteIds.Contains(item.AthleteId)).ExecuteDeleteAsync();

@@ -30,6 +30,8 @@ public partial class AthleteHubDbContext : DbContext
 
     public virtual DbSet<CoachProfile> CoachProfiles { get; set; }
 
+    public virtual DbSet<CoachEvaluation> CoachEvaluations { get; set; }
+
     public virtual DbSet<Document> Documents { get; set; }
 
     public virtual DbSet<EligibilityRecord> EligibilityRecords { get; set; }
@@ -129,6 +131,9 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.SubjectName)
                 .HasMaxLength(150)
                 .HasColumnName("subject_name");
+            entity.Property(e => e.SectionCode)
+                .HasMaxLength(30)
+                .HasColumnName("section_code");
             entity.Property(e => e.TermId).HasColumnName("term_id");
             entity.Property(e => e.Units)
                 .HasPrecision(4)
@@ -147,6 +152,58 @@ public partial class AthleteHubDbContext : DbContext
                 .HasForeignKey(d => d.TermId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_academic_term");
+        });
+
+        modelBuilder.Entity<CoachEvaluation>(entity =>
+        {
+            entity.HasKey(e => e.CoachEvaluationId).HasName("PRIMARY");
+
+            entity.ToTable("coach_evaluations");
+
+            entity.HasIndex(e => new { e.AthleteId, e.CoachId, e.TermId }, "coach_evaluation_unique").IsUnique();
+            entity.HasIndex(e => e.CoachId, "fk_coach_evaluation_coach");
+            entity.HasIndex(e => e.TermId, "fk_coach_evaluation_term");
+            entity.HasIndex(e => e.TeamId, "fk_coach_evaluation_team");
+
+            entity.Property(e => e.CoachEvaluationId).HasColumnName("coach_evaluation_id");
+            entity.Property(e => e.AthleteId).HasColumnName("athlete_id");
+            entity.Property(e => e.CoachId).HasColumnName("coach_id");
+            entity.Property(e => e.TermId).HasColumnName("term_id");
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.Property(e => e.Status)
+                .HasDefaultValueSql("'PENDING'")
+                .HasColumnType("enum('PENDING','SUBMITTED')")
+                .HasColumnName("status");
+            entity.Property(e => e.Ratings)
+                .HasColumnType("text")
+                .HasColumnName("ratings");
+            entity.Property(e => e.Comments)
+                .HasColumnType("text")
+                .HasColumnName("comments");
+            entity.Property(e => e.SentAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("sent_at");
+            entity.Property(e => e.SubmittedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("submitted_at");
+
+            entity.HasOne(d => d.Athlete).WithMany()
+                .HasForeignKey(d => d.AthleteId)
+                .HasConstraintName("fk_coach_evaluation_athlete");
+
+            entity.HasOne(d => d.Coach).WithMany()
+                .HasForeignKey(d => d.CoachId)
+                .HasConstraintName("fk_coach_evaluation_coach");
+
+            entity.HasOne(d => d.Term).WithMany()
+                .HasForeignKey(d => d.TermId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_coach_evaluation_term");
+
+            entity.HasOne(d => d.Team).WithMany()
+                .HasForeignKey(d => d.TeamId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_coach_evaluation_team");
         });
 
         modelBuilder.Entity<AcademicTerm>(entity =>

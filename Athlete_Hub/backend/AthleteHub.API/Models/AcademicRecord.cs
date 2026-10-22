@@ -17,6 +17,9 @@ public partial class AcademicRecord
 
     public string SubjectName { get; set; } = null!;
 
+    /// <summary>Class section from the ICTD university database, e.g. BSIT-2A.</summary>
+    public string? SectionCode { get; set; }
+
     public decimal? Units { get; set; }
 
     public decimal? Grade { get; set; }

@@ -13,9 +13,7 @@ const TEST_ACCOUNTS = [
   { role: 'Student-athlete', name: 'Juan Dela Cruz', email: 'juan.delacruz@seed.athletehub.test' },
   { role: 'Coach', name: 'Maria Santos', email: 'maria.santos@seed.athletehub.test' },
   { role: 'Sports Director', name: 'Elena Navarro', email: 'elena.navarro@seed.athletehub.test' },
-  { role: 'Registrar', name: 'Grace Tan', email: 'grace.tan@seed.athletehub.test' },
   { role: 'Parent', name: 'Rosario Dela Cruz', email: 'rosario.delacruz@seed.athletehub.test' },
-  { role: 'Administrator', name: 'Victor Lopez', email: 'victor.lopez@seed.athletehub.test' },
 ]
 
 export default function LoginPage({ notice, onSignedIn }) {
@@ -78,11 +76,11 @@ export default function LoginPage({ notice, onSignedIn }) {
           <h1>Athlete-Hub</h1>
         </div>
         <p className="login-tagline">Centralized Digital Portfolio &amp; Monitoring System</p>
-        <p className="login-copy">Track academic eligibility, training, and athletic achievements on one platform — built for Filipino student-athletes, coaches, parents, and school staff.</p>
+        <p className="login-copy">Track grades, training, and athletic achievements on one platform — built for Filipino student-athletes, coaches, parents, and school staff.</p>
         <ul className="login-features">
           <li>Role-based portals</li>
           <li>Verified digital portfolios</li>
-          <li>Registrar eligibility tracking</li>
+          <li>ICTD grade records</li>
           <li>Parent monitoring</li>
         </ul>
       </section>
@@ -133,7 +131,7 @@ export default function LoginPage({ notice, onSignedIn }) {
             </button>
             {showHelp && (
               <div className="login-help">
-                <p>Passwords are managed by the school's <strong>Athlete-Hub administrator</strong>. Contact the athletics office to reset your password or to reactivate a suspended account.</p>
+                <p>Accounts and passwords are managed by the <strong>Sports Director</strong>. Contact the athletics office to reset your password or to reactivate a suspended account.</p>
                 <p className="muted">Parents: your account is created by the athletics office and linked to your child's University ID.</p>
               </div>
             )}

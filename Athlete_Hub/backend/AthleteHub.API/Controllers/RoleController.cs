@@ -1,4 +1,5 @@
 using AthleteHub.API.Data;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,9 @@ public class RoleController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetRoles()
     {
+        // Hidden roles (Registrar, Admin) are kept in the database but never offered.
         var roles = await _context.Roles
+            .Where(r => !HiddenRoles.Names.Contains(r.RoleName))
             .Select(r => new
             {
                 r.RoleId,

@@ -51,6 +51,8 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<AthleteAccessService>();
 builder.Services.AddScoped<AchievementReviewService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<IctdUniversityDatabase>();
+builder.Services.AddScoped<CoachEvaluationService>();
 builder.Services.AddSingleton<DocumentStorage>();
 builder.Services.AddSingleton<AppClock>();
 
@@ -128,14 +130,15 @@ builder.Services
             ClockSkew = TimeSpan.Zero
         };
 
-        // Suspending or deactivating an account takes effect immediately, not when the token expires.
+        // Suspending or deactivating an account, or hiding its role, takes effect immediately, not when the token expires.
         options.Events = new JwtBearerEvents
         {
             OnTokenValidated = async context =>
             {
                 var userId = AthleteAccessService.GetUserId(context.Principal!);
                 var db = context.HttpContext.RequestServices.GetRequiredService<AthleteHubDbContext>();
-                var active = userId != null && await db.Users.AnyAsync(user => user.UserId == userId && user.AccountStatus == "ACTIVE");
+                var active = userId != null && await db.Users.AnyAsync(user => user.UserId == userId && user.AccountStatus == "ACTIVE"
+                    && !HiddenRoles.Names.Contains(user.Role.RoleName));
                 if (!active) context.Fail("This account is no longer active.");
             }
         };

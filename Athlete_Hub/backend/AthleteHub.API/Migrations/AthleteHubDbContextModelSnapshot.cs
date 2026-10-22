@@ -98,6 +98,11 @@ namespace AthleteHub.API.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("remarks");
 
+                    b.Property<string>("SectionCode")
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("section_code");
+
                     b.Property<string>("SourceType")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -356,6 +361,67 @@ namespace AthleteHub.API.Migrations
                         .IsUnique();
 
                     b.ToTable("attendance", (string)null);
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.CoachEvaluation", b =>
+                {
+                    b.Property<int>("CoachEvaluationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("coach_evaluation_id");
+
+                    b.Property<int>("AthleteId")
+                        .HasColumnType("int")
+                        .HasColumnName("athlete_id");
+
+                    b.Property<int>("CoachId")
+                        .HasColumnType("int")
+                        .HasColumnName("coach_id");
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("text")
+                        .HasColumnName("comments");
+
+                    b.Property<string>("Ratings")
+                        .HasColumnType("text")
+                        .HasColumnName("ratings");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('PENDING','SUBMITTED')")
+                        .HasColumnName("status")
+                        .HasDefaultValueSql("'PENDING'");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("int")
+                        .HasColumnName("team_id");
+
+                    b.Property<int>("TermId")
+                        .HasColumnType("int")
+                        .HasColumnName("term_id");
+
+                    b.HasKey("CoachEvaluationId")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex(new[] { "AthleteId", "CoachId", "TermId" }, "coach_evaluation_unique")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "CoachId" }, "fk_coach_evaluation_coach");
+
+                    b.HasIndex(new[] { "TeamId" }, "fk_coach_evaluation_team");
+
+                    b.HasIndex(new[] { "TermId" }, "fk_coach_evaluation_term");
+
+                    b.ToTable("coach_evaluations", (string)null);
                 });
 
             modelBuilder.Entity("AthleteHub.API.Models.CoachProfile", b =>
@@ -1224,6 +1290,43 @@ namespace AthleteHub.API.Migrations
                     b.Navigation("Athlete");
 
                     b.Navigation("TrainingSession");
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.CoachEvaluation", b =>
+                {
+                    b.HasOne("AthleteHub.API.Models.AthleteProfile", "Athlete")
+                        .WithMany()
+                        .HasForeignKey("AthleteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_coach_evaluation_athlete");
+
+                    b.HasOne("AthleteHub.API.Models.CoachProfile", "Coach")
+                        .WithMany()
+                        .HasForeignKey("CoachId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_coach_evaluation_coach");
+
+                    b.HasOne("AthleteHub.API.Models.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_coach_evaluation_team");
+
+                    b.HasOne("AthleteHub.API.Models.AcademicTerm", "Term")
+                        .WithMany()
+                        .HasForeignKey("TermId")
+                        .IsRequired()
+                        .HasConstraintName("fk_coach_evaluation_term");
+
+                    b.Navigation("Athlete");
+
+                    b.Navigation("Coach");
+
+                    b.Navigation("Team");
+
+                    b.Navigation("Term");
                 });
 
             modelBuilder.Entity("AthleteHub.API.Models.CoachProfile", b =>

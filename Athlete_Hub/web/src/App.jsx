@@ -9,20 +9,18 @@ import { Loading } from './components/ui.jsx'
 const StudentPortal = lazy(() => import('./features/student/StudentPortal.jsx'))
 const CoachPortal = lazy(() => import('./features/coach/CoachPortal.jsx'))
 const DirectorPortal = lazy(() => import('./features/director/DirectorPortal.jsx'))
-const RegistrarPortal = lazy(() => import('./features/registrar/RegistrarPortal.jsx'))
-const AdminPortal = lazy(() => import('./features/admin/AdminPortal.jsx'))
 const ParentPortal = lazy(() => import('./features/parent/ParentPortal.jsx'))
 
 const SESSION_KEY = 'athletehub-session'
 const EXPIRY_WARNING_MS = 5 * 60 * 1000
 
+// The Registrar and Admin roles are hidden (backend Services/HiddenRoles.cs) and cannot sign in, so they have no
+// entry here. Their portals are kept in features/registrar and features/admin in case the roles come back.
 const PORTALS = {
   ATHLETE: StudentPortal,
   STUDENT: StudentPortal,
   COACH: CoachPortal,
   DIRECTOR: DirectorPortal,
-  REGISTRAR: RegistrarPortal,
-  ADMIN: AdminPortal,
   PARENT: ParentPortal,
 }
 

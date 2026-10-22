@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { accountLabel, fullName, isActiveAccount, matchesSearch } from '../../lib/format.js'
 import { Avatar, EmptyState, PageHeader, SearchInput, StatusBadge } from '../../components/ui.jsx'
+import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
 
 /** Roster of athletes as cards; used by coaches (their teams) and the director (everyone). */
 export default function AthletesPage({ athletes, title, subtitle, onViewProfile }) {
@@ -30,11 +31,13 @@ export default function AthletesPage({ athletes, title, subtitle, onViewProfile 
                   </div>
                 </div>
                 <dl className="person-card-stats person-card-stats-wide">
-                  <div>
-                    <dt>Eligibility</dt>
-                    <dd>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} label={athlete.eligibilityStatus === 'PENDING' ? 'Awaiting decision' : undefined} /> : <span className="muted">Not evaluated</span>}</dd>
-                    {athlete.eligibilityTerm && <small className="muted" title={athlete.eligibilityTerm}>{athlete.eligibilityTerm}</small>}
-                  </div>
+                  {REGISTRAR_ELIGIBILITY ? (
+                    <div>
+                      <dt>Eligibility</dt>
+                      <dd>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} label={athlete.eligibilityStatus === 'PENDING' ? 'Awaiting decision' : undefined} /> : <span className="muted">Not evaluated</span>}</dd>
+                      {athlete.eligibilityTerm && <small className="muted" title={athlete.eligibilityTerm}>{athlete.eligibilityTerm}</small>}
+                    </div>
+                  ) : <div><dt>Program</dt><dd title={athlete.course || ''}>{athlete.course || '—'}</dd></div>}
                   <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
                 </dl>
                 <button className="btn btn-secondary btn-block" type="button" onClick={() => onViewProfile(athlete)}>View profile</button>

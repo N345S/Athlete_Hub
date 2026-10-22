@@ -4,6 +4,7 @@ using System.Text;
 using AthleteHub.API.Data;
 using AthleteHub.API.DTOs;
 using AthleteHub.API.Models;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -177,13 +178,21 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new
             {
-                message = $"This account is {user.AccountStatus.ToLowerInvariant()}. Please contact the athletics office or a system administrator."
+                message = $"This account is {user.AccountStatus.ToLowerInvariant()}. Please contact the athletics office or the Sports Director."
             });
         }
 
         if (user.Role == null)
         {
             return StatusCode(500, new { message = "This account is missing a valid role assignment." });
+        }
+
+        if (HiddenRoles.Contains(user.Role.RoleName))
+        {
+            return Unauthorized(new
+            {
+                message = "This role is no longer used in Athlete-Hub. Please contact the Sports Director."
+            });
         }
 
 

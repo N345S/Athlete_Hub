@@ -10,14 +10,18 @@ import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Loading, Modal, PageHeader, ProgressBar, SearchInput, StatCard, StatusBadge, Tabs } from '../../components/ui.jsx'
 import Icon from '../../components/icons.jsx'
 import { HELP } from '../../lib/help.js'
+import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
+import AccountsPage from '../accounts/AccountsPage.jsx'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
 import { EventScheduleModal } from '../staff/ScheduleModals.jsx'
 import TrainingApprovals from '../staff/TrainingApprovals.jsx'
+import CoachEvaluationsCard from './CoachEvaluationsCard.jsx'
+import GradesPage from './GradesPage.jsx'
 
-const VIEWS = ['dashboard', 'coaches', 'athletes', 'schedule', 'performance', 'notifications']
-const TITLES = { dashboard: 'Dashboard', coaches: 'Coaches', athletes: 'All athletes', schedule: 'Schedule', performance: 'Performance', notifications: 'Notifications' }
+const VIEWS = ['dashboard', 'coaches', 'athletes', 'grades', 'schedule', 'performance', 'accounts', 'notifications']
+const TITLES = { dashboard: 'Dashboard', coaches: 'Coaches', athletes: 'All athletes', grades: 'Grades', schedule: 'Schedule', performance: 'Performance', accounts: 'Accounts', notifications: 'Notifications' }
 
 /**
  * The athlete's active teams. Assigned means on a coach's team. `currentTeams` lists every team;
@@ -106,7 +110,7 @@ function AssignAthleteModal({ coach, teamName, noTeam, session, onClose, onAssig
         <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" type="button" onClick={submit} disabled={saving || !chosen.length || noTeam}>{saving ? 'Saving…' : actionLabel}</button>
       </>}>
-      {noTeam && <Alert tone="warning">{fullName(coach)} has no active team yet, so athletes cannot be assigned. An administrator needs to create or activate a team first.</Alert>}
+      {noTeam && <Alert tone="warning">{fullName(coach)} has no active team yet, so athletes cannot be assigned. Their team needs to be created or activated first.</Alert>}
       <div className="assign-toolbar">
         <Tabs label="Show athletes" value={filter} onChange={setFilter} options={[['unassigned', `No team (${unassigned.length})`], ['assigned', `On another team (${onOtherTeams.length})`]]} />
         <SearchInput value={search} onChange={setSearch} placeholder={filter === 'unassigned' ? 'Search name or ID…' : 'Search name, team, or coach…'} label="Search athletes" />
@@ -153,7 +157,7 @@ function AssignAthleteModal({ coach, teamName, noTeam, session, onClose, onAssig
   )
 }
 
-/** One coach's teams and athletes, with each athlete's attendance and eligibility. */
+/** One coach's teams and athletes, with each athlete's attendance, and what students said in their evaluations. */
 function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack, onRosterChanged }) {
   const toast = useToast()
   const profile = useApiData(`/api/Director/coaches/${coach.coachId}`, session.token)
@@ -215,11 +219,11 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack, onR
               </ul>
             ) : <EmptyState icon="team" title="No teams" message="This coach is not assigned to a team, so athletes cannot be assigned yet." />}
           </Card>
-          <Card title="Assigned athletes" subtitle="Attendance and latest Registrar decision">
+          <Card title="Assigned athletes" subtitle={REGISTRAR_ELIGIBILITY ? 'Attendance and latest Registrar decision' : 'Attendance for each athlete'}>
             {roster.length ? (
               <div className="table-wrap">
                 <table className="table">
-                  <thead><tr><th>Athlete</th><th>Team</th><th>Attendance</th><th>Eligibility</th><th><span className="visually-hidden">Actions</span></th></tr></thead>
+                  <thead><tr><th>Athlete</th><th>Team</th><th>Attendance</th>{REGISTRAR_ELIGIBILITY && <th>Eligibility</th>}<th><span className="visually-hidden">Actions</span></th></tr></thead>
                   <tbody>
                     {roster.map((athlete) => (
                       <tr key={athlete.athleteId}>
@@ -230,7 +234,7 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack, onR
                         </td>
                         <td>{athlete.teamName}</td>
                         <td><ProgressBar value={athlete.attendanceRate} /></td>
-                        <td>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} label={athlete.eligibilityStatus === 'PENDING' ? 'Awaiting decision' : undefined} /> : <span className="muted">Not evaluated</span>}</td>
+                        {REGISTRAR_ELIGIBILITY && <td>{athlete.eligibilityStatus ? <StatusBadge status={athlete.eligibilityStatus} label={athlete.eligibilityStatus === 'PENDING' ? 'Awaiting decision' : undefined} /> : <span className="muted">Not evaluated</span>}</td>}
                         <td className="table-action"><button className="btn btn-ghost btn-sm" type="button" onClick={() => setUnassigning(athlete)}>Unassign</button></td>
                       </tr>
                     ))}
@@ -239,6 +243,7 @@ function CoachProfile({ coach, session, athleteIndex, onOpenAthlete, onBack, onR
               </div>
             ) : <EmptyState icon="users" title="No athletes assigned" />}
           </Card>
+          <CoachEvaluationsCard coach={coach} session={session} />
         </div>
       </>}
       {showAssign && (
@@ -311,7 +316,7 @@ function CoachesPage({ summaries, loading, onOpen }) {
               <dl className="person-card-stats">
                 <div><dt>Athletes</dt><dd>{athletes}</dd></div>
                 <div><dt>Attendance</dt><dd>{attendance == null ? '—' : `${attendance}%`}</dd></div>
-                <div><dt>Ineligible</dt><dd className={ineligible ? 'text-danger' : ''}>{ineligible}</dd></div>
+                {REGISTRAR_ELIGIBILITY && <div><dt>Ineligible</dt><dd className={ineligible ? 'text-danger' : ''}>{ineligible}</dd></div>}
               </dl>
               <button className="btn btn-secondary btn-block" type="button" onClick={() => onOpen(coach)}>View coach</button>
             </article>
@@ -336,6 +341,8 @@ export default function DirectorPortal({ session, onLogout }) {
   const coaches = useApiData('/api/Director/coaches', session.token)
   const pending = useApiData('/api/Training/pending', session.token, { initialData: [] })
   const schedule = useApiData('/api/Schedules/staff', session.token, { initialData: [] })
+  const gradeTerms = useApiData(REGISTRAR_ELIGIBILITY ? null : '/api/IctdGrades/terms', session.token, { initialData: [] })
+  const latestGrades = gradeTerms.data?.[0]
 
   const athleteRows = dashboard.data?.athletes || []
   const athletes = mergeAthleteTeams(athleteRows.flatMap((athlete) => athlete.teams?.length
@@ -391,9 +398,13 @@ export default function DirectorPortal({ session, onLogout }) {
 
   let content
   if (view === 'athletes' && profileAthlete) {
-    content = <AthleteProfilePage athlete={profileAthlete} session={session} canEdit={false} canRequestEvaluation onBack={() => setProfileAthlete(null)} />
+    content = <AthleteProfilePage athlete={profileAthlete} session={session} canEdit={false} canRequestEvaluation={REGISTRAR_ELIGIBILITY} canViewGrades onBack={() => setProfileAthlete(null)} />
   } else if (view === 'athletes') {
-    content = <AthletesPage athletes={athletes} title="All athletes" subtitle="Every registered student-athlete — open a profile to request a Grade Evaluation" onViewProfile={setProfileAthlete} />
+    content = <AthletesPage athletes={athletes} title="All athletes" subtitle={REGISTRAR_ELIGIBILITY ? 'Every registered student-athlete — open a profile to request a Grade Evaluation' : 'Every registered student-athlete — open a profile to see their grades, portfolio, and documents'} onViewProfile={setProfileAthlete} />
+  } else if (view === 'grades') {
+    content = <GradesPage session={session} onOpenAthlete={openAthlete} />
+  } else if (view === 'accounts') {
+    content = <AccountsPage session={session} />
   } else if (view === 'coaches' && profileCoach) {
     content = <CoachProfile coach={profileCoach} session={session} athleteIndex={athleteIndex} onOpenAthlete={openAthlete} onRosterChanged={() => { coaches.reload(); dashboard.reload() }} onBack={() => { setProfileCoach(null); coaches.reload(); dashboard.reload() }} />
   } else if (view === 'coaches') {
@@ -428,16 +439,18 @@ export default function DirectorPortal({ session, onLogout }) {
           <StatCard icon="users" label="Active athletes" value={activeAthletes.length} hint={`${noTeam.length} without a team`} onClick={() => navigate('athletes')} />
           <StatCard icon="coach" label="Coaches" value={coachList.filter(isActiveAccount).length} hint={`${coachList.length - coachList.filter(isActiveAccount).length} inactive or suspended`} tone="info" onClick={() => navigate('coaches')} />
           <StatCard icon="clock" label="Training approvals" value={pending.data?.length || 0} hint="Awaiting your review" tone="warning" onClick={() => navigate('schedule')} />
-          <StatCard icon="alert" label="Ineligible athletes" value={ineligible.length} hint="Latest Registrar decisions" tone="danger" onClick={() => document.getElementById('director-ineligible')?.scrollIntoView({ behavior: 'smooth' })} />
+          {REGISTRAR_ELIGIBILITY
+            ? <StatCard icon="alert" label="Ineligible athletes" value={ineligible.length} hint="Latest Registrar decisions" tone="danger" onClick={() => document.getElementById('director-ineligible')?.scrollIntoView({ behavior: 'smooth' })} />
+            : <StatCard icon="file" label="Failed or INC subjects" value={latestGrades ? latestGrades.failed + latestGrades.incomplete : '—'} hint={latestGrades ? `ICTD grades · ${latestGrades.semester} ${latestGrades.academicYear}` : 'No grades pulled from ICTD yet'} tone="danger" onClick={() => navigate('grades')} />}
         </div>
 
         <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
 
-        <Card title="Coach overview" subtitle="Roster size, attendance, and eligibility for each coach's athletes">
+        <Card title="Coach overview" subtitle={REGISTRAR_ELIGIBILITY ? "Roster size, attendance, and eligibility for each coach's athletes" : "Roster size and attendance for each coach's athletes"}>
           {summaries.length ? (
             <div className="table-wrap">
               <table className="table">
-                <thead><tr><th>Coach</th><th>Team</th><th className="numeric">Athletes</th><th>Avg. attendance</th><th className="numeric">Ineligible</th><th className="numeric">Not evaluated</th><th className="numeric">Pending requests</th></tr></thead>
+                <thead><tr><th>Coach</th><th>Team</th><th className="numeric">Athletes</th><th>Avg. attendance</th>{REGISTRAR_ELIGIBILITY && <><th className="numeric">Ineligible</th><th className="numeric">Not evaluated</th></>}<th className="numeric">Pending requests</th></tr></thead>
                 <tbody>
                   {summaries.map((summary) => (
                     <tr key={summary.coach.coachId}>
@@ -448,8 +461,10 @@ export default function DirectorPortal({ session, onLogout }) {
                       <td>{summary.coach.teams?.map((team) => team.teamName).join(', ') || <span className="muted">No team</span>}</td>
                       <td className="numeric">{summary.athletes}</td>
                       <td><ProgressBar value={summary.attendance} /></td>
-                      <td className={`numeric ${summary.ineligible ? 'text-danger' : ''}`}>{summary.ineligible}</td>
-                      <td className="numeric">{summary.notEvaluated}</td>
+                      {REGISTRAR_ELIGIBILITY && <>
+                        <td className={`numeric ${summary.ineligible ? 'text-danger' : ''}`}>{summary.ineligible}</td>
+                        <td className="numeric">{summary.notEvaluated}</td>
+                      </>}
                       <td className="numeric">{summary.pending}</td>
                     </tr>
                   ))}
@@ -460,18 +475,31 @@ export default function DirectorPortal({ session, onLogout }) {
         </Card>
 
         <div className="dashboard-grid">
-          <Card className="scroll-target" id="director-ineligible" title="Ineligible athletes" subtitle="Based on the latest Registrar decision">
-            {ineligible.length ? (
-              <ul className="row-list">
-                {ineligible.slice(0, 8).map((athlete) => (
-                  <li className="row" key={athlete.athleteId}>
-                    <div className="row-main"><strong>{fullName(athlete)}</strong><span>{athlete.teamName || 'No active team'}</span><small>{athlete.eligibilityTerm}</small></div>
-                    <button className="btn btn-ghost btn-sm" type="button" onClick={() => openAthlete(athlete.athleteId)}>View</button>
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState icon="check" title="No ineligible athletes" />}
-          </Card>
+          {REGISTRAR_ELIGIBILITY ? (
+            <Card className="scroll-target" id="director-ineligible" title="Ineligible athletes" subtitle="Based on the latest Registrar decision">
+              {ineligible.length ? (
+                <ul className="row-list">
+                  {ineligible.slice(0, 8).map((athlete) => (
+                    <li className="row" key={athlete.athleteId}>
+                      <div className="row-main"><strong>{fullName(athlete)}</strong><span>{athlete.teamName || 'No active team'}</span><small>{athlete.eligibilityTerm}</small></div>
+                      <button className="btn btn-ghost btn-sm" type="button" onClick={() => openAthlete(athlete.athleteId)}>View</button>
+                    </li>
+                  ))}
+                </ul>
+              ) : <EmptyState icon="check" title="No ineligible athletes" />}
+            </Card>
+          ) : (
+            <Card title="ICTD grades" subtitle="Latest semester pulled from the ICTD university database" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('grades')}>Grades →</button>}>
+              {latestGrades ? (
+                <dl className="detail-grid">
+                  <div><dt>Semester</dt><dd>{latestGrades.semester} {latestGrades.academicYear}</dd></div>
+                  <div><dt>Student-athletes</dt><dd>{latestGrades.athletes}</dd></div>
+                  <div><dt>Failed / INC</dt><dd className={latestGrades.failed + latestGrades.incomplete ? 'text-danger' : ''}>{latestGrades.failed} / {latestGrades.incomplete}</dd></div>
+                  <div><dt>Coach evaluations</dt><dd>{latestGrades.evaluationsSubmitted} of {latestGrades.evaluationsSent} submitted</dd></div>
+                </dl>
+              ) : <EmptyState icon="file" title="No grades yet" message="Pull a semester's final grades from the ICTD database." action={<button className="btn btn-secondary btn-sm" type="button" onClick={() => navigate('grades')}>Go to Grades</button>} />}
+            </Card>
+          )}
           <Card title="Upcoming events" subtitle="Sports events and competitions you published" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('schedule')}>Schedule →</button>}>
             {upcomingEvents.length ? (
               <ul className="row-list">
@@ -500,8 +528,10 @@ export default function DirectorPortal({ session, onLogout }) {
         { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard', badge: pending.data?.length || 0 },
         { key: 'coaches', label: 'Coaches', icon: 'coach' },
         { key: 'athletes', label: 'All athletes', shortLabel: 'Athletes', icon: 'users' },
+        { key: 'grades', label: 'Grades', icon: 'file' },
         { key: 'schedule', label: 'Schedule', icon: 'calendar' },
         { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
+        { key: 'accounts', label: 'Accounts', icon: 'shield' },
         { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}
