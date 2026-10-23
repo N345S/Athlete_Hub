@@ -94,6 +94,7 @@ export function statusTone(status) {
     case 'SUSPENDED':
     case 'ABSENT':
     case 'FAILED':
+    case 'CANCELLED':
       return 'danger'
     case 'AT_RISK':
     case 'LATE':

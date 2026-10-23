@@ -3,7 +3,7 @@ import { api } from '../../lib/api.js'
 import { average, formatDate, formatTimeRange, fullName, greeting, isActiveAccount, localDateISO, longToday, mergeAthleteTeams } from '../../lib/format.js'
 import { useApiData, useHashView, usePageDetail, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
-import CalendarView from '../../components/CalendarView.jsx'
+import CalendarView, { ScheduleStatusBadge } from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
 import { useToast } from '../../components/toast.jsx'
@@ -15,7 +15,7 @@ import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import AttendancePage from '../staff/AttendancePage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
-import { TrainingScheduleModal } from '../staff/ScheduleModals.jsx'
+import { ScheduleChangeModal, TrainingScheduleModal } from '../staff/ScheduleModals.jsx'
 
 const VIEWS = ['dashboard', 'athletes', 'schedule', 'attendance', 'performance', 'notifications']
 const TITLES = { dashboard: 'Dashboard', athletes: 'My athletes', schedule: 'Schedule', attendance: 'Attendance', performance: 'Performance', notifications: 'Notifications' }
@@ -32,6 +32,8 @@ export default function CoachPortal({ session, onLogout }) {
   const [profileAthlete, setProfileAthlete] = usePageDetail(view)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [cancelling, setCancelling] = useState(null)
+  // { event, mode: 'cancel' | 'reschedule' } for the training session being changed.
+  const [changing, setChanging] = useState(null)
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
   const [unread, refreshUnread] = useUnreadNotifications(session.token)
@@ -109,9 +111,17 @@ export default function CoachPortal({ session, onLogout }) {
         <CalendarView
           events={schedule.data || []}
           loading={schedule.loading}
-          renderActions={(event, close) => event.type === 'TRAINING' && event.approvalStatus === 'PENDING' && (
-            <button className="btn btn-danger-outline" type="button" onClick={() => { close(); setCancelling(event) }}>Cancel request</button>
-          )}
+          renderActions={(event, close) => {
+            // Coaches change their own upcoming training; rejected and cancelled sessions are final.
+            if (event.type !== 'TRAINING' || event.cancelled || event.approvalStatus === 'REJECTED' || event.startDate < localDateISO()) return null
+            const open = (mode) => { close(); setChanging({ event, mode }) }
+            return <>
+              <button className="btn btn-secondary" type="button" onClick={() => open('reschedule')}>Reschedule</button>
+              {event.approvalStatus === 'PENDING'
+                ? <button className="btn btn-danger-outline" type="button" onClick={() => { close(); setCancelling(event) }}>Withdraw request</button>
+                : <button className="btn btn-danger-outline" type="button" onClick={() => open('cancel')}>Cancel session</button>}
+            </>
+          }}
         />
       </Card>
     </>
@@ -211,9 +221,10 @@ export default function CoachPortal({ session, onLogout }) {
                       <span>{formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</span>
                       <small>{item.location || 'Location TBA'}{item.teamName ? ` · ${item.teamName}` : ''}</small>
                     </div>
-                    {item.type !== 'TRAINING'
-                      ? <span className={`badge type-${item.type.toLowerCase()}`}>{item.type === 'COMPETITION' ? 'Competition' : 'Sports event'}</span>
-                      : item.approvalStatus && item.approvalStatus !== 'APPROVED' && <StatusBadge status={item.approvalStatus} label={item.approvalStatus === 'PENDING' ? 'Awaiting approval' : undefined} />}
+                    <div className="row-actions">
+                      {item.type !== 'TRAINING' && <span className={`badge type-${item.type.toLowerCase()}`}>{item.type === 'COMPETITION' ? 'Competition' : 'Sports event'}</span>}
+                      <ScheduleStatusBadge item={item} />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -263,6 +274,20 @@ export default function CoachPortal({ session, onLogout }) {
     >
       {content}
       {showScheduleModal && <TrainingScheduleModal teams={teams} session={session} onClose={() => setShowScheduleModal(false)} onCreated={() => { toast.success('Training request sent. The Sports Director will review it.'); refreshSchedules() }} />}
+      {changing && (
+        <ScheduleChangeModal
+          event={changing.event}
+          mode={changing.mode}
+          role="coach"
+          session={session}
+          onClose={() => setChanging(null)}
+          onDone={() => {
+            toast.success(changing.mode === 'cancel' ? `“${changing.event.title}” cancelled. Everyone affected has been notified.` : `“${changing.event.title}” rescheduled. Everyone affected has been notified.`)
+            setChanging(null)
+            refreshSchedules()
+          }}
+        />
+      )}
       {cancelling && (
         <ConfirmDialog
           title="Cancel training request"

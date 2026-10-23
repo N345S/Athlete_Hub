@@ -882,6 +882,14 @@ namespace AthleteHub.API.Migrations
                         .HasColumnType("int")
                         .HasColumnName("schedule_id");
 
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("text")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("cancelled_at");
+
                     b.Property<int?>("CreatedBy")
                         .HasColumnType("int")
                         .HasColumnName("created_by");
@@ -898,6 +906,14 @@ namespace AthleteHub.API.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)")
                         .HasColumnName("location");
+
+                    b.Property<string>("RescheduleReason")
+                        .HasColumnType("text")
+                        .HasColumnName("reschedule_reason");
+
+                    b.Property<DateTime?>("RescheduledAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("rescheduled_at");
 
                     b.Property<string>("ScheduleType")
                         .IsRequired()
@@ -1045,6 +1061,14 @@ namespace AthleteHub.API.Migrations
                         .HasDefaultValue("APPROVED")
                         .HasColumnName("approval_status");
 
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("text")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("cancelled_at");
+
                     b.Property<int>("CoachId")
                         .HasColumnType("int")
                         .HasColumnName("coach_id");
@@ -1065,6 +1089,14 @@ namespace AthleteHub.API.Migrations
                     b.Property<string>("RejectionReason")
                         .HasColumnType("text")
                         .HasColumnName("rejection_reason");
+
+                    b.Property<string>("RescheduleReason")
+                        .HasColumnType("text")
+                        .HasColumnName("reschedule_reason");
+
+                    b.Property<DateTime?>("RescheduledAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("rescheduled_at");
 
                     b.Property<DateTime?>("ReviewedAt")
                         .HasColumnType("timestamp")

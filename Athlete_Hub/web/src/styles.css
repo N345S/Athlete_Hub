@@ -812,6 +812,9 @@ select.action-select { width: auto; min-height: 32px; padding: 4px 28px 4px 10px
 .event-chip.type-sports_event { border-left-color: var(--event-sports); background: var(--event-sports-bg); }
 .event-chip.type-competition { border-left-color: var(--event-competition); background: var(--event-competition-bg); }
 .event-chip.compact.type-training { color: var(--event-training); }
+/* Cancelled items stay on the calendar, faded and struck through, so people can still see what happened. */
+.event-chip.cancelled { border-left-color: var(--ink-400); background: var(--surface-muted); opacity: 0.75; }
+.event-chip.cancelled strong, .event-chip.compact.cancelled { text-decoration: line-through; color: var(--ink-500); }
 .event-chip.compact.type-sports_event { color: var(--event-sports); }
 .event-chip.compact.type-competition { color: var(--event-competition); }
 .event-list { display: flex; flex-direction: column; gap: var(--space-2); }

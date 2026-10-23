@@ -3,7 +3,7 @@ import { api } from '../../lib/api.js'
 import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday, statusLabel } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
-import CalendarView from '../../components/CalendarView.jsx'
+import CalendarView, { ScheduleStatusBadge } from '../../components/CalendarView.jsx'
 import FileLink from '../../components/FileLink.jsx'
 import NotificationsPage, { NotificationList } from '../../components/NotificationsPage.jsx'
 import Icon from '../../components/icons.jsx'
@@ -119,7 +119,7 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
   const nextEvents = [...(upcoming.data || [])]
     .filter((item) => item.startDate >= localDateISO())
     .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`))
-  const nextTraining = nextEvents.find((item) => item.type === 'TRAINING')
+  const nextTraining = nextEvents.find((item) => item.type === 'TRAINING' && !item.cancelled)
   const verified = (portfolio.data || []).filter((item) => ['VERIFIED', 'APPROVED'].includes(String(item.achievementStatus || item.verificationStatus).toUpperCase())).length
   const clearanceDocuments = (documents.data || []).filter((item) => item.documentType !== 'Achievement Evidence')
   const hasMedicalClearance = clearanceDocuments.some((item) => item.documentType === 'Medical Clearance')
@@ -176,8 +176,13 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
                     <strong>{item.title}</strong>
                     <span>{formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</span>
                     <small>{item.location || 'Location TBA'}{item.teamName ? ` · ${item.teamName}` : ''}</small>
+                    {item.cancellationReason && <small className="text-danger">Cancelled: {item.cancellationReason}</small>}
+                    {!item.cancelled && item.rescheduleReason && <small>Moved: {item.rescheduleReason}</small>}
                   </div>
-                  <span className={`badge type-${String(item.type).toLowerCase()}`}>{statusLabel(item.type)}</span>
+                  <div className="row-actions">
+                    <span className={`badge type-${String(item.type).toLowerCase()}`}>{statusLabel(item.type)}</span>
+                    <ScheduleStatusBadge item={item} />
+                  </div>
                 </li>
               ))}
             </ul>

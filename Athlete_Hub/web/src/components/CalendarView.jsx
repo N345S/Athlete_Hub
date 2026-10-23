@@ -6,6 +6,16 @@ const EVENT_TYPES = ['TRAINING', 'SPORTS_EVENT', 'COMPETITION']
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 /**
+ * The status to show beside a schedule item, if any: cancelled, waiting for approval or rejected, or rescheduled.
+ */
+export function ScheduleStatusBadge({ item }) {
+  if (item.cancelled) return <StatusBadge status="CANCELLED" label="Cancelled" />
+  if (item.approvalStatus && item.approvalStatus !== 'APPROVED') return <StatusBadge status={item.approvalStatus} label={item.approvalStatus === 'PENDING' ? 'Awaiting approval' : undefined} />
+  if (item.rescheduledAt) return <span className="badge badge-warning">Rescheduled</span>
+  return null
+}
+
+/**
  * Month calendar and list view of training sessions, sports events, and competitions.
  * `renderActions(event, close)` may return extra buttons for the event detail dialog, and
  * `renderDetails(event)` extra rows for its detail list. `eventTypes` limits the type filters shown.
@@ -47,13 +57,14 @@ export default function CalendarView({ events, loading, renderActions, renderDet
   const selectedInMonth = selectedDay.startsWith(isoFor(1).slice(0, 7))
 
   const eventButton = (item, compact) => (
-    <button key={item.id} type="button" className={`event-chip type-${item.type.toLowerCase()} ${compact ? 'compact' : ''}`} onClick={() => setSelected(item)}>
+    <button key={item.id} type="button" className={`event-chip type-${item.type.toLowerCase()} ${compact ? 'compact' : ''} ${item.cancelled ? 'cancelled' : ''}`} onClick={() => setSelected(item)}
+      aria-label={item.cancelled ? `${item.title} (cancelled)` : undefined}>
       {compact ? <><span className="event-time">{formatTimeRange(item.startTime).replace('Time TBA', '')}</span> {item.title}</> : (
         <>
           <strong>{item.title}</strong>
           <span>{eventTypeLabel(item.type)} · {formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</span>
           <small>{item.location || 'Location TBA'}{item.teamName ? ` · ${item.teamName}` : ''}</small>
-          {item.approvalStatus && item.approvalStatus !== 'APPROVED' && <StatusBadge status={item.approvalStatus} label={item.approvalStatus === 'PENDING' ? 'Awaiting approval' : undefined} />}
+          <ScheduleStatusBadge item={item} />
         </>
       )}
     </button>
@@ -123,7 +134,9 @@ export default function CalendarView({ events, loading, renderActions, renderDet
             <div><dt>Time</dt><dd>{formatTimeRange(selected.startTime, selected.endTime)}</dd></div>
             <div><dt>Location</dt><dd>{selected.location || 'Location TBA'}</dd></div>
             {selected.teamName && <div><dt>Team</dt><dd>{selected.teamName}</dd></div>}
-            {selected.approvalStatus && <div><dt>Status</dt><dd><StatusBadge status={selected.approvalStatus} /></dd></div>}
+            {(selected.approvalStatus || selected.cancelled) && <div><dt>Status</dt><dd><StatusBadge status={selected.cancelled ? 'CANCELLED' : selected.approvalStatus} /></dd></div>}
+            {selected.cancellationReason && <div><dt>Why it was cancelled</dt><dd>{selected.cancellationReason}</dd></div>}
+            {selected.rescheduleReason && <div><dt>Why it was moved</dt><dd>{selected.rescheduleReason}</dd></div>}
             {selected.rejectionReason && <div><dt>Reason</dt><dd>{selected.rejectionReason}</dd></div>}
             {selected.description && <div><dt>Details</dt><dd>{selected.description}</dd></div>}
             {renderDetails?.(selected)}

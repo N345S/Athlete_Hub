@@ -20,15 +20,17 @@ public class TrainingController : ControllerBase
     private static readonly string[] ValidStatuses = ["PRESENT", "ABSENT", "LATE", "EXCUSED"];
     private readonly AthleteHubDbContext _context;
     private readonly NotificationService _notifications;
+    private readonly AppClock _clock;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrainingController"/> class.
     /// </summary>
     /// <param name="context">The database context.</param>
-    public TrainingController(AthleteHubDbContext context, NotificationService notifications)
+    public TrainingController(AthleteHubDbContext context, NotificationService notifications, AppClock clock)
     {
         _context = context;
         _notifications = notifications;
+        _clock = clock;
     }
 
     /// <summary>
@@ -265,7 +267,7 @@ public class TrainingController : ControllerBase
             if (coach == null || session.Team.CoachId != coach.CoachId) return Forbid();
             // Approved sessions are already on athletes' calendars; only the Director can remove them.
             if (session.ApprovalStatus == "APPROVED")
-                return BadRequest(new { message = "This training is already approved. Only the Sports Director can remove it." });
+                return BadRequest(new { message = "This training is already approved. Use “Cancel session” and give the reason instead." });
         }
 
         // Parents were told about approved sessions, so tell them when one is cancelled.
@@ -280,6 +282,68 @@ public class TrainingController : ControllerBase
         _context.TrainingSessions.Remove(session);
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    /// <summary>
+    /// Cancels an approved training session. The coach cancels their own team's sessions and the Sports Director
+    /// can cancel any; a reason is required. The session stays on calendars marked cancelled, and the athletes,
+    /// their parents, and the Director (or the coach, when the Director cancels) are told why.
+    /// </summary>
+    [HttpPut("sessions/{sessionId}/cancel")]
+    [Authorize(Roles = "DIRECTOR,COACH")]
+    public async Task<IActionResult> CancelSession(int sessionId, ScheduleChangeRequest request)
+    {
+        var (reason, reasonError) = request.CheckReason("cancellation");
+        if (reasonError != null) return BadRequest(new { message = reasonError });
+        var (session, problem) = await FindChangeableSessionAsync(sessionId);
+        if (session == null) return problem!;
+        if (session.ApprovalStatus == "PENDING")
+            return BadRequest(new { message = "This request is not approved yet, so athletes cannot see it. Withdraw the request instead." });
+
+        session.ApprovalStatus = "CANCELLED";
+        session.CancellationReason = reason;
+        session.CancelledAt = DateTime.UtcNow;
+        await NotifySessionChangeAsync(session, "Training session cancelled",
+            $"{session.Title} ({session.Team.TeamName}) on {DescribeWhen(session)} has been cancelled. Reason: {reason}",
+            children => $"{session.Title} ({session.Team.TeamName}) on {DescribeWhen(session)} for {children} has been cancelled. Reason: {reason}",
+            "TRAINING_CANCELLED");
+        await _context.SaveChangesAsync();
+        return Ok(new { session.TrainingSessionId, session.ApprovalStatus, session.CancelledAt });
+    }
+
+    /// <summary>
+    /// Moves a training session to a new date or time, with a reason. The coach can move their own team's sessions
+    /// (an approved one stays approved) and the Sports Director can move approved ones. Everyone who can see the
+    /// session is told what changed and why.
+    /// </summary>
+    [HttpPut("sessions/{sessionId}/reschedule")]
+    [Authorize(Roles = "DIRECTOR,COACH")]
+    public async Task<IActionResult> RescheduleSession(int sessionId, ScheduleChangeRequest request)
+    {
+        var (reason, reasonError) = request.CheckReason("change");
+        if (reasonError != null) return BadRequest(new { message = reasonError });
+        if (!request.Date.HasValue) return BadRequest(new { message = "Please choose the new date." });
+        var date = request.Date.Value.Date;
+        if (date < _clock.LocalToday) return BadRequest(new { message = "The new date cannot be in the past." });
+        if (request.StartTime.HasValue && request.EndTime.HasValue && request.EndTime <= request.StartTime)
+            return BadRequest(new { message = "The end time must be later than the start time." });
+        var (session, problem) = await FindChangeableSessionAsync(sessionId);
+        if (session == null) return problem!;
+        if (session.TrainingDate.Date == date && session.StartTime == request.StartTime && session.EndTime == request.EndTime)
+            return BadRequest(new { message = "Choose a different date or time to reschedule the session." });
+
+        var before = DescribeWhen(session);
+        session.TrainingDate = date;
+        session.StartTime = request.StartTime;
+        session.EndTime = request.EndTime;
+        session.RescheduleReason = reason;
+        session.RescheduledAt = DateTime.UtcNow;
+        await NotifySessionChangeAsync(session, "Training session rescheduled",
+            $"{session.Title} ({session.Team.TeamName}) moved from {before} to {DescribeWhen(session)}. Reason: {reason}",
+            children => $"{session.Title} ({session.Team.TeamName}) for {children} moved from {before} to {DescribeWhen(session)}. Reason: {reason}",
+            "TRAINING_RESCHEDULED");
+        await _context.SaveChangesAsync();
+        return Ok(new { session.TrainingSessionId, trainingDate = session.TrainingDate.ToString("yyyy-MM-dd"), session.StartTime, session.EndTime });
     }
 
     [HttpGet("sessions/{sessionId}/attendance")]
@@ -323,6 +387,61 @@ public class TrainingController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return null;
         return await _context.CoachProfiles.FirstOrDefaultAsync(coach => coach.UserId == userId);
+    }
+
+    /// <summary>
+    /// The session the signed-in coach or director may cancel or reschedule, or the response explaining why not:
+    /// coaches change only their own team's sessions, the Director only approved ones, and never past or
+    /// cancelled ones.
+    /// </summary>
+    private async Task<(TrainingSession? Session, IActionResult? Problem)> FindChangeableSessionAsync(int sessionId)
+    {
+        var session = await _context.TrainingSessions.Include(item => item.Team).FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId);
+        if (session == null) return (null, NotFound(new { message = "We could not find this training session. It may have been deleted." }));
+        if (session.ApprovalStatus == "CANCELLED") return (null, Conflict(new { message = "This session is already cancelled." }));
+        if (session.ApprovalStatus == "REJECTED") return (null, BadRequest(new { message = "This request was rejected. Submit a new request instead." }));
+        if (User.IsInRole("COACH"))
+        {
+            var coach = await GetCoachAsync();
+            if (coach == null || (session.Team.CoachId != coach.CoachId && session.CoachId != coach.CoachId)) return (null, Forbid());
+        }
+        else if (session.ApprovalStatus is not ("APPROVED" or null))
+        {
+            return (null, BadRequest(new { message = "This request is still waiting for approval. Approve or reject it under Training approvals." }));
+        }
+        if (session.TrainingDate.Date < _clock.LocalToday) return (null, BadRequest(new { message = "This session has already taken place, so it cannot be changed." }));
+        return (session, null);
+    }
+
+    /// <summary>
+    /// Queues the notifications for a cancelled or moved session: the team's athletes and their parents once the
+    /// session has been approved, and the Director when a coach made the change (or the coach when the Director did).
+    /// </summary>
+    private async Task NotifySessionChangeAsync(TrainingSession session, string title, string message, Func<string, string> parentMessage, string type)
+    {
+        if (session.ApprovalStatus is "APPROVED" or null or "CANCELLED")
+        {
+            var members = await _context.TeamMembers
+                .Where(member => member.TeamId == session.TeamId && member.DateLeft == null && member.Athlete.User.AccountStatus == "ACTIVE")
+                .Select(member => new { member.AthleteId, member.Athlete.UserId })
+                .ToListAsync();
+            _notifications.Notify(members.Select(member => member.UserId), title, message, type);
+            await NotifyParentsAsync(members.Select(member => member.AthleteId), title, parentMessage, type);
+        }
+
+        if (User.IsInRole("COACH"))
+        {
+            var coachName = await _context.CoachProfiles.Where(coach => coach.CoachId == session.CoachId).Select(coach => coach.User.FirstName + " " + coach.User.LastName).FirstOrDefaultAsync();
+            _notifications.Notify(await _notifications.ActiveUserIdsInRoleAsync("DIRECTOR"), title, $"Coach {coachName}: {message}", type);
+        }
+        else
+        {
+            var coachUserIds = await _context.CoachProfiles
+                .Where(coach => coach.CoachId == session.CoachId || coach.CoachId == session.Team.CoachId)
+                .Select(coach => coach.UserId)
+                .ToListAsync();
+            _notifications.Notify(coachUserIds, title, $"The Sports Director made this change. {message}", type);
+        }
     }
 
     private async Task<bool> CanViewTeamAsync(int teamId)

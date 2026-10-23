@@ -740,6 +740,18 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.ScheduleType)
                 .HasColumnType("enum('TRAINING','COMPETITION','ACADEMIC','MEETING','OTHER','SCHOOL_EVENT','SPORTS_EVENT')")
                 .HasColumnName("schedule_type");
+            entity.Property(e => e.CancellationReason)
+                .HasColumnType("text")
+                .HasColumnName("cancellation_reason");
+            entity.Property(e => e.CancelledAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("cancelled_at");
+            entity.Property(e => e.RescheduleReason)
+                .HasColumnType("text")
+                .HasColumnName("reschedule_reason");
+            entity.Property(e => e.RescheduledAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("rescheduled_at");
             entity.Property(e => e.StartDatetime)
                 .HasColumnType("datetime")
                 .HasColumnName("start_datetime");
@@ -866,6 +878,18 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.RejectionReason)
                 .HasColumnType("text")
                 .HasColumnName("rejection_reason");
+            entity.Property(e => e.CancellationReason)
+                .HasColumnType("text")
+                .HasColumnName("cancellation_reason");
+            entity.Property(e => e.CancelledAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("cancelled_at");
+            entity.Property(e => e.RescheduleReason)
+                .HasColumnType("text")
+                .HasColumnName("reschedule_reason");
+            entity.Property(e => e.RescheduledAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("rescheduled_at");
             entity.Property(e => e.EndTime)
                 .HasColumnType("time")
                 .HasColumnName("end_time");

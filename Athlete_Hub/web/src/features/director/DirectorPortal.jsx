@@ -16,7 +16,7 @@ import AccountsPage from '../accounts/AccountsPage.jsx'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
-import { EventScheduleModal } from '../staff/ScheduleModals.jsx'
+import { EventScheduleModal, ScheduleChangeModal } from '../staff/ScheduleModals.jsx'
 import TrainingApprovals from '../staff/TrainingApprovals.jsx'
 import CoachEvaluationsCard from './CoachEvaluationsCard.jsx'
 import GradesPage, { AthleteGradesModal, GradeSyncStatus } from './GradesPage.jsx'
@@ -337,9 +337,8 @@ export default function DirectorPortal({ session, onLogout }) {
   const [profileAthlete, setProfileAthlete] = usePageDetail(view)
   const [profileCoach, setProfileCoach] = usePageDetail(view)
   const [showEventModal, setShowEventModal] = useState(false)
-  const [deleting, setDeleting] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const [actionError, setActionError] = useState('')
+  // { event, mode: 'cancel' | 'reschedule' } for the training session or event being changed.
+  const [changing, setChanging] = useState(null)
   const [unread, refreshUnread] = useUnreadNotifications(session.token)
   const dashboard = useApiData('/api/DirectorDashboard', session.token)
   const coaches = useApiData('/api/Director/coaches', session.token)
@@ -383,7 +382,7 @@ export default function DirectorPortal({ session, onLogout }) {
   const noTeam = activeAthletes.filter((athlete) => !athlete.teamName)
   const today = localDateISO()
   const upcomingEvents = (schedule.data || [])
-    .filter((item) => item.type !== 'TRAINING' && item.startDate >= today)
+    .filter((item) => item.type !== 'TRAINING' && !item.cancelled && item.startDate >= today)
     .sort((a, b) => `${a.startDate}${a.startTime}`.localeCompare(`${b.startDate}${b.startTime}`))
 
   const go = (key) => {
@@ -422,22 +421,6 @@ export default function DirectorPortal({ session, onLogout }) {
     schedule.reload()
   }
 
-  const deleteEvent = async () => {
-    setBusy(true)
-    setActionError('')
-    try {
-      await api.del(`/api/Schedules/${deleting.sourceId}`, session.token)
-      toast.success(`“${deleting.title}” deleted.`)
-      setDeleting(null)
-      schedule.reload()
-    } catch (err) {
-      setActionError(err.message)
-      setDeleting(null)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const addEventButton = <button className="btn btn-primary" type="button" onClick={() => setShowEventModal(true)}>+ Add sports event</button>
 
   let content
@@ -458,16 +441,22 @@ export default function DirectorPortal({ session, onLogout }) {
   } else if (view === 'schedule') {
     content = <>
       <PageHeader title="Schedule" subtitle="Publish sports events and competitions, and approve coaches' training sessions" actions={addEventButton} />
-      <Alert>{schedule.error || pending.error || actionError}</Alert>
+      <Alert>{schedule.error || pending.error}</Alert>
       <div className="stack">
         {pending.data?.length > 0 && <TrainingApprovals sessions={pending.data} session={session} onReviewed={onReviewed} />}
         <Card>
           <CalendarView
             events={schedule.data || []}
             loading={schedule.loading}
-            renderActions={(event, close) => event.type !== 'TRAINING' && (
-              <button className="btn btn-danger-outline" type="button" onClick={() => { close(); setDeleting(event) }}>Delete event</button>
-            )}
+            renderActions={(event, close) => {
+              // Upcoming approved training, sports events, and competitions can be moved or cancelled.
+              if (event.cancelled || event.startDate < today || (event.type === 'TRAINING' && event.approvalStatus && event.approvalStatus !== 'APPROVED')) return null
+              const open = (mode) => { close(); setChanging({ event, mode }) }
+              return <>
+                <button className="btn btn-secondary" type="button" onClick={() => open('reschedule')}>Reschedule</button>
+                <button className="btn btn-danger-outline" type="button" onClick={() => open('cancel')}>{event.type === 'TRAINING' ? 'Cancel session' : 'Cancel event'}</button>
+              </>
+            }}
           />
         </Card>
       </div>
@@ -595,14 +584,18 @@ export default function DirectorPortal({ session, onLogout }) {
       {unlockFor && <UnlockDialog session={session} access={access} section={unlockFor.view === 'accounts' ? 'Accounts' : 'Grades'} onOpened={openUnlocked} onCancel={() => setUnlockFor(null)} />}
       {viewingGrades && <AthleteGradesModal athlete={gradesAthlete} session={confidentialSession} onClose={() => setGradesAthlete(null)} />}
       {showEventModal && <EventScheduleModal session={session} onClose={() => setShowEventModal(false)} onCreated={() => { setShowEventModal(false); toast.success('Event published. Every athlete can now see it.'); schedule.reload() }} />}
-      {deleting && (
-        <ConfirmDialog
-          title="Delete event"
-          message={`Delete “${deleting.title}” on ${formatDate(deleting.startDate)}? Athletes will no longer see it.`}
-          confirmLabel="Delete event"
-          busy={busy}
-          onCancel={() => setDeleting(null)}
-          onConfirm={deleteEvent}
+      {changing && (
+        <ScheduleChangeModal
+          event={changing.event}
+          mode={changing.mode}
+          role="director"
+          session={session}
+          onClose={() => setChanging(null)}
+          onDone={() => {
+            toast.success(changing.mode === 'cancel' ? `“${changing.event.title}” cancelled. Everyone affected has been notified.` : `“${changing.event.title}” rescheduled. Everyone affected has been notified.`)
+            setChanging(null)
+            schedule.reload()
+          }}
         />
       )}
     </AppLayout>

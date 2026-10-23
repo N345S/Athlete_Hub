@@ -33,6 +33,16 @@ public partial class TrainingSession
 
     public string? RejectionReason { get; set; }
 
+    /// <summary>Why the session or event was cancelled; it stays on calendars, marked cancelled.</summary>
+    public string? CancellationReason { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    /// <summary>Why the date or time last changed, shown with the item and sent to everyone affected.</summary>
+    public string? RescheduleReason { get; set; }
+
+    public DateTime? RescheduledAt { get; set; }
+
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
     public virtual CoachProfile Coach { get; set; } = null!;

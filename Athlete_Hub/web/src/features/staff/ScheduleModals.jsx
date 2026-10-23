@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { api } from '../../lib/api.js'
-import { localDateISO } from '../../lib/format.js'
+import { eventTypeLabel, formatDate, formatTimeRange, localDateISO } from '../../lib/format.js'
 import { Alert, Field, Modal, Tabs } from '../../components/ui.jsx'
 
 const WEEKDAYS = [['Sun', 'Sunday'], ['Mon', 'Monday'], ['Tue', 'Tuesday'], ['Wed', 'Wednesday'], ['Thu', 'Thursday'], ['Fri', 'Friday'], ['Sat', 'Saturday']]
@@ -225,6 +225,80 @@ export function TrainingScheduleModal({ teams, session, onClose, onCreated }) {
         <Field label="End time" optional><input type="time" value={form.endTime} onChange={update('endTime')} /></Field>
         <Field label="Location" optional className="span-2"><input value={form.location} onChange={update('location')} placeholder="e.g. Gymnasium" /></Field>
         <Field label="Description" optional className="span-2"><textarea rows="3" value={form.description} onChange={update('description')} placeholder="Details for athletes" /></Field>
+      </form>
+      <Alert>{error}</Alert>
+    </Modal>
+  )
+}
+
+// The API asks for a clear reason; keep these in step with ScheduleChangeRequest.
+const MIN_REASON = 10
+const MAX_REASON = 500
+
+/**
+ * Cancels or reschedules a training session (`event.type` TRAINING) or a sports event or competition, with a
+ * required reason that is sent to everyone affected. `mode` is 'cancel' or 'reschedule'; `role` is 'coach' or
+ * 'director' and decides who is said to be notified.
+ */
+export function ScheduleChangeModal({ event, mode, role, session, onClose, onDone }) {
+  const training = event.type === 'TRAINING'
+  const rescheduling = mode === 'reschedule'
+  const kind = training ? 'training session' : eventTypeLabel(event.type).toLowerCase()
+  const [form, setForm] = useState({ date: event.startDate, startTime: event.startTime?.slice(0, 5) || '', endTime: event.endTime?.slice(0, 5) || '', reason: '' })
+  const { saving, error, setError, submit } = useSubmit(onDone)
+  const update = (key) => (change) => setForm((current) => ({ ...current, [key]: change.target.value }))
+  const reasonLength = form.reason.trim().length
+  const audience = !training ? 'Every athlete and coach'
+    : event.approvalStatus === 'PENDING' ? 'The Sports Director'
+      : `The team’s athletes, their parents, and ${role === 'coach' ? 'the Sports Director' : 'the coach'}`
+
+  const handleSubmit = (submitEvent) => {
+    submitEvent.preventDefault()
+    if (reasonLength < MIN_REASON) return setError(`Please explain the reason clearly (at least ${MIN_REASON} characters).`)
+    if (rescheduling) {
+      if (!form.date) return setError('Please choose the new date.')
+      if (form.date < localDateISO()) return setError('The new date cannot be in the past.')
+      if (!training && !form.startTime) return setError('Please choose the new start time.')
+      if (form.startTime && form.endTime && form.endTime <= form.startTime) return setError('The end time must be later than the start time.')
+      const unchanged = form.date === event.startDate && form.startTime === (event.startTime?.slice(0, 5) || '') && form.endTime === (event.endTime?.slice(0, 5) || '')
+      if (unchanged) return setError(`Choose a different date or time to reschedule the ${kind}.`)
+    }
+    const base = training ? `/api/Training/sessions/${event.sourceId}` : `/api/Schedules/${event.sourceId}`
+    submit(() => api.put(`${base}/${mode}`, {
+      reason: form.reason.trim(),
+      ...(rescheduling ? { date: form.date, startTime: toTimeSpan(form.startTime), endTime: toTimeSpan(form.endTime) } : {}),
+    }, session.token))
+  }
+
+  return (
+    <Modal
+      title={`${rescheduling ? 'Reschedule' : 'Cancel'} ${kind}`}
+      subtitle={`${event.title} · ${formatDate(event.startDate)} · ${formatTimeRange(event.startTime, event.endTime)}`}
+      onClose={onClose}
+      closeOnBackdrop={false}
+      footer={<>
+        <button className="btn btn-secondary" type="button" onClick={onClose} disabled={saving}>{rescheduling ? 'Back' : `Keep ${kind}`}</button>
+        <button className={`btn ${rescheduling ? 'btn-primary' : 'btn-danger'}`} type="submit" form="schedule-change-form" disabled={saving || reasonLength < MIN_REASON}>
+          {saving ? 'Saving…' : rescheduling ? 'Save new date and time' : `Cancel ${kind}`}
+        </button>
+      </>}
+    >
+      <form id="schedule-change-form" className="form-grid" onSubmit={handleSubmit}>
+        {rescheduling && <>
+          <Field label="New date" required className="span-2"><input type="date" min={localDateISO()} value={form.date} onChange={update('date')} required /></Field>
+          <Field label="Start time" required={!training} optional={training}><input type="time" value={form.startTime} onChange={update('startTime')} required={!training} /></Field>
+          <Field label="End time" optional><input type="time" value={form.endTime} onChange={update('endTime')} /></Field>
+        </>}
+        {!rescheduling && <p className="span-2 modal-message">It stays on the calendar marked “Cancelled”, with your reason.</p>}
+        <Field
+          label={rescheduling ? 'Reason for the change' : 'Reason for cancelling'}
+          required
+          className="span-2"
+          hint={`${audience} will be notified and will see this reason. ${reasonLength}/${MAX_REASON}${reasonLength < MIN_REASON ? ` · at least ${MIN_REASON} characters` : ''}`}
+        >
+          <textarea rows="3" value={form.reason} onChange={update('reason')} maxLength={MAX_REASON} required
+            placeholder={rescheduling ? 'e.g. The gym is booked for the school fair, so practice moves to Thursday.' : 'e.g. The venue is closed because of the typhoon warning.'} />
+        </Field>
       </form>
       <Alert>{error}</Alert>
     </Modal>

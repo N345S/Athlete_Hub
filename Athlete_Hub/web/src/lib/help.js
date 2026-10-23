@@ -34,7 +34,10 @@ export const HELP = {
         'Select an event to see its time, location, and details.',
         'Switch to “List” to see every upcoming event in order.',
       ],
-      tips: ['Use the coloured filter buttons to show or hide training, sports events, and competitions.'],
+      tips: [
+        'Use the coloured filter buttons to show or hide training, sports events, and competitions.',
+        'Cancelled items are crossed out. Open one to see why it was cancelled or moved.',
+      ],
     },
     performance: {
       title: 'My performance',
@@ -113,9 +116,10 @@ export const HELP = {
       steps: [
         'Select “Request training session”, choose a team, then tap each date on the calendar (or use “Repeat weekly” for a regular schedule) and submit.',
         'New sessions show “Awaiting approval” until the Sports Director approves them.',
-        'To withdraw a pending request, open it in the calendar and select “Cancel request”.',
+        'To move a session, open it in the calendar, select “Reschedule”, choose the new date and time, and give the reason.',
+        'To cancel an approved session, open it and select “Cancel session”, then give the reason. A pending request can be withdrawn instead.',
       ],
-      tips: ['Athletes only see a session after it is approved.'],
+      tips: ['Athletes only see a session after it is approved.', 'Your athletes, their parents, and the Sports Director are notified of every change, with your reason.'],
     },
     attendance: {
       title: 'Attendance',
@@ -189,8 +193,10 @@ export const HELP = {
       steps: [
         'Review pending training sessions at the top of the page.',
         'Select “Add sports event” then tap each date on the calendar, or use “Repeat weekly” for a recurring event.',
-        'Open an event in the calendar to delete it.',
+        'To move an approved training session, sports event, or competition, open it in the calendar and select “Reschedule”. Give the reason.',
+        'To cancel one, open it and select “Cancel session” or “Cancel event”, then give the reason.',
       ],
+      tips: ['Everyone affected is notified with your reason. Cancelled items stay on the calendar, crossed out.'],
     },
     performance: {
       title: 'Performance',
