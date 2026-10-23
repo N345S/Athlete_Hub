@@ -3,17 +3,17 @@ import { api } from '../../lib/api.js'
 import { Alert } from '../../components/ui.jsx'
 import InstallApp from '../../components/InstallApp.jsx'
 
-// Seeded accounts (see database/TEST_ACCOUNTS.md) offered as one-click sign-ins during development
+// Demo accounts (see database/DEMO_ACCOUNTS.md) offered as one-click sign-ins during development
 // and user-testing sessions. Hidden in production builds unless VITE_SHOW_TEST_ACCOUNTS=true.
 const SHOW_TEST_ACCOUNTS = import.meta.env.DEV || import.meta.env.VITE_SHOW_TEST_ACCOUNTS === 'true'
 const TEST_PASSWORD = 'Seed123!'
 // Phones open the keyboard for an autofocused field, covering the page before people have read it.
 const TOUCH_SCREEN = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
 const TEST_ACCOUNTS = [
-  { role: 'Student-athlete', name: 'Juan Dela Cruz', email: 'juan.delacruz@seed.athletehub.test' },
-  { role: 'Coach', name: 'Maria Santos', email: 'maria.santos@seed.athletehub.test' },
-  { role: 'Sports Director', name: 'Elena Navarro', email: 'elena.navarro@seed.athletehub.test' },
-  { role: 'Parent', name: 'Rosario Dela Cruz', email: 'rosario.delacruz@seed.athletehub.test' },
+  { role: 'Student-athlete', name: 'Marco Villareal', email: 'A24-31842@athlete.edu.ph' },
+  { role: 'Coach', name: 'Ramon Aguilar', email: 'C18-20415@athlete.edu.ph' },
+  { role: 'Sports Director', name: 'Elena Navarro', email: 'D14-10027@athlete.edu.ph' },
+  { role: 'Parent', name: 'Marivic Villareal', email: 'marivicvillareal@gmail.com' },
 ]
 
 export default function LoginPage({ notice, onSignedIn }) {

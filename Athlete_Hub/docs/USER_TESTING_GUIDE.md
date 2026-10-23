@@ -10,7 +10,7 @@ accounts, task scenarios for every role, what to measure, and the System Usabili
 | ✓ | Step |
 |---|---|
 | ☐ | MySQL is running and the API starts without errors (`dotnet run` in `backend/AthleteHub.API`). |
-| ☐ | Fresh sample data: `dotnet run -- --seed-test-data` (wipes and recreates **only** seed data — run before each participant so everyone starts from the same state). |
+| ☐ | Fresh demo data: `dotnet run -- --reset-demo-data` (deletes **all** data and recreates the demo data — run before each participant so everyone starts from the same state). |
 | ☐ | Web app running: `npm install` then `npm run dev` in `web/` → open <http://localhost:5173>. |
 | ☐ | Browser zoom at 100%, other tabs closed, notifications silenced. |
 | ☐ | Screen and audio recording started (with the participant's written consent). |
@@ -89,20 +89,19 @@ To let testers use the app any time without the facilitator's PC, host it in the
 
 ## 2. Participant accounts
 
-Password for every seeded account: **`Seed123!`** (full list in [`database/TEST_ACCOUNTS.md`](../database/TEST_ACCOUNTS.md)).
+Password for every demo account: **`Seed123!`** (full list in [`database/DEMO_ACCOUNTS.md`](../database/DEMO_ACCOUNTS.md)).
+Athletes, coaches, and the Director sign in with their ID as the email name.
 
 | Role | Account | Why this account |
 |---|---|---|
-| Coach (easy sign-in) | `coach1@athletehub.test`, `coach2@athletehub.test` | Each leads their own test team of ten students with two months of training history, results in four workouts, documents, and ten portfolio entries waiting for verification |
-| Student-athlete (easy sign-in) | `student1@athletehub.test` … `student20@athletehub.test` | Odd numbers (1, 3, 5 … 19) are coached by coach1, even numbers (2, 4, 6 … 20) by coach2 |
-| Student-athlete | `juan.delacruz@seed.athletehub.test` | Eligible, has upcoming training, verified + pending achievements |
-| Student-athlete (new) | `bea.lim@seed.athletehub.test` | No team, mostly empty — tests first-time experience and the "Getting started" list |
-| Coach | `maria.santos@seed.athletehub.test` | Blue Eagles Basketball; pending portfolio items, attendance to record |
-| Sports Director | `elena.navarro@seed.athletehub.test` | Pending training approvals, coaches to manage |
-| Registrar (hidden — cannot sign in) | `grace.tan@seed.athletehub.test` | Role switched off; grades now come from ICTD (Director → Grades) |
-| Parent | `rosario.delacruz@seed.athletehub.test` | One child (Juan) |
-| Parent (two children) | `roberto.aquino@seed.athletehub.test` | Kevin Aquino and Daniel Ramos |
-| Administrator (hidden — cannot sign in) | `victor.lopez@seed.athletehub.test` | Role switched off; the Sports Director manages accounts (Director → Accounts) |
+| Student-athlete | `A24-31842@athlete.edu.ph` (Marco Villareal) | Coach evaluation waiting on the dashboard, upcoming training, verified achievement, parent linked |
+| Student-athlete (transfer) | `T25-34190@athlete.edu.ph` (Kenneth Bautista) | Transfer student on the basketball team |
+| Student-athlete (new) | `A26-36302@athlete.edu.ph` (Bianca Herrera) | No team yet, no medical clearance — first-time experience and the "Getting started" list |
+| Coach | `C18-20415@athlete.edu.ph` (Ramon Aguilar) | Men's Varsity Basketball; a portfolio entry to verify, a rejected training request, attendance to record |
+| Coach | `C20-20872@athlete.edu.ph` (Liza Mendoza) | Women's Varsity Volleyball; an athlete with low attendance, a request waiting for approval |
+| Sports Director | `D14-10027@athlete.edu.ph` (Elena Navarro) | Training approvals, coaches and their evaluations, grades, accounts |
+| Parent | `marivicvillareal@gmail.com` | One child (Marco) |
+| Parent (two children) | `almareyes.ph@gmail.com` | Paolo Reyes (basketball) and Nicole Reyes (volleyball) |
 
 Bring a small PDF and a JPG on the test machine's Desktop for upload tasks.
 
@@ -241,7 +240,7 @@ Report the mean, standard deviation, and per-role means.
 ## 7. Resetting between participants
 
 1. Sign out (sidebar → **Sign out**; on a phone: tap your initials at the top right → **Sign out**).
-2. Re-seed: `dotnet run -- --seed-test-data` in `backend/AthleteHub.API` (about 10 seconds).
+2. Re-create the demo data: `dotnet run -- --reset-demo-data` in `backend/AthleteHub.API` (about 15 seconds).
 3. Clear the browser's site data for `localhost:5173` so the "Getting started" list and saved sign-in reset.
 
 ---

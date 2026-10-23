@@ -52,7 +52,7 @@ PORT=8080
 |---|---|
 | `ConnectionStrings__DefaultConnection` | Database connection. The `${{MySQL.…}}` references are filled in by Railway. |
 | `Jwt__Key` | Signs sign-in tokens. Generate one, e.g. in PowerShell: `[Convert]::ToBase64String([byte[]](1..48 \| % { Get-Random -Maximum 256 }))`. Never reuse the development key. |
-| `App__SeedTestDataIfEmpty` | `true` creates the test accounts from `database/TEST_ACCOUNTS.md` (password `Seed123!`) on the first start. Later starts keep testers' changes. |
+| `App__SeedTestDataIfEmpty` | `true` fills an empty database (no accounts at all) with the demo accounts from `database/DEMO_ACCOUNTS.md` (password `Seed123!`) when the app starts. A database with any account is never changed. |
 | `AllowedHosts` | Host names the API answers to. After step 4, replace `*` with the generated domain, e.g. `athletehub-production.up.railway.app`. |
 | `VITE_FEEDBACK_URL` *(optional)* | Adds a "Give feedback" link to every portal (e.g. a Google Form with the SUS questions). Build-time: redeploy after changing it. |
 | `VITE_SHOW_TEST_ACCOUNTS` *(optional)* | `true` shows one-click sign-in buttons. **Leave it off** on a public address — anyone with the link could sign in as any role. |
@@ -77,18 +77,20 @@ sign in with an account from section 2 of `USER_TESTING_GUIDE.md`.
 - On Android (Chrome/Edge) the browser offers **Install app**; on iPhone use Share → **Add to Home Screen**.
 - Deploying a new commit to the selected branch updates the app; the database and uploads are kept.
 
-## Resetting the test data
+## Resetting to the demo data
 
-Railway's MySQL service → **Settings → Networking** shows a public TCP address. From your PC:
+This deletes **everything** in the hosted database (every account, record, and notification). Railway's MySQL
+service → **Settings → Networking** shows a public TCP address. From your PC:
 
 ```powershell
 cd backend\AthleteHub.API
 $env:ConnectionStrings__DefaultConnection = "Server=<public host>;Port=<public port>;Database=railway;User=root;Password=<MYSQLPASSWORD>;"
-dotnet run -- --remove-test-data
+dotnet run -- --wipe-all-data
 Remove-Item Env:ConnectionStrings__DefaultConnection
 ```
 
-Then **Redeploy** the app service: with the seed accounts gone, it creates them again on start.
+Then **Restart** (or Redeploy) the app service: it finds the database empty and creates the demo data, saving
+the sample files on its volume. Dates are relative to that day, so reset shortly before a presentation.
 
 ## Troubleshooting
 

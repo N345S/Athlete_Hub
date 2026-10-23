@@ -95,10 +95,10 @@ function UserFormModal({ user, roles, session, onClose, onSaved }) {
         <Field label="Middle name" optional><input value={form.middleName} onChange={update('middleName')} /></Field>
         <Field label="Phone" optional><input type="tel" value={form.phone} onChange={update('phone')} placeholder="e.g. 0917 123 4567" /></Field>
         <Field label="Email" required hint="Used to sign in."><input type="email" value={form.email} onChange={update('email')} required placeholder="name@university.edu" /></Field>
-        {!isParent && <Field label="University ID" required hint="The school-issued ID number."><input value={form.universityId} onChange={update('universityId')} required /></Field>}
+        {!isParent && <Field label="University ID" required hint="Students: A (regular) or T (transfer), entry year, student number, e.g. A24-31842. Coaches C, Director D, e.g. C18-20415."><input value={form.universityId} onChange={update('universityId')} required /></Field>}
         {isParent && !user && <>
           <Field label="Child's University ID(s)" required hint="The athlete's University ID. Separate several children with commas.">
-            <input value={form.childUniversityIds} onChange={update('childUniversityIds')} placeholder="e.g. 2024-00123" required />
+            <input value={form.childUniversityIds} onChange={update('childUniversityIds')} placeholder="e.g. A24-31842" required />
           </Field>
           <Field label="Relationship" optional hint="e.g. Mother, Father, Guardian.">
             <input value={form.relationship} onChange={update('relationship')} maxLength={50} />

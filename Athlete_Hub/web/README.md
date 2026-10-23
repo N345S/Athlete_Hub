@@ -37,7 +37,7 @@ column header. The styles are in the "Phone layout" section at the end of `src/s
 | Variable | Purpose |
 |---|---|
 | `VITE_API_BASE_URL` | API address for builds served without the Vite proxy (e.g. a separate web host). Leave unset locally: requests go to `/api` on the same address and are forwarded to the API. |
-| `VITE_SHOW_TEST_ACCOUNTS` | `true` shows one-click sign-in buttons for the seeded test accounts on the login page. Always shown in `npm run dev`; hidden in production builds unless set. |
+| `VITE_SHOW_TEST_ACCOUNTS` | `true` shows one-click sign-in buttons for the demo accounts on the login page. Always shown in `npm run dev`; hidden in production builds unless set. |
 | `VITE_FEEDBACK_URL` | Adds a "Give feedback" link to every portal's sidebar, e.g. a survey used during user testing. |
 
 ## Where things live

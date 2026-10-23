@@ -297,38 +297,31 @@ if (resetPagePassword >= 0)
     return;
 }
 
-// Development helpers: `dotnet run -- --seed-test-data` / `--remove-test-data` / `--seed-parents` manage scenario data, then exit.
-if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data") || args.Contains("--seed-parents"))
+// Development helpers, which exit when done: `dotnet run -- --reset-demo-data` deletes ALL data and creates the demo
+// data; `--wipe-all-data` only deletes (a hosted API with App:SeedTestDataIfEmpty then refills itself on its next
+// start, writing the sample files to its own storage).
+if (args.Contains("--reset-demo-data") || args.Contains("--wipe-all-data"))
 {
     if (!app.Environment.IsDevelopment())
     {
-        Console.Error.WriteLine("Test data commands only run in the Development environment.");
+        Console.Error.WriteLine("Demo data commands only run in the Development environment.");
         return;
     }
 
     using var seedScope = app.Services.CreateScope();
-    var seeder = new TestDataSeeder(
-        seedScope.ServiceProvider.GetRequiredService<AthleteHubDbContext>(),
-        seedScope.ServiceProvider.GetRequiredService<AppClock>(),
-        app.Environment);
-    if (args.Contains("--remove-test-data")) await seeder.RemoveAsync();
-    else if (args.Contains("--seed-parents")) await seeder.SeedParentsAsync();
-    else await seeder.SeedAsync();
+    var seeder = NewDemoSeeder(seedScope.ServiceProvider);
+    await seeder.WipeAsync();
+    if (args.Contains("--reset-demo-data")) await seeder.SeedAsync();
     return;
 }
 
-// Hosted test deployments set App:SeedTestDataIfEmpty so the first start fills an empty database with the
-// test accounts (and their sample files in private-uploads). Later starts keep testers' changes and only add
-// what is missing of the easy-to-type accounts (coach1@athletehub.test, ...) and their sample data.
+// Hosted deployments set App:SeedTestDataIfEmpty so a start with an empty database (no accounts at all) fills it
+// with the demo data and its sample files in private-uploads. A database with any account is left as it is.
 if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))
 {
     using var seedScope = app.Services.CreateScope();
-    var seeder = new TestDataSeeder(
-        seedScope.ServiceProvider.GetRequiredService<AthleteHubDbContext>(),
-        seedScope.ServiceProvider.GetRequiredService<AppClock>(),
-        app.Environment);
-    if (!await seeder.HasSeedDataAsync()) await seeder.SeedAsync();
-    else await seeder.SeedEasyAccountsAsync();
+    var seeder = NewDemoSeeder(seedScope.ServiceProvider);
+    if (await seeder.IsEmptyAsync()) await seeder.SeedAsync();
 }
 
 // ==========================================
@@ -336,3 +329,9 @@ if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))
 // ==========================================
 
 app.Run();
+
+DemoDataSeeder NewDemoSeeder(IServiceProvider services) => new(
+    services.GetRequiredService<AthleteHubDbContext>(),
+    services.GetRequiredService<AppClock>(),
+    app.Environment,
+    services.GetRequiredService<IctdGradeSync>());
