@@ -42,7 +42,7 @@ public class PortfolioController : ControllerBase
 
         if (athlete == null)
         {
-            return NotFound(new { message = "Athlete profile not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         return Ok(await GetPortfolioItemsAsync(athlete.AthleteId));
@@ -63,7 +63,7 @@ public class PortfolioController : ControllerBase
 
         if (athlete == null)
         {
-            return NotFound(new { message = "Athlete profile not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         return Ok(new
@@ -94,11 +94,11 @@ public class PortfolioController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(title) || title.Trim().Length > 200)
         {
-            return BadRequest(new { message = "A title of up to 200 characters is required." });
+            return BadRequest(new { message = "Please enter a title (200 characters at most)." });
         }
         if (category?.Trim().Length > 100)
         {
-            return BadRequest(new { message = "Category must be 100 characters or fewer." });
+            return BadRequest(new { message = "The category is too long (100 characters at most)." });
         }
         if (achievementDate.HasValue && achievementDate.Value.Date > DateTime.UtcNow.Date.AddDays(1))
         {
@@ -115,7 +115,7 @@ public class PortfolioController : ControllerBase
         var athlete = await GetCurrentAthleteAsync();
         if (athlete == null)
         {
-            return NotFound(new { message = "Athlete profile not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         var savedDocuments = new List<Document>();
@@ -175,19 +175,19 @@ public class PortfolioController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Title))
         {
-            return BadRequest(new { message = "Title is required." });
+            return BadRequest(new { message = "Please enter a title." });
         }
 
         var athlete = await GetCurrentAthleteAsync();
 
         if (athlete == null)
         {
-            return NotFound(new { message = "Athlete profile not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         if (request.AchievementId == null || !await AchievementBelongsToAthleteAsync(request.AchievementId.Value, athlete.AthleteId))
         {
-            return BadRequest(new { message = "A linked achievement belonging to this athlete is required." });
+            return BadRequest(new { message = "Please choose one of your achievements." });
         }
 
         if (await _context.PortfolioItems.AnyAsync(item => item.AchievementId == request.AchievementId))
@@ -199,7 +199,7 @@ public class PortfolioController : ControllerBase
                 document.AchievementId == request.AchievementId
                 && document.AthleteId == athlete.AthleteId))
         {
-            return BadRequest(new { message = "At least one evidence file is required before submitting this achievement." });
+            return BadRequest(new { message = "Please add at least one file as proof." });
         }
 
         var item = new PortfolioItem
@@ -231,7 +231,7 @@ public class PortfolioController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Title))
         {
-            return BadRequest(new { message = "Title is required." });
+            return BadRequest(new { message = "Please enter a title." });
         }
 
         var athlete = await GetCurrentAthleteAsync();
@@ -243,17 +243,17 @@ public class PortfolioController : ControllerBase
 
         if (item == null)
         {
-            return NotFound(new { message = "Portfolio item not found." });
+            return NotFound(new { message = "We could not find this portfolio entry. It may have been deleted." });
         }
 
         if (string.Equals(await GetAchievementStatusAsync(item.AchievementId), "VERIFIED", StringComparison.OrdinalIgnoreCase))
         {
-            return Conflict(new { message = "Verified portfolio entries require staff approval before changes." });
+            return Conflict(new { message = "This entry is already approved, so it cannot be changed." });
         }
 
         if (request.AchievementId == null || !await AchievementBelongsToAthleteAsync(request.AchievementId.Value, item.AthleteId))
         {
-            return BadRequest(new { message = "A linked achievement belonging to this athlete is required." });
+            return BadRequest(new { message = "Please choose one of your achievements." });
         }
 
         item.AchievementId = request.AchievementId;
@@ -284,12 +284,12 @@ public class PortfolioController : ControllerBase
 
         if (item == null)
         {
-            return NotFound(new { message = "Portfolio item not found." });
+            return NotFound(new { message = "We could not find this portfolio entry. It may have been deleted." });
         }
 
         if (string.Equals(item.Achievement?.VerificationStatus, "VERIFIED", StringComparison.OrdinalIgnoreCase))
         {
-            return Conflict(new { message = "Verified portfolio entries require staff approval before removal." });
+            return Conflict(new { message = "This entry is already approved, so it cannot be removed." });
         }
 
         var evidence = item.AchievementId == null
@@ -322,12 +322,12 @@ public class PortfolioController : ControllerBase
 
         if (normalizedStatus == null)
         {
-            return BadRequest(new { message = "Status must be VERIFIED or REJECTED." });
+            return BadRequest(new { message = "Please choose Approve or Reject." });
         }
 
         if (normalizedStatus == "REJECTED" && string.IsNullOrWhiteSpace(request.RejectionReason))
         {
-            return BadRequest(new { message = "Rejection reason is required when rejecting a portfolio item." });
+            return BadRequest(new { message = "Please write why you are rejecting it." });
         }
 
         var item = await _context.PortfolioItems
@@ -337,7 +337,7 @@ public class PortfolioController : ControllerBase
 
         if (item == null)
         {
-            return NotFound(new { message = "Portfolio item not found." });
+            return NotFound(new { message = "We could not find this portfolio entry. It may have been deleted." });
         }
 
         if (!await _access.CanViewAthleteAsync(User, item.AthleteId, includeRegistrar: false))
@@ -348,7 +348,7 @@ public class PortfolioController : ControllerBase
         var userId = AthleteAccessService.GetUserId(User);
         if (userId == null)
         {
-            return Unauthorized(new { message = "User ID was not found in the JWT." });
+            return Unauthorized(new { message = "You have been signed out. Please sign in again." });
         }
 
         if (item.Achievement != null)

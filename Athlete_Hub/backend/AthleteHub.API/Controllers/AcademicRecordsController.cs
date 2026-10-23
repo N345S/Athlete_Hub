@@ -10,11 +10,12 @@ using AthleteHub.API.Services;
 namespace AthleteHub.API.Controllers;
 
 /// <summary>
-/// Grades pulled from the ICTD university database. Only the Sports Director can see them.
+/// Grades pulled from the ICTD university database. Only the Sports Director can see them, after re-entering
+/// their password (see <see cref="SensitiveAccess"/>).
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "DIRECTOR")]
+[Authorize(Roles = "DIRECTOR", Policy = SensitiveAccess.Policy)]
 public class AcademicRecordsController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;

@@ -326,6 +326,18 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
 }
 .nav-link.active .nav-badge { background: var(--brand-600); color: #fff; }
 
+/* "More": a collapsed group for confidential sections (Grades, Accounts), each opened with the password. */
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-group-chevron { transition: transform 0.15s ease; opacity: 0.7; }
+.nav-group.open .nav-group-chevron { transform: rotate(180deg); }
+.nav-sublink { padding-left: 24px; }
+.nav-lock { display: inline-flex; margin-left: auto; opacity: 0.7; }
+.nav-lock + .nav-badge { margin-left: var(--space-2); }
+.sheet-group-toggle .sheet-chevron { transition: transform 0.15s ease; }
+.sheet-group-toggle.open .sheet-chevron { transform: rotate(180deg); }
+.sheet-subitem { padding-left: calc(var(--space-4) + 16px); }
+.sheet-item .nav-lock { color: var(--ink-500); margin-left: 0; }
+
 .sidebar-logout {
   padding: 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -631,25 +643,126 @@ select.action-select { width: auto; min-height: 32px; padding: 4px 28px 4px 10px
 .chart-area { position: relative; min-height: 340px; }
 .pdf-frame { width: 100%; height: min(75vh, 900px); border: 1px solid var(--line); border-radius: var(--radius-sm); }
 
-/* Notifications */
-.notification-list { list-style: none; margin: 0; padding: 0; }
+/* Notifications: one row per notification, used on the page, in the bell's dropdown, and on dashboards. */
+.notification-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .notification-item {
+  position: relative;
   display: flex; gap: var(--space-3); align-items: flex-start;
   width: 100%;
   padding: var(--space-3);
-  border: 0; border-radius: var(--radius-sm);
+  border: 0; border-radius: var(--radius-md);
   background: transparent;
-  text-align: left;
+  color: inherit; font: inherit; text-align: left;
   cursor: pointer;
+  transition: background 0.12s;
 }
 .notification-item:hover { background: var(--surface-muted); }
-.notification-dot { width: 9px; height: 9px; margin-top: 7px; border-radius: 50%; background: transparent; flex: 0 0 auto; }
-.notification-item.unread .notification-dot { background: var(--brand-600); }
-.notification-item.unread strong { color: var(--brand-700); }
-.notification-copy { display: flex; flex-direction: column; gap: 2px; }
-.notification-copy span { color: var(--ink-700); }
-.notification-copy small { color: var(--ink-500); }
-.notification-list li + li { border-top: 1px solid var(--line); }
+.notification-item.unread { background: var(--brand-50); }
+.notification-item.unread:hover { background: var(--brand-100); }
+.notification-icon {
+  display: grid; place-items: center; flex: 0 0 auto;
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  color: var(--tone, var(--brand-600));
+  background: color-mix(in srgb, var(--tone, var(--brand-600)) 12%, transparent);
+}
+.notification-copy { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.notification-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.notification-head strong { color: var(--ink-900); font-weight: 600; font-size: 0.94rem; }
+.notification-item.unread .notification-head strong { font-weight: 700; }
+.notification-head small { flex: 0 0 auto; color: var(--ink-500); font-size: 0.78rem; white-space: nowrap; }
+.notification-message { color: var(--ink-700); font-size: 0.9rem; overflow-wrap: anywhere; }
+.notification-item.compact .notification-message { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.notification-dot { width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--brand-600); flex: 0 0 auto; }
+.notification-chevron { flex: 0 0 auto; align-self: center; color: var(--ink-400); transition: transform 0.12s, color 0.12s; }
+.notification-item:hover .notification-chevron { color: var(--brand-600); transform: translateX(2px); }
+.notification-group + .notification-group { margin-top: var(--space-4); }
+.notification-group-title { margin: 0 0 var(--space-2) var(--space-3); color: var(--ink-500); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* The bell's dropdown: a panel hanging under the bell, pointing up at it. */
+.notification-menu { position: relative; }
+.notification-scrim { display: none; }
+.notification-panel {
+  position: absolute; top: calc(100% + 12px); right: -8px; z-index: 60;
+  display: flex; flex-direction: column;
+  width: 400px; max-width: calc(100vw - 32px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  color: var(--ink-900);
+  transform-origin: top right;
+  animation: panel-in 0.14s ease-out;
+}
+.notification-panel::before {
+  content: ''; position: absolute; top: -7px; right: 20px;
+  width: 12px; height: 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--line); border-left: 1px solid var(--line);
+  border-top-left-radius: 3px;
+  transform: rotate(45deg);
+}
+.notification-panel-header {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: 14px var(--space-4) 12px;
+  border-bottom: 1px solid var(--line);
+}
+.notification-panel-header > div { display: flex; flex-direction: column; line-height: 1.3; }
+.notification-panel-header strong { font-size: 1rem; }
+.notification-panel-header small { color: var(--ink-500); font-size: 0.8rem; }
+.notification-panel-body { max-height: min(440px, 60vh); overflow-y: auto; overscroll-behavior: contain; padding: 6px; }
+.notification-panel-body .empty-state { padding: var(--space-5) var(--space-4); }
+.notification-panel-error { margin: 0; padding: var(--space-4); color: var(--danger-700); font-size: 0.9rem; }
+.notification-panel-footer {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px;
+  border: 0; border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--surface-muted);
+  color: var(--brand-700); font: inherit; font-weight: 600; font-size: 0.92rem;
+  cursor: pointer;
+}
+.notification-panel-footer:hover { background: var(--brand-50); }
+@keyframes panel-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+
+/* Coach evaluation prompt on the athlete dashboard: noticeable, but amber rather than an error red. */
+.evaluation-prompt {
+  position: relative;
+  display: flex; gap: var(--space-4); align-items: flex-start;
+  padding: var(--space-5);
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #fffbeb 0%, var(--surface) 75%);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.evaluation-prompt::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: #d97706; }
+.evaluation-prompt-icon { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 12px; background: var(--warning-100); color: var(--warning-700); }
+.evaluation-prompt-body { flex: 1; min-width: 0; }
+.evaluation-prompt-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--warning-100); color: var(--warning-700);
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.evaluation-prompt-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #d97706; animation: soft-pulse 2.4s ease-in-out infinite; }
+.evaluation-prompt h2 { margin: 8px 0 2px; font-size: 1.12rem; }
+.evaluation-prompt p { margin: 0; color: var(--ink-700); font-size: 0.92rem; }
+.evaluation-prompt-list { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.evaluation-prompt-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.evaluation-prompt-list li > span { display: flex; flex-direction: column; min-width: 0; }
+.evaluation-prompt-list small { color: var(--ink-500); font-size: 0.82rem; }
+@keyframes soft-pulse { 50% { opacity: 0.35; } }
+
+/* A page section opened from a notification flashes briefly so it is easy to spot. */
+.is-highlighted { animation: target-flash 1.8s ease-out; }
+@keyframes target-flash { 0%, 30% { box-shadow: 0 0 0 4px rgba(179, 23, 43, 0.28); } }
 
 /* ==========================================================================
    Calendar
@@ -1395,6 +1508,21 @@ button.day-number:hover { background: var(--brand-100); color: var(--brand-700);
   .row-list > .row:active, .notification-item:active { background: var(--surface-muted); }
   .notification-item { padding: var(--space-3) var(--space-2); }
 
+  /* The bell's dropdown spans the screen under the app bar, over a dimmed page. */
+  .topbar:has(.notification-menu.open) { z-index: 120; }
+  .notification-menu { position: static; }
+  .notification-scrim { display: block; position: fixed; inset: 0; z-index: 110; border: 0; background: rgba(15, 23, 42, 0.45); animation: fade-in 0.15s ease-out; }
+  .notification-panel { position: fixed; top: calc(var(--appbar-height) + var(--safe-top) + 6px); left: 8px; right: 8px; z-index: 111; width: auto; max-width: none; }
+  /* Points at the bell: from the right of the screen, 8px padding + the 42px account button + a 2px gap, then half the bell. */
+  .notification-panel::before { right: 59px; }
+  .notification-panel-body { max-height: calc(100dvh - var(--appbar-height) - var(--safe-top) - 150px); }
+  .notification-panel .icon { width: 18px; height: 18px; }
+  .notification-panel :focus-visible { box-shadow: var(--focus); }
+  .notification-panel-footer { min-height: 50px; }
+
+  .evaluation-prompt { padding: var(--space-4); gap: var(--space-3); }
+  .evaluation-prompt-icon { width: 38px; height: 38px; }
+
   /* Month view: compact day grid with event dots; the agenda below lists the chosen day. */
   .calendar-toolbar { flex-direction: column; align-items: stretch; }
   .calendar-nav { justify-content: space-between; }
@@ -1531,6 +1659,11 @@ button.day-number:hover { background: var(--brand-100); color: var(--brand-700);
 .grade-value { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-900); }
 .grade-section { color: var(--ink-500); font-size: 0.86rem; }
 .grade-remark { text-align: right; }
+.grade-athlete { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.grade-athlete > .row-main { flex: 1; min-width: 12rem; }
+.grade-modal-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-3); flex-wrap: wrap; }
+.grade-confidential, .grade-sync-note { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--ink-500); font-size: 0.86rem; }
+.card .grade-sync-note { margin-top: var(--space-3); }
 
 /* Coach evaluation: one 1–5 scale per statement. */
 .rating-question { border: 0; margin: 0; padding: var(--space-3) 0; border-top: 1px solid var(--line); }
@@ -1550,6 +1683,13 @@ button.day-number:hover { background: var(--brand-100); color: var(--brand-700);
 .card-subheading { margin: var(--space-5) 0 var(--space-2); font-size: 0.95rem; }
 .rating-results li { display: flex; flex-direction: column; gap: 4px; }
 .rating-results li > span { color: var(--ink-700); font-size: 0.92rem; }
+.evaluation-response-name { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.evaluation-response-name small { color: var(--ink-500); }
+.evaluation-response-answers summary { width: fit-content; color: var(--brand-600); font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+.evaluation-response-answers .rating-results { margin-top: var(--space-3); }
+.evaluation-responses .row-actions .progress { min-width: 140px; }
+.evaluation-not-submitted { margin: var(--space-4) 0 0; color: var(--ink-500); font-size: 0.9rem; }
+.evaluation-not-submitted strong { color: var(--ink-700); }
 @media (max-width: 640px) {
   .rating-scale label small { display: none; }
 }

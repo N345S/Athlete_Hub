@@ -41,8 +41,7 @@ export default function LoginPage({ notice, onSignedIn }) {
         universityId: data.universityId,
       })
     } catch (err) {
-      // Keep the server's account-status message (suspended, inactive); reword only the generic one.
-      setError(err.message === 'Invalid email or password.' ? 'That email and password do not match. Check both and try again.' : err.message || 'Unable to sign in.')
+      setError(err.message || 'You could not be signed in. Please try again.')
     } finally {
       setLoading(false)
     }

@@ -16,6 +16,6 @@ public class UpdateAthleteProfileRequest
     public string? ProfilePhotoUrl { get; set; }
 
     [StringLength(30)]
-    [RegularExpression(@"^[0-9+()\-\s]*$", ErrorMessage = "Phone may contain only digits, spaces, and + ( ) -.")]
+    [RegularExpression(@"^[0-9+()\-\s]*$", ErrorMessage = "The phone number can only have numbers, spaces, and + ( ) -.")]
     public string? Phone { get; set; }
 }

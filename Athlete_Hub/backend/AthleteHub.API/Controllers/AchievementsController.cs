@@ -38,7 +38,7 @@ public class AchievementsController : ControllerBase
 
         if (athlete == null)
         {
-            return NotFound(new { message = "Athlete profile not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         var achievements = await _context.Achievements
@@ -79,14 +79,14 @@ public class AchievementsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 200)
         {
-            return BadRequest(new { message = "A title of up to 200 characters is required." });
+            return BadRequest(new { message = "Please enter a title (200 characters at most)." });
         }
 
         var athlete = await GetCurrentAthleteAsync();
 
         if (athlete == null)
         {
-            return NotFound(new { message = "Athlete profile not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         var achievement = new Achievement
@@ -130,12 +130,12 @@ public class AchievementsController : ControllerBase
 
         if (achievement == null)
         {
-            return NotFound(new { message = "Achievement not found." });
+            return NotFound(new { message = "We could not find this achievement. It may have been deleted." });
         }
 
         if (string.Equals(achievement.VerificationStatus, "VERIFIED", StringComparison.OrdinalIgnoreCase))
         {
-            return Conflict(new { message = "Verified achievements require staff approval before removal." });
+            return Conflict(new { message = "This achievement is already approved, so you cannot remove it. Ask your coach for help." });
         }
 
         var evidence = await _context.Documents.Where(document => document.AchievementId == achievementId).ToListAsync();
@@ -157,12 +157,12 @@ public class AchievementsController : ControllerBase
 
         if (normalizedStatus == null)
         {
-            return BadRequest(new { message = "Status must be VERIFIED or REJECTED." });
+            return BadRequest(new { message = "Please choose Approve or Reject." });
         }
 
         if (normalizedStatus == "REJECTED" && string.IsNullOrWhiteSpace(request.RejectionReason))
         {
-            return BadRequest(new { message = "Rejection reason is required when rejecting an achievement." });
+            return BadRequest(new { message = "Please write why you are rejecting it." });
         }
 
         var achievement = await _context.Achievements
@@ -171,7 +171,7 @@ public class AchievementsController : ControllerBase
 
         if (achievement == null)
         {
-            return NotFound(new { message = "Achievement not found." });
+            return NotFound(new { message = "We could not find this achievement. It may have been deleted." });
         }
 
         if (!await _access.CanViewAthleteAsync(User, achievement.AthleteId, includeRegistrar: false))
@@ -182,7 +182,7 @@ public class AchievementsController : ControllerBase
         var userId = AthleteAccessService.GetUserId(User);
         if (userId == null)
         {
-            return Unauthorized(new { message = "User ID was not found in the JWT." });
+            return Unauthorized(new { message = "You have been signed out. Please sign in again." });
         }
 
         await _review.ApplyAsync(achievement, normalizedStatus, request.RejectionReason, userId.Value, User.FindFirstValue(ClaimTypes.Role) ?? "");

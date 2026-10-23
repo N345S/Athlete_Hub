@@ -113,28 +113,28 @@ public class PerformanceController : ControllerBase
         var coach = await GetCoachAsync();
         if (coach == null || !await CoachHasAthleteAsync(coach.CoachId, request.AthleteId)) return Forbid();
         if (!await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == request.AthleteId && athlete.User.AccountStatus == "ACTIVE"))
-            return BadRequest(new { message = "Performance cannot be recorded for a suspended or inactive account." });
-        if (string.IsNullOrWhiteSpace(request.DataType)) return BadRequest(new { message = "A universal performance name is required." });
+            return BadRequest(new { message = "You cannot record results for this student because their account is suspended or inactive." });
+        if (string.IsNullOrWhiteSpace(request.DataType)) return BadRequest(new { message = "Please enter what was measured, for example \"100m sprint\"." });
 
         var metricId = request.MetricId > 0
             ? request.MetricId
             : await _context.PerformanceMetricDefinitions.Select(metric => (int?)metric.MetricId).FirstOrDefaultAsync();
-        if (!metricId.HasValue) return NotFound(new { message = "No performance metric definition is available." });
-        if (!await _context.PerformanceMetricDefinitions.AnyAsync(metric => metric.MetricId == metricId.Value)) return NotFound(new { message = "Performance metric not found." });
+        if (!metricId.HasValue) return NotFound(new { message = "Results cannot be saved right now. Please contact the Sports Director." });
+        if (!await _context.PerformanceMetricDefinitions.AnyAsync(metric => metric.MetricId == metricId.Value)) return NotFound(new { message = "Results cannot be saved right now. Please contact the Sports Director." });
 
         if (request.SessionId <= 0)
         {
-            return BadRequest(new { message = "Select a completed training session before recording performance." });
+            return BadRequest(new { message = "Please choose a training session that has already finished." });
         }
 
         var session = await _context.TrainingSessions
             .Include(item => item.Team)
             .FirstOrDefaultAsync(item => item.TrainingSessionId == request.SessionId);
-        if (session == null) return NotFound(new { message = "Training session not found." });
+        if (session == null) return NotFound(new { message = "We could not find this training session. It may have been deleted." });
         if (session.CoachId != coach.CoachId) return Forbid();
         if (session.ApprovalStatus != "APPROVED")
         {
-            return BadRequest(new { message = "Performance can only be recorded for a director-approved training session." });
+            return BadRequest(new { message = "You can only record results for training that the Sports Director approved." });
         }
 
         if (!await _context.TeamMembers.AnyAsync(member =>
@@ -142,7 +142,7 @@ public class PerformanceController : ControllerBase
                 && member.AthleteId == request.AthleteId
                 && member.DateLeft == null))
         {
-            return BadRequest(new { message = "The selected athlete is not assigned to this training session's team." });
+            return BadRequest(new { message = "This student-athlete is not on the team for this training." });
         }
 
         var sessionEnd = session.TrainingDate.Date.AddDays(1).AddTicks(-1);
@@ -154,12 +154,12 @@ public class PerformanceController : ControllerBase
         // Training dates and times are local wall-clock values, so compare against local time.
         if (_clock.LocalNow < sessionEnd)
         {
-            return BadRequest(new { message = "Performance can only be recorded after the training session has ended." });
+            return BadRequest(new { message = "You can record results only after the training has ended." });
         }
 
         if (request.RecordedDate.Date < session.TrainingDate.Date || request.RecordedDate.Date > _clock.LocalToday)
         {
-            return BadRequest(new { message = "The performance date must be between the training session date and today." });
+            return BadRequest(new { message = "The date must be between the training day and today." });
         }
 
         var record = new PerformanceRecord 

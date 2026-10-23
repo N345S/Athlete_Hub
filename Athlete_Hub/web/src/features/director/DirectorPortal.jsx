@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../../lib/api.js'
-import { accountLabel, average, eventTypeLabel, formatDate, formatTimeRange, fullName, isActiveAccount, localDateISO, longToday, matchesSearch, mergeAthleteTeams } from '../../lib/format.js'
-import { useApiData, useHashView, usePageDetail, useUnreadNotifications } from '../../lib/hooks.js'
+import { accountLabel, average, eventTypeLabel, formatDate, formatDateTime, formatTimeRange, fullName, isActiveAccount, localDateISO, longToday, matchesSearch, mergeAthleteTeams } from '../../lib/format.js'
+import { useApiData, useHashView, usePageDetail, useSensitiveAccess, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
@@ -10,6 +10,7 @@ import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Loading, Modal, PageHeader, ProgressBar, SearchInput, StatCard, StatusBadge, Tabs } from '../../components/ui.jsx'
 import Icon from '../../components/icons.jsx'
 import { HELP } from '../../lib/help.js'
+import { NOTIFICATION_ROUTES } from '../../lib/notifications.js'
 import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
 import AccountsPage from '../accounts/AccountsPage.jsx'
 import AthletesPage from '../staff/AthletesPage.jsx'
@@ -18,10 +19,13 @@ import PerformancePage from '../staff/PerformancePage.jsx'
 import { EventScheduleModal } from '../staff/ScheduleModals.jsx'
 import TrainingApprovals from '../staff/TrainingApprovals.jsx'
 import CoachEvaluationsCard from './CoachEvaluationsCard.jsx'
-import GradesPage from './GradesPage.jsx'
+import GradesPage, { AthleteGradesModal, GradeSyncStatus } from './GradesPage.jsx'
+import { LockedPage, UnlockDialog } from './SensitiveAccess.jsx'
 
 const VIEWS = ['dashboard', 'coaches', 'athletes', 'grades', 'schedule', 'performance', 'accounts', 'notifications']
 const TITLES = { dashboard: 'Dashboard', coaches: 'Coaches', athletes: 'All athletes', grades: 'Grades', schedule: 'Schedule', performance: 'Performance', accounts: 'Accounts', notifications: 'Notifications' }
+// Hidden under "More" in the menu and opened only with the director's page password.
+const CONFIDENTIAL = ['grades', 'accounts']
 
 /**
  * The athlete's active teams. Assigned means on a coach's team. `currentTeams` lists every team;
@@ -341,8 +345,31 @@ export default function DirectorPortal({ session, onLogout }) {
   const coaches = useApiData('/api/Director/coaches', session.token)
   const pending = useApiData('/api/Training/pending', session.token, { initialData: [] })
   const schedule = useApiData('/api/Schedules/staff', session.token, { initialData: [] })
-  const gradeTerms = useApiData(REGISTRAR_ELIGIBILITY ? null : '/api/IctdGrades/terms', session.token, { initialData: [] })
-  const latestGrades = gradeTerms.data?.[0]
+  const gradeSync = useApiData(REGISTRAR_ELIGIBILITY ? null : '/api/DirectorDashboard/grade-sync', session.token)
+  const latestGrades = gradeSync.data?.latestTerm
+
+  // Grades and Accounts need the page password. `unlockFor` is what the password dialog will open: a page
+  // ({ view }) or one athlete's grades from their profile ({ athlete }).
+  const access = useSensitiveAccess(session)
+  const [unlockFor, setUnlockFor] = useState(() => CONFIDENTIAL.includes(view) ? { view } : null)
+  const [gradesAthlete, setGradesAthlete] = useState(null)
+  const confidentialSession = access.token ? { ...session, token: access.token } : null
+  const onConfidentialPage = CONFIDENTIAL.includes(view)
+  const viewingGrades = access.unlocked && gradesAthlete
+
+  // Access ends as soon as the director leaves Grades and Accounts or closes an athlete's grades.
+  const { lock } = access
+  useEffect(() => {
+    if (!onConfidentialPage && !viewingGrades) lock()
+  }, [onConfidentialPage, viewingGrades, lock])
+
+  // Reaching a locked page another way (a bookmark, the back button, or after access timed out) asks for the password.
+  const lockedPage = onConfidentialPage && !access.unlocked ? view : null
+  const [promptedFor, setPromptedFor] = useState(lockedPage)
+  if (promptedFor !== lockedPage) {
+    setPromptedFor(lockedPage)
+    if (lockedPage) setUnlockFor({ view: lockedPage })
+  }
 
   const athleteRows = dashboard.data?.athletes || []
   const athletes = mergeAthleteTeams(athleteRows.flatMap((athlete) => athlete.teams?.length
@@ -359,10 +386,27 @@ export default function DirectorPortal({ session, onLogout }) {
     .filter((item) => item.type !== 'TRAINING' && item.startDate >= today)
     .sort((a, b) => `${a.startDate}${a.startTime}`.localeCompare(`${b.startDate}${b.startTime}`))
 
-  const navigate = (key) => {
+  const go = (key) => {
     setProfileAthlete(null)
     setProfileCoach(null)
     setView(key)
+  }
+
+  const navigate = (key) => {
+    if (CONFIDENTIAL.includes(key) && !access.unlocked) setUnlockFor({ view: key })
+    else go(key)
+  }
+
+  // The page or grades open in the same update that unlocks, so the lock effect never sees one without the other.
+  const openUnlocked = () => {
+    setUnlockFor(null)
+    setGradesAthlete(unlockFor.athlete ?? null)
+    if (unlockFor.view && unlockFor.view !== view) go(unlockFor.view)
+  }
+
+  const requestGrades = (athlete) => {
+    if (access.unlocked) setGradesAthlete(athlete)
+    else setUnlockFor({ athlete })
   }
 
   const openAthlete = (athleteId) => {
@@ -398,13 +442,15 @@ export default function DirectorPortal({ session, onLogout }) {
 
   let content
   if (view === 'athletes' && profileAthlete) {
-    content = <AthleteProfilePage athlete={profileAthlete} session={session} canEdit={false} canRequestEvaluation={REGISTRAR_ELIGIBILITY} canViewGrades onBack={() => setProfileAthlete(null)} />
+    content = <AthleteProfilePage athlete={profileAthlete} session={session} canEdit={false} canRequestEvaluation={REGISTRAR_ELIGIBILITY} onViewGrades={requestGrades} onBack={() => setProfileAthlete(null)} />
   } else if (view === 'athletes') {
     content = <AthletesPage athletes={athletes} title="All athletes" subtitle={REGISTRAR_ELIGIBILITY ? 'Every registered student-athlete — open a profile to request a Grade Evaluation' : 'Every registered student-athlete — open a profile to see their grades, portfolio, and documents'} onViewProfile={setProfileAthlete} />
+  } else if (onConfidentialPage && !confidentialSession) {
+    content = <LockedPage title={TITLES[view]} onUnlock={() => setUnlockFor({ view })} />
   } else if (view === 'grades') {
-    content = <GradesPage session={session} onOpenAthlete={openAthlete} />
+    content = <GradesPage session={confidentialSession} onOpenAthlete={openAthlete} />
   } else if (view === 'accounts') {
-    content = <AccountsPage session={session} />
+    content = <AccountsPage session={confidentialSession} />
   } else if (view === 'coaches' && profileCoach) {
     content = <CoachProfile coach={profileCoach} session={session} athleteIndex={athleteIndex} onOpenAthlete={openAthlete} onRosterChanged={() => { coaches.reload(); dashboard.reload() }} onBack={() => { setProfileCoach(null); coaches.reload(); dashboard.reload() }} />
   } else if (view === 'coaches') {
@@ -429,7 +475,7 @@ export default function DirectorPortal({ session, onLogout }) {
   } else if (view === 'performance') {
     content = <ErrorBoundary><PerformancePage athletes={athletes} session={session} canEdit={false} /></ErrorBoundary>
   } else if (view === 'notifications') {
-    content = <NotificationsPage session={session} onChanged={refreshUnread} />
+    content = <NotificationsPage session={session} routes={NOTIFICATION_ROUTES.director} onNavigate={navigate} onChanged={refreshUnread} />
   } else {
     content = <>
       <PageHeader title="Director dashboard" subtitle={longToday()} actions={addEventButton} />
@@ -441,7 +487,7 @@ export default function DirectorPortal({ session, onLogout }) {
           <StatCard icon="clock" label="Training approvals" value={pending.data?.length || 0} hint="Awaiting your review" tone="warning" onClick={() => navigate('schedule')} />
           {REGISTRAR_ELIGIBILITY
             ? <StatCard icon="alert" label="Ineligible athletes" value={ineligible.length} hint="Latest Registrar decisions" tone="danger" onClick={() => document.getElementById('director-ineligible')?.scrollIntoView({ behavior: 'smooth' })} />
-            : <StatCard icon="file" label="Failed or INC subjects" value={latestGrades ? latestGrades.failed + latestGrades.incomplete : '—'} hint={latestGrades ? `ICTD grades · ${latestGrades.semester} ${latestGrades.academicYear}` : 'No grades pulled from ICTD yet'} tone="danger" onClick={() => navigate('grades')} />}
+            : <StatCard icon="lock" label="ICTD grades" value={latestGrades ? latestGrades.athletes : '—'} hint={latestGrades ? `Student-athletes graded · ${latestGrades.semester} ${latestGrades.academicYear}` : 'Waiting for ICTD to release grades'} onClick={() => navigate('grades')} />}
         </div>
 
         <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
@@ -489,15 +535,16 @@ export default function DirectorPortal({ session, onLogout }) {
               ) : <EmptyState icon="check" title="No ineligible athletes" />}
             </Card>
           ) : (
-            <Card title="ICTD grades" subtitle="Latest semester pulled from the ICTD university database" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('grades')}>Grades →</button>}>
+            <Card title="ICTD grades" subtitle="Synced automatically from the ICTD university database. Grades themselves need your password." actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('grades')}><Icon name="lock" size={15} /> Grades →</button>}>
               {latestGrades ? (
                 <dl className="detail-grid">
-                  <div><dt>Semester</dt><dd>{latestGrades.semester} {latestGrades.academicYear}</dd></div>
+                  <div><dt>Latest semester</dt><dd>{latestGrades.semester} {latestGrades.academicYear}</dd></div>
                   <div><dt>Student-athletes</dt><dd>{latestGrades.athletes}</dd></div>
-                  <div><dt>Failed / INC</dt><dd className={latestGrades.failed + latestGrades.incomplete ? 'text-danger' : ''}>{latestGrades.failed} / {latestGrades.incomplete}</dd></div>
+                  <div><dt>Synced</dt><dd>{formatDateTime(latestGrades.pulledAt)}</dd></div>
                   <div><dt>Coach evaluations</dt><dd>{latestGrades.evaluationsSubmitted} of {latestGrades.evaluationsSent} submitted</dd></div>
                 </dl>
-              ) : <EmptyState icon="file" title="No grades yet" message="Pull a semester's final grades from the ICTD database." action={<button className="btn btn-secondary btn-sm" type="button" onClick={() => navigate('grades')}>Go to Grades</button>} />}
+              ) : <EmptyState icon="file" title="No grades yet" message="Grades appear here automatically once the ICTD database releases a semester's final grades." />}
+              <p className="grade-sync-note"><GradeSyncStatus status={gradeSync.data} /></p>
             </Card>
           )}
           <Card title="Upcoming events" subtitle="Sports events and competitions you published" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('schedule')}>Schedule →</button>}>
@@ -528,20 +575,25 @@ export default function DirectorPortal({ session, onLogout }) {
         { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard', badge: pending.data?.length || 0 },
         { key: 'coaches', label: 'Coaches', icon: 'coach' },
         { key: 'athletes', label: 'All athletes', shortLabel: 'Athletes', icon: 'users' },
-        { key: 'grades', label: 'Grades', icon: 'file' },
         { key: 'schedule', label: 'Schedule', icon: 'calendar' },
         { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
-        { key: 'accounts', label: 'Accounts', icon: 'shield' },
-        { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
+        { key: 'confidential', label: 'More', icon: 'more', children: [
+          { key: 'grades', label: 'Grades', icon: 'file', locked: !access.unlocked },
+          { key: 'accounts', label: 'Accounts', icon: 'shield', locked: !access.unlocked },
+        ] },
       ]}
       activeKey={view}
       pageTitle={pageTitle}
       onNavigate={navigate}
       onLogout={onLogout}
       unreadCount={unread}
+      notificationRoutes={NOTIFICATION_ROUTES.director}
+      onNotificationsChanged={refreshUnread}
       help={HELP.director[view]}
     >
       {content}
+      {unlockFor && <UnlockDialog session={session} access={access} section={unlockFor.view === 'accounts' ? 'Accounts' : 'Grades'} onOpened={openUnlocked} onCancel={() => setUnlockFor(null)} />}
+      {viewingGrades && <AthleteGradesModal athlete={gradesAthlete} session={confidentialSession} onClose={() => setGradesAthlete(null)} />}
       {showEventModal && <EventScheduleModal session={session} onClose={() => setShowEventModal(false)} onCreated={() => { setShowEventModal(false); toast.success('Event published. Every athlete can now see it.'); schedule.reload() }} />}
       {deleting && (
         <ConfirmDialog

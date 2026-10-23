@@ -6,7 +6,7 @@ import FileLink from '../../components/FileLink.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, EmptyState, Field, Loading, Modal, ReasonDialog, StatusBadge } from '../../components/ui.jsx'
 import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
-import { AthleteGradesCard } from '../director/GradesPage.jsx'
+import { LockedGradesCard } from '../director/GradesPage.jsx'
 
 const SEMESTERS = ['1st Semester', '2nd Semester', 'Summer']
 
@@ -47,7 +47,7 @@ function AcademicEligibilityCard({ athlete, session, canRequest }) {
   const request = async (event) => {
     event.preventDefault()
     if (!/^\d{4}-\d{4}$/.test(form.academicYear.trim())) {
-      setFormError('Enter the academic year as YYYY-YYYY, e.g. 2026-2027.')
+      setFormError('Please type the school year like this: 2026-2027.')
       return
     }
     setSaving(true)
@@ -214,11 +214,11 @@ function DocumentsCard({ athlete, session }) {
 }
 
 /**
- * Staff view of one athlete. Coaches (`canEdit`) verify portfolio items; the director (`canViewGrades`) sees
- * the grades pulled from the ICTD database. `canRequestEvaluation` (Grade Evaluations from the Registrar) only
+ * Staff view of one athlete. Coaches (`canEdit`) verify portfolio items; the director (`onViewGrades`) can open
+ * the athlete's ICTD grades, which are kept behind a password. `canRequestEvaluation` (Grade Evaluations from the Registrar) only
  * applies while the Registrar role is switched on.
  */
-export default function AthleteProfilePage({ athlete, session, canEdit, canRequestEvaluation, canViewGrades, onBack }) {
+export default function AthleteProfilePage({ athlete, session, canEdit, canRequestEvaluation, onViewGrades, onBack }) {
   return (
     <>
       <button className="btn btn-ghost back-button" type="button" onClick={onBack}>← Back to athletes</button>
@@ -239,7 +239,7 @@ export default function AthleteProfilePage({ athlete, session, canEdit, canReque
       </dl>
       <div className="stack">
         {REGISTRAR_ELIGIBILITY && <AcademicEligibilityCard athlete={athlete} session={session} canRequest={canRequestEvaluation} />}
-        {canViewGrades && <AthleteGradesCard athlete={athlete} session={session} />}
+        {onViewGrades && <LockedGradesCard onView={() => onViewGrades(athlete)} />}
         <PortfolioReview athlete={athlete} session={session} canReview={canEdit} />
         <DocumentsCard athlete={athlete} session={session} />
       </div>

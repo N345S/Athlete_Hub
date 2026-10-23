@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday, timeAgo } from '../../lib/format.js'
+import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
-import NotificationsPage from '../../components/NotificationsPage.jsx'
+import NotificationsPage, { NotificationList } from '../../components/NotificationsPage.jsx'
 import { Alert, Avatar, Card, EmptyState, Loading, PageHeader, ProgressBar, StatCard, StatusBadge, Tabs } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
+import { NOTIFICATION_ROUTES, openNotification } from '../../lib/notifications.js'
 
 const VIEWS = ['dashboard', 'training', 'notifications']
 const TITLES = { dashboard: 'Dashboard', training: 'Training sessions', notifications: 'Notifications' }
@@ -32,8 +33,12 @@ function AttendanceBadge({ status, sessionDate }) {
   return <span className="badge badge-neutral">{sessionDate > localDateISO() ? 'Upcoming' : 'Not recorded'}</span>
 }
 
-function Dashboard({ session, athletes, sessions, loading, onNavigate }) {
+function Dashboard({ session, athletes, sessions, loading, onNavigate, onNotificationsChanged }) {
   const updates = useApiData('/api/Notifications/me', session.token, { initialData: [] })
+  const openUpdate = (item) => {
+    updates.setData((current) => current.map((entry) => entry.notificationId === item.notificationId ? { ...entry, isRead: true } : entry))
+    openNotification(item, { token: session.token, routes: NOTIFICATION_ROUTES.parent, onNavigate, onRead: onNotificationsChanged })
+  }
   const today = localDateISO()
   const upcoming = sessions.filter((item) => item.startDate >= today).sort(byStart)
   const thisMonth = sessions.filter((item) => item.startDate.slice(0, 7) === today.slice(0, 7)).length
@@ -94,17 +99,7 @@ function Dashboard({ session, athletes, sessions, loading, onNavigate }) {
 
           <Card title="Latest updates" subtitle="New, cancelled, and attended training sessions" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('notifications')}>All notifications →</button>}>
             {(updates.data || []).length ? (
-              <ul className="row-list">
-                {updates.data.slice(0, 5).map((item) => (
-                  <li className="row" key={item.notificationId}>
-                    <div className="row-main">
-                      <strong className={item.isRead ? '' : 'text-brand'}>{item.title}</strong>
-                      <span>{item.message}</span>
-                      <small>{timeAgo(item.createdAt)}</small>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <NotificationList items={updates.data.slice(0, 5)} routes={NOTIFICATION_ROUTES.parent} compact onOpen={openUpdate} />
             ) : <EmptyState icon="bell" title="No updates yet" message="You'll be notified when training is scheduled, cancelled, or attendance is recorded." />}
           </Card>
         </div>
@@ -183,11 +178,11 @@ export default function ParentPortal({ session, onLogout }) {
   if (view === 'training') {
     content = <TrainingPage athletes={childList} sessions={sessions} loading={training.loading} error={training.error} />
   } else if (view === 'notifications') {
-    content = <NotificationsPage session={session} onChanged={() => { refreshUnread(); training.reload() }} />
+    content = <NotificationsPage session={session} routes={NOTIFICATION_ROUTES.parent} onNavigate={setView} onChanged={() => { refreshUnread(); training.reload() }} />
   } else {
     content = <>
       <Alert>{children.error || training.error}</Alert>
-      <Dashboard session={session} athletes={childList} sessions={sessions} loading={children.loading} onNavigate={setView} />
+      <Dashboard session={session} athletes={childList} sessions={sessions} loading={children.loading} onNavigate={setView} onNotificationsChanged={refreshUnread} />
     </>
   }
 
@@ -199,13 +194,14 @@ export default function ParentPortal({ session, onLogout }) {
       nav={[
         { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard' },
         { key: 'training', label: 'Training sessions', shortLabel: 'Training', icon: 'calendar' },
-        { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}
       pageTitle={TITLES[view]}
       onNavigate={setView}
       onLogout={onLogout}
       unreadCount={unread}
+      notificationRoutes={NOTIFICATION_ROUTES.parent}
+      onNotificationsChanged={refreshUnread}
       help={HELP.parent[view]}
     >
       {content}

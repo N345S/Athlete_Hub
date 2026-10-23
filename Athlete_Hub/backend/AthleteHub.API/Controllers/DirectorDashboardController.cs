@@ -1,4 +1,5 @@
 using AthleteHub.API.Data;
+using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,8 +12,13 @@ namespace AthleteHub.API.Controllers;
 public class DirectorDashboardController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
+    private readonly IctdGradeSyncWorker _gradeSync;
 
-    public DirectorDashboardController(AthleteHubDbContext context) => _context = context;
+    public DirectorDashboardController(AthleteHubDbContext context, IctdGradeSyncWorker gradeSync)
+    {
+        _context = context;
+        _gradeSync = gradeSync;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetDashboard()
@@ -98,6 +104,55 @@ public class DirectorDashboardController : ControllerBase
                 };
             }),
             portfolioItems
+        });
+    }
+
+    /// <summary>
+    /// When the ICTD database was last checked and which term was pulled most recently. No grades are included, so
+    /// the dashboard can show this without the password that the Grades page needs.
+    /// </summary>
+    [HttpGet("grade-sync")]
+    public async Task<IActionResult> GetGradeSync()
+    {
+        var terms = await _context.AcademicRecords
+            .Where(record => record.SourceType == IctdGradeSync.IctdSource)
+            .GroupBy(record => new { record.TermId, record.Term.AcademicYear, record.Term.Semester })
+            .Select(group => new
+            {
+                group.Key.TermId,
+                group.Key.AcademicYear,
+                group.Key.Semester,
+                athletes = group.Select(record => record.AthleteId).Distinct().Count(),
+                pulledAt = group.Max(record => record.ImportedAt)
+            })
+            .ToListAsync();
+        var latest = terms
+            .OrderByDescending(term => term.AcademicYear)
+            .ThenByDescending(term => Array.IndexOf(IctdUniversityDatabase.Semesters, term.Semester))
+            .FirstOrDefault();
+
+        object? latestTerm = null;
+        if (latest != null)
+        {
+            var evaluations = _context.CoachEvaluations.Where(evaluation => evaluation.TermId == latest.TermId);
+            latestTerm = new
+            {
+                latest.AcademicYear,
+                latest.Semester,
+                latest.athletes,
+                latest.pulledAt,
+                evaluationsSent = await evaluations.CountAsync(),
+                evaluationsSubmitted = await evaluations.CountAsync(evaluation => evaluation.Status == "SUBMITTED")
+            };
+        }
+
+        return Ok(new
+        {
+            latestTerm,
+            lastCheckedAt = _gradeSync.LastCheckedAt,
+            nextCheckAt = _gradeSync.NextCheckAt,
+            lastCheckFailed = _gradeSync.LastCheckFailed,
+            intervalMinutes = (int)_gradeSync.Interval.TotalMinutes
         });
     }
 }

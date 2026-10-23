@@ -110,3 +110,38 @@ export function useUnreadNotifications(token) {
 
   return [count, refresh]
 }
+
+/**
+ * Grades and accounts are confidential: the director opens them with a separate page password, made the first time
+ * (`setUp`) and changeable later (`change`). Each returns a short-lived token (about 15 minutes) that only those
+ * pages use. It is kept in memory, never in storage, so it is gone after a reload, and `lock` throws it away as soon
+ * as the director leaves those pages. `onUnlocked` runs in the same render as the unlock, so callers can open the
+ * page with it.
+ */
+export function useSensitiveAccess(session) {
+  const [access, setAccess] = useState(null)
+
+  const open = useCallback(async (request, onUnlocked) => {
+    const result = await request(session.token)
+    setAccess({ token: result.token, expiresAt: Date.now() + result.expiresInSeconds * 1000 })
+    onUnlocked?.()
+  }, [session.token])
+
+  const unlock = useCallback((password, onUnlocked) =>
+    open((token) => api.post('/api/Auth/unlock', { password }, token), onUnlocked), [open])
+  const setUp = useCallback((signInPassword, newPassword, onUnlocked) =>
+    open((token) => api.post('/api/Auth/confidential-password', { signInPassword, newPassword }, token), onUnlocked), [open])
+  const change = useCallback((currentPassword, newPassword, onUnlocked) =>
+    open((token) => api.put('/api/Auth/confidential-password', { currentPassword, newPassword }, token), onUnlocked), [open])
+
+  const lock = useCallback(() => setAccess(null), [])
+
+  // Lock a little before the API would start refusing the token.
+  useEffect(() => {
+    if (!access) return undefined
+    const timer = setTimeout(lock, Math.max(0, access.expiresAt - Date.now() - 5_000))
+    return () => clearTimeout(timer)
+  }, [access, lock])
+
+  return { unlocked: Boolean(access), token: access?.token ?? null, unlock, setUp, change, lock }
+}

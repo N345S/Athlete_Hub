@@ -70,9 +70,9 @@ public class EligibilityController : ControllerBase
     {
         if (!await CanViewAthleteAsync(request.AthleteId)) return Forbid();
         if (string.IsNullOrWhiteSpace(request.AcademicYear) || string.IsNullOrWhiteSpace(request.Semester))
-            return BadRequest(new { message = "Academic year and semester are required." });
+            return BadRequest(new { message = "Please enter the school year and semester." });
         if (request.AcademicYear.Trim().Length > 20 || request.Semester.Trim().Length > 50)
-            return BadRequest(new { message = "Academic year and semester are too long." });
+            return BadRequest(new { message = "The school year or semester is too long." });
 
         var academicYear = request.AcademicYear.Trim();
         var semester = request.Semester.Trim();
@@ -135,25 +135,25 @@ public class EligibilityController : ControllerBase
     [RequestSizeLimit(10_500_000)]
     public async Task<IActionResult> UploadGradeEvaluation(int eligibilityId, [FromForm] IFormFile? file)
     {
-        if (file == null || file.Length == 0) return BadRequest(new { message = "Select a Grade Evaluation PDF to upload." });
-        if (file.Length > 10_000_000) return BadRequest(new { message = "The PDF must be 10 MB or smaller." });
+        if (file == null || file.Length == 0) return BadRequest(new { message = "Please choose the Grade Evaluation PDF to upload." });
+        if (file.Length > 10_000_000) return BadRequest(new { message = "The file is too big. It must be 10 MB or smaller." });
         if (!string.Equals(Path.GetExtension(file.FileName), ".pdf", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { message = "Only PDF files are accepted." });
+            return BadRequest(new { message = "Only PDF files can be uploaded here." });
 
         await using (var input = file.OpenReadStream())
         {
             var signature = new byte[5];
             var bytesRead = await input.ReadAsync(signature);
             if (bytesRead != signature.Length || Encoding.ASCII.GetString(signature) != "%PDF-")
-                return BadRequest(new { message = "The selected file is not a valid PDF." });
+                return BadRequest(new { message = "This file is not a real PDF, or it is damaged. Please choose another file." });
         }
 
         var record = await _context.EligibilityRecords
             .Include(item => item.Term)
             .Include(item => item.Athlete).ThenInclude(athlete => athlete.User)
             .FirstOrDefaultAsync(item => item.EligibilityId == eligibilityId);
-        if (record == null) return NotFound(new { message = "Grade evaluation request not found." });
-        if (record.DocumentId.HasValue) return Conflict(new { message = "A Grade Evaluation PDF is already attached to this request." });
+        if (record == null) return NotFound(new { message = "We could not find this Grade Evaluation request." });
+        if (record.DocumentId.HasValue) return Conflict(new { message = "A Grade Evaluation file was already uploaded for this request." });
 
         var uploadDirectory = Path.Combine(_environment.ContentRootPath, "private-uploads", "grade-evaluations");
         Directory.CreateDirectory(uploadDirectory);
@@ -204,7 +204,7 @@ public class EligibilityController : ControllerBase
     {
         var record = await _context.EligibilityRecords
             .FirstOrDefaultAsync(item => item.DocumentId == documentId);
-        if (record == null) return NotFound(new { message = "Grade Evaluation PDF not found." });
+        if (record == null) return NotFound(new { message = "We could not find this Grade Evaluation file." });
 
         if (!User.IsInRole("REGISTRAR"))
         {
@@ -214,15 +214,15 @@ public class EligibilityController : ControllerBase
         }
 
         var document = await _context.Documents.FirstOrDefaultAsync(item => item.DocumentId == documentId);
-        if (document == null) return NotFound(new { message = "Grade Evaluation PDF not found." });
+        if (document == null) return NotFound(new { message = "We could not find this Grade Evaluation file." });
         var relativePath = document.FileUrl.Replace('\\', '/');
         var storedFileName = Path.GetFileName(relativePath);
         if (!relativePath.StartsWith("grade-evaluations/", StringComparison.Ordinal)
             || !string.Equals(Path.GetExtension(storedFileName), ".pdf", StringComparison.OrdinalIgnoreCase))
-            return NotFound(new { message = "Grade Evaluation PDF not found." });
+            return NotFound(new { message = "We could not find this Grade Evaluation file." });
 
         var filePath = Path.Combine(_environment.ContentRootPath, "private-uploads", "grade-evaluations", storedFileName);
-        if (!System.IO.File.Exists(filePath)) return NotFound(new { message = "The PDF file is unavailable." });
+        if (!System.IO.File.Exists(filePath)) return NotFound(new { message = "This file cannot be opened right now. It may have been removed." });
         Response.Headers.ContentDisposition = new System.Net.Mime.ContentDisposition
         {
             Inline = true,
@@ -237,31 +237,31 @@ public class EligibilityController : ControllerBase
     {
         var status = request.AcademicStatus.Trim().ToUpperInvariant();
         if (status is not ("ELIGIBLE" or "INELIGIBLE"))
-            return BadRequest(new { message = "Status must be ELIGIBLE or INELIGIBLE." });
+            return BadRequest(new { message = "Please choose Eligible or Ineligible." });
         if (string.IsNullOrWhiteSpace(request.AcademicYear) || string.IsNullOrWhiteSpace(request.Semester))
-            return BadRequest(new { message = "Academic year and semester are required." });
+            return BadRequest(new { message = "Please enter the school year and semester." });
         if (request.AcademicYear.Trim().Length > 20 || request.Semester.Trim().Length > 50)
-            return BadRequest(new { message = "Academic year and semester are too long." });
+            return BadRequest(new { message = "The school year or semester is too long." });
         var selectedReasons = (request.Reasons ?? [])
             .Select(reason => reason.Trim())
             .Where(reason => reason.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToList();
         if (selectedReasons.Any(reason => !ValidReasons.Contains(reason)))
-            return BadRequest(new { message = "One or more eligibility reasons are not recognized." });
+            return BadRequest(new { message = "Some of the chosen reasons are not on the list. Please reload the page and try again." });
         if (status == "INELIGIBLE" && selectedReasons.Count == 0)
-            return BadRequest(new { message = "Select at least one reason for an ineligible decision." });
+            return BadRequest(new { message = "Please choose at least one reason why the student is ineligible." });
 
         var year = request.AcademicYear.Trim();
         var semester = request.Semester.Trim();
         var term = await _context.AcademicTerms.FirstOrDefaultAsync(item => item.AcademicYear == year && item.Semester == semester);
-        if (term == null) return NotFound(new { message = "Academic term not found." });
+        if (term == null) return NotFound(new { message = "We could not find this school term." });
 
         var record = await _context.EligibilityRecords
             .Include(item => item.Athlete).ThenInclude(athlete => athlete.User)
             .FirstOrDefaultAsync(item => item.AthleteId == request.AthleteId && item.TermId == term.TermId);
-        if (record == null) return NotFound(new { message = "Grade evaluation request not found." });
-        if (!record.DocumentId.HasValue) return BadRequest(new { message = "Upload the official Grade Evaluation PDF before submitting the review." });
+        if (record == null) return NotFound(new { message = "We could not find this Grade Evaluation request." });
+        if (!record.DocumentId.HasValue) return BadRequest(new { message = "Please upload the Grade Evaluation PDF first." });
 
         record.AcademicStatus = status;
         record.EligibilityReasons = JsonSerializer.Serialize(selectedReasons);

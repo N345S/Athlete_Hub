@@ -1120,6 +1120,11 @@ namespace AthleteHub.API.Migrations
                         .HasColumnName("account_status")
                         .HasDefaultValueSql("'ACTIVE'");
 
+                    b.Property<string>("ConfidentialPasswordHash")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("confidential_password_hash");
+
                     b.Property<DateTime?>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp")

@@ -28,6 +28,8 @@ const PATHS = {
   help: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01',
   chevronRight: 'M9 18l6-6-6-6',
   chevronLeft: 'M15 18l-6-6 6-6',
+  chevronDown: 'M6 9l6 6 6-6',
+  lock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2M7 11V7a5 5 0 0 1 10 0v4',
 }
 
 export default function Icon({ name, size = 18, className = '' }) {

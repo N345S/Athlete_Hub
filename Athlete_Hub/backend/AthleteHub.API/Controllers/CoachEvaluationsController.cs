@@ -9,7 +9,7 @@ namespace AthleteHub.API.Controllers;
 
 /// <summary>
 /// Students evaluate their team coach after each term's final grades are released. Students answer their own
-/// forms; the Sports Director sees each coach's results without the students' names.
+/// forms; the Sports Director sees each coach's results, with each student's name beside their answers.
 /// </summary>
 [ApiController]
 [Route("api/CoachEvaluations")]
@@ -73,20 +73,20 @@ public class CoachEvaluationsController : ControllerBase
         var userId = AthleteAccessService.GetUserId(User);
         var evaluation = await _context.CoachEvaluations
             .FirstOrDefaultAsync(item => item.CoachEvaluationId == evaluationId && item.Athlete.UserId == userId);
-        if (evaluation == null) return NotFound(new { message = "Evaluation not found." });
-        if (evaluation.Status == "SUBMITTED") return Conflict(new { message = "You already submitted this evaluation." });
+        if (evaluation == null) return NotFound(new { message = "We could not find this evaluation form." });
+        if (evaluation.Status == "SUBMITTED") return Conflict(new { message = "You already sent this evaluation." });
 
         var ratings = request.Ratings ?? [];
         var missing = CoachEvaluationService.Questions.Where(question => !ratings.ContainsKey(question.Key)).ToList();
-        if (missing.Count > 0) return BadRequest(new { message = "Rate every statement before submitting." });
+        if (missing.Count > 0) return BadRequest(new { message = "Please answer every question before sending." });
         if (ratings.Keys.Any(key => CoachEvaluationService.Questions.All(question => question.Key != key)))
-            return BadRequest(new { message = "One or more answers do not match the evaluation form." });
+            return BadRequest(new { message = "Some answers do not match the form. Please reload the page and try again." });
         if (ratings.Values.Any(value => value is < 1 or > 5))
-            return BadRequest(new { message = "Each rating must be from 1 to 5." });
+            return BadRequest(new { message = "Each answer must be from 1 to 5." });
 
         var comments = string.IsNullOrWhiteSpace(request.Comments) ? null : request.Comments.Trim();
         if (comments?.Length > MaxCommentLength)
-            return BadRequest(new { message = $"Comments must be {MaxCommentLength} characters or fewer." });
+            return BadRequest(new { message = $"Your comment is too long ({MaxCommentLength} characters at most)." });
 
         evaluation.Ratings = JsonSerializer.Serialize(ratings);
         evaluation.Comments = comments;
@@ -96,7 +96,10 @@ public class CoachEvaluationsController : ControllerBase
         return Ok(new { evaluation.CoachEvaluationId, evaluation.Status, evaluation.SubmittedAt });
     }
 
-    /// <summary>A coach's results per term: average for each statement and anonymous comments.</summary>
+    /// <summary>
+    /// A coach's results per term: the average for each statement, each student's answers and comment by name, and
+    /// the students who have not answered yet.
+    /// </summary>
     [HttpGet("coach/{coachId:int}")]
     [Authorize(Roles = "DIRECTOR")]
     public async Task<IActionResult> GetCoachSummary(int coachId)
@@ -111,7 +114,8 @@ public class CoachEvaluationsController : ControllerBase
                 evaluation.Status,
                 evaluation.Ratings,
                 evaluation.Comments,
-                evaluation.SubmittedAt
+                evaluation.SubmittedAt,
+                athleteName = evaluation.Athlete.User.FirstName + " " + evaluation.Athlete.User.LastName
             })
             .ToListAsync();
 
@@ -133,8 +137,20 @@ public class CoachEvaluationsController : ControllerBase
                     submitted = submitted.Count,
                     averages = submitted.Count == 0 ? null : averages.ToDictionary(pair => pair.Key, pair => Math.Round(pair.Value, 2)),
                     overallAverage = submitted.Count == 0 ? (double?)null : Math.Round(averages.Values.Average(), 2),
-                    // Newest first and never with names, so comments stay anonymous.
-                    comments = submitted.Where(row => row.Comments != null).OrderByDescending(row => row.SubmittedAt).Select(row => row.Comments).ToList()
+                    // Newest first.
+                    responses = submitted.OrderByDescending(row => row.SubmittedAt).Select(row =>
+                    {
+                        var answers = ParseRatings(row.Ratings);
+                        return new
+                        {
+                            row.athleteName,
+                            row.SubmittedAt,
+                            ratings = answers,
+                            average = answers.Count == 0 ? (double?)null : Math.Round(answers.Values.Average(), 2),
+                            row.Comments
+                        };
+                    }).ToList(),
+                    notSubmitted = group.Where(row => row.Status != "SUBMITTED").Select(row => row.athleteName).OrderBy(name => name).ToList()
                 };
             })
             .ToList();

@@ -12,11 +12,12 @@ namespace AthleteHub.API.Controllers;
 /// <summary>
 /// Account management. The Sports Director creates accounts and controls who can sign in; the Admin role is
 /// hidden (see <see cref="HiddenRoles"/>) and is only listed here so its portal keeps working if it comes back.
-/// Accounts with a hidden role are left out everywhere, as if they did not exist.
+/// Accounts with a hidden role are left out everywhere, as if they did not exist. The director needs the unlocked
+/// token from re-entering their password (see <see cref="SensitiveAccess"/>).
 /// </summary>
 [ApiController]
 [Route("api/Accounts")]
-[Authorize(Roles = "DIRECTOR,ADMIN")]
+[Authorize(Roles = "DIRECTOR,ADMIN", Policy = SensitiveAccess.Policy)]
 public class AccountsController : ControllerBase
 {
     private static readonly string[] ValidStatuses = ["ACTIVE", "INACTIVE", "SUSPENDED"];
@@ -79,7 +80,7 @@ public class AccountsController : ControllerBase
             .FirstOrDefaultAsync(u => u.UserId == userId);
 
         return user == null
-            ? NotFound(new { message = "User not found." })
+            ? NotFound(new { message = "We could not find this account. It may have been deleted." })
             : Ok(ToResponse(user));
     }
 
@@ -90,7 +91,7 @@ public class AccountsController : ControllerBase
 
         if (role == null || HiddenRoles.Contains(role.RoleName))
         {
-            return BadRequest(new { message = "The specified role does not exist." });
+            return BadRequest(new { message = "Please choose a role from the list." });
         }
 
         var isParent = role.RoleName == "PARENT";
@@ -98,12 +99,12 @@ public class AccountsController : ControllerBase
         request.UniversityId = isParent ? null : request.UniversityId?.Trim();
         if (!isParent && string.IsNullOrEmpty(request.UniversityId))
         {
-            return BadRequest(new { message = "University ID is required." });
+            return BadRequest(new { message = "Please enter the University ID." });
         }
 
         if (await _context.Users.AnyAsync(u => u.Email == request.Email || (request.UniversityId != null && u.UniversityId == request.UniversityId)))
         {
-            return Conflict(new { message = "Email or university ID is already registered." });
+            return Conflict(new { message = "Someone already uses this email or University ID." });
         }
 
         // A parent is correlated to their children through the children's university IDs.
@@ -178,14 +179,14 @@ public class AccountsController : ControllerBase
 
         if (user == null)
         {
-            return NotFound(new { message = "User not found." });
+            return NotFound(new { message = "We could not find this account. It may have been deleted." });
         }
 
         var targetRole = user.Role;
         var newStatus = request.AccountStatus?.Trim().ToUpperInvariant() ?? user.AccountStatus;
         if (!ValidStatuses.Contains(newStatus))
         {
-            return BadRequest(new { message = "Status must be ACTIVE, INACTIVE, or SUSPENDED." });
+            return BadRequest(new { message = "Please choose Active, Inactive, or Suspended." });
         }
 
         if (request.RoleId.HasValue)
@@ -194,7 +195,7 @@ public class AccountsController : ControllerBase
 
             if (targetRole == null || HiddenRoles.Contains(targetRole.RoleName))
             {
-                return BadRequest(new { message = "The specified role does not exist." });
+                return BadRequest(new { message = "Please choose a role from the list." });
             }
         }
 
@@ -205,20 +206,20 @@ public class AccountsController : ControllerBase
         request.Email = request.Email?.Trim().ToLowerInvariant();
         if (request.Email != null && await _context.Users.AnyAsync(u => u.UserId != userId && u.Email == request.Email))
         {
-            return Conflict(new { message = "Email is already registered." });
+            return Conflict(new { message = "Someone already uses this email." });
         }
 
         request.UniversityId = string.IsNullOrWhiteSpace(request.UniversityId) ? null : request.UniversityId.Trim();
         if (request.UniversityId != null && await _context.Users.AnyAsync(u => u.UserId != userId && u.UniversityId == request.UniversityId))
         {
-            return Conflict(new { message = "University ID is already registered." });
+            return Conflict(new { message = "Someone already uses this University ID." });
         }
 
         // Parents have no university ID; everyone else must keep one.
         user.UniversityId = targetRole.RoleName == "PARENT" ? null : request.UniversityId ?? user.UniversityId;
         if (user.UniversityId == null && targetRole.RoleName != "PARENT")
         {
-            return BadRequest(new { message = "University ID is required for this role." });
+            return BadRequest(new { message = "Please enter the University ID. This kind of account needs one." });
         }
 
         user.Email = request.Email?.Trim() ?? user.Email;
@@ -267,14 +268,14 @@ public class AccountsController : ControllerBase
         if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId)
             && currentUserId == userId)
         {
-            return BadRequest(new { message = "You cannot delete the account you are currently using." });
+            return BadRequest(new { message = "You cannot delete your own account." });
         }
 
         var user = await VisibleUsers.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
 
         if (user == null)
         {
-            return NotFound(new { message = "User not found." });
+            return NotFound(new { message = "We could not find this account. It may have been deleted." });
         }
 
         var guard = await GuardSelfLockoutAsync(user, "NONE", "DELETED");
@@ -290,7 +291,7 @@ public class AccountsController : ControllerBase
         {
             return Conflict(new
             {
-                message = "User cannot be deleted because related records exist. Set the account status to INACTIVE instead."
+                message = "This account cannot be deleted because it already has records. Set it to Inactive instead."
             });
         }
 
@@ -307,13 +308,13 @@ public class AccountsController : ControllerBase
         var status = request.Status?.Trim().ToUpperInvariant() ?? string.Empty;
         if (!ValidStatuses.Contains(status))
         {
-            return BadRequest(new { message = "Status must be ACTIVE, INACTIVE, or SUSPENDED." });
+            return BadRequest(new { message = "Please choose Active, Inactive, or Suspended." });
         }
 
         var user = await VisibleUsers.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
         {
-            return NotFound(new { message = "User not found." });
+            return NotFound(new { message = "We could not find this account. It may have been deleted." });
         }
 
         var guard = await GuardSelfLockoutAsync(user, user.Role.RoleName, status);
@@ -332,7 +333,7 @@ public class AccountsController : ControllerBase
     {
         if (!await _context.Users.AnyAsync(u => u.UserId == userId && u.Role.RoleName == "PARENT"))
         {
-            return NotFound(new { message = "Parent account not found." });
+            return NotFound(new { message = "We could not find this parent's account." });
         }
 
         return Ok(await _context.ParentAthletes
@@ -356,7 +357,7 @@ public class AccountsController : ControllerBase
     {
         if (!await _context.Users.AnyAsync(u => u.UserId == userId && u.Role.RoleName == "PARENT"))
         {
-            return NotFound(new { message = "Parent account not found." });
+            return NotFound(new { message = "We could not find this parent's account." });
         }
 
         var requestedUserIds = request.AthleteUserIds.Distinct().ToList();
@@ -366,7 +367,7 @@ public class AccountsController : ControllerBase
             .ToListAsync();
         if (athletes.Count != requestedUserIds.Count)
         {
-            return BadRequest(new { message = "Every linked child must be an existing athlete account." });
+            return BadRequest(new { message = "Each child must already have a student-athlete account." });
         }
 
         var relationship = string.IsNullOrWhiteSpace(request.Relationship) ? null : request.Relationship.Trim();
@@ -397,7 +398,7 @@ public class AccountsController : ControllerBase
             .ToList();
         if (wanted.Count == 0)
         {
-            return ([], BadRequest(new { message = "Enter the university ID of at least one child (athlete) this parent monitors." }));
+            return ([], BadRequest(new { message = "Please enter the University ID of at least one child of this parent." }));
         }
 
         var found = await _context.AthleteProfiles
@@ -407,7 +408,7 @@ public class AccountsController : ControllerBase
         var missing = wanted.Where(id => !found.Any(row => string.Equals(row.UniversityId, id, StringComparison.OrdinalIgnoreCase))).ToList();
         if (missing.Count > 0)
         {
-            return ([], BadRequest(new { message = $"No athlete account has university ID {string.Join(", ", missing)}." }));
+            return ([], BadRequest(new { message = $"No student-athlete has the University ID {string.Join(", ", missing)}. Please check the number." }));
         }
 
         return (found.Select(row => row.AthleteId).Distinct().ToList(), null);
@@ -425,7 +426,7 @@ public class AccountsController : ControllerBase
 
         if (user.UserId == currentUserId && !keepsRoleAndStatus)
         {
-            return BadRequest(new { message = "You cannot change your own role or status. Ask another Sports Director." });
+            return BadRequest(new { message = "You cannot change your own role or status. Ask another Sports Director to do it." });
         }
 
         var stillActiveDirector = newRole == "DIRECTOR" && newStatus == "ACTIVE";
@@ -435,7 +436,7 @@ public class AccountsController : ControllerBase
                 u.UserId != user.UserId && u.Role.RoleName == "DIRECTOR" && u.AccountStatus == "ACTIVE");
             if (otherActiveDirectors == 0)
             {
-                return BadRequest(new { message = "At least one active Sports Director is required to manage accounts." });
+                return BadRequest(new { message = "There must always be at least one active Sports Director." });
             }
         }
 

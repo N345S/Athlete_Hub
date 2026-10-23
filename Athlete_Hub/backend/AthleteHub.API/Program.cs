@@ -46,13 +46,20 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.Converters.Add(new UtcTimestampConverter());
-    });
+    })
+    // A form that fails validation gets one plain sentence, like every other error, instead of ASP.NET's details.
+    .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
+        new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(new { message = ValidationMessages.Describe(context.ModelState) }));
 
 builder.Services.AddScoped<AthleteAccessService>();
 builder.Services.AddScoped<AchievementReviewService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<IctdUniversityDatabase>();
 builder.Services.AddScoped<CoachEvaluationService>();
+builder.Services.AddScoped<IctdGradeSync>();
+// One instance, so the Director dashboard can read when the ICTD database was last checked.
+builder.Services.AddSingleton<IctdGradeSyncWorker>();
+builder.Services.AddHostedService(services => services.GetRequiredService<IctdGradeSyncWorker>());
 builder.Services.AddSingleton<DocumentStorage>();
 builder.Services.AddSingleton<AppClock>();
 
@@ -149,7 +156,9 @@ builder.Services
 // AUTHORIZATION
 // ==========================================
 
-builder.Services.AddAuthorization();
+// Grades and accounts need the director's password again; see SensitiveAccess.
+builder.Services.AddAuthorization(options => options.AddPolicy(SensitiveAccess.Policy,
+    policy => policy.RequireAssertion(context => SensitiveAccess.IsSatisfied(context.User))));
 
 
 // ==========================================
@@ -184,7 +193,7 @@ app.Use(async (context, next) =>
         
         var response = new
         {
-            message = "An internal server error occurred",
+            message = "Something went wrong on our side. Please try again in a moment.",
             detail = app.Environment.IsDevelopment() ? ex.Message : null
         };
         
@@ -271,6 +280,22 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Services.GetRequiredService<DocumentStorage>().MoveLegacyFilesToPrivateStorage();
+
+// A forgotten Grades/Accounts password: `dotnet run -- --reset-page-password director@school.edu` clears it, and the
+// director sets up a new one the next time they open those pages. Works in every environment, then exits.
+var resetPagePassword = Array.IndexOf(args, "--reset-page-password");
+if (resetPagePassword >= 0)
+{
+    var email = resetPagePassword + 1 < args.Length ? args[resetPagePassword + 1].Trim().ToLowerInvariant() : string.Empty;
+    using var resetScope = app.Services.CreateScope();
+    var cleared = await resetScope.ServiceProvider.GetRequiredService<AthleteHubDbContext>().Users
+        .Where(user => user.Email.ToLower() == email)
+        .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.ConfidentialPasswordHash, (string?)null));
+    Console.WriteLine(cleared > 0
+        ? $"The Grades and Accounts password for {email} was cleared. They will make a new one the next time they open those pages."
+        : $"No account uses the email \"{email}\".");
+    return;
+}
 
 // Development helpers: `dotnet run -- --seed-test-data` / `--remove-test-data` / `--seed-parents` manage scenario data, then exit.
 if (args.Contains("--seed-test-data") || args.Contains("--remove-test-data") || args.Contains("--seed-parents"))

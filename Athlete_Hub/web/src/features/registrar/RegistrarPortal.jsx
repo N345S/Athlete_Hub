@@ -8,6 +8,7 @@ import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, EmptyState, Field, Loading, PageHeader, SearchInput, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
+import { NOTIFICATION_ROUTES } from '../../lib/notifications.js'
 import { PdfPreview } from '../staff/AthleteProfilePage.jsx'
 
 const VIEWS = ['dashboard', 'requests', 'evaluations', 'students', 'notifications']
@@ -244,7 +245,7 @@ export default function RegistrarPortal({ session, onLogout }) {
       </Card>
     </>
   } else if (view === 'notifications') {
-    content = <NotificationsPage session={session} onChanged={refreshUnread} />
+    content = <NotificationsPage session={session} routes={NOTIFICATION_ROUTES.registrar} onNavigate={navigate} onChanged={refreshUnread} />
   } else {
     content = <>
       <PageHeader title="Registrar dashboard" subtitle={longToday()} actions={<button className="btn btn-secondary" type="button" onClick={() => { studentsData.reload(); evaluationsData.reload() }}><Icon name="refresh" /> Refresh</button>} />
@@ -270,13 +271,14 @@ export default function RegistrarPortal({ session, onLogout }) {
         { key: 'requests', label: 'Eligibility requests', shortLabel: 'Requests', icon: 'inbox', badge: pending.length },
         { key: 'evaluations', label: 'Decisions', icon: 'check' },
         { key: 'students', label: 'Students', icon: 'users' },
-        { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}
       pageTitle={reviewing ? 'Evaluation review' : TITLES[view]}
       onNavigate={navigate}
       onLogout={onLogout}
       unreadCount={unread}
+      notificationRoutes={NOTIFICATION_ROUTES.registrar}
+      onNotificationsChanged={refreshUnread}
       help={HELP.registrar[reviewing ? 'requests' : view]}
     >
       <Alert>{studentsData.error || evaluationsData.error}</Alert>

@@ -40,7 +40,7 @@ public class CoachDashboardController : ControllerBase
                 eligibility = Array.Empty<object>(),
                 upcomingSessions = Array.Empty<object>(),
                 portfolioItems = Array.Empty<object>(),
-                message = "Coach account is valid, but no coach profile or assigned teams have been configured yet."
+                message = "Your coach account has no team yet. Please ask the Sports Director to set one up."
             });
         }
 

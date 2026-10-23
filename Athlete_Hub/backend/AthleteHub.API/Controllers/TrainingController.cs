@@ -139,13 +139,13 @@ public class TrainingController : ControllerBase
     public async Task<IActionResult> ReviewSession(int sessionId, [FromQuery] string status, TrainingApprovalRequest request)
     {
         var normalizedStatus = status.Trim().ToUpperInvariant();
-        if (normalizedStatus is not ("APPROVED" or "REJECTED")) return BadRequest(new { message = "Status must be APPROVED or REJECTED." });
+        if (normalizedStatus is not ("APPROVED" or "REJECTED")) return BadRequest(new { message = "Please choose Approve or Reject." });
 
         var session = await _context.TrainingSessions
             .Include(item => item.Team).ThenInclude(team => team.TeamMembers).ThenInclude(member => member.Athlete)
             .FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId);
-        if (session == null) return NotFound(new { message = "Training session not found." });
-        if (session.ApprovalStatus != "PENDING") return Conflict(new { message = "This training session has already been reviewed." });
+        if (session == null) return NotFound(new { message = "We could not find this training session. It may have been deleted." });
+        if (session.ApprovalStatus != "PENDING") return Conflict(new { message = "This training was already approved or rejected." });
 
         var reviewerId = GetUserId();
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -210,14 +210,14 @@ public class TrainingController : ControllerBase
     {
         var coach = await GetCoachAsync();
         if (coach == null || !await _context.Teams.AnyAsync(team => team.TeamId == request.TeamId && team.CoachId == coach.CoachId)) return Forbid();
-        if (request.EndTime.HasValue && request.StartTime.HasValue && request.EndTime <= request.StartTime) return BadRequest(new { message = "End time must be after start time." });
+        if (request.EndTime.HasValue && request.StartTime.HasValue && request.EndTime <= request.StartTime) return BadRequest(new { message = "The end time must be later than the start time." });
 
         var dates = (request.TrainingDates is { Count: > 0 } ? request.TrainingDates : [request.TrainingDate])
             .Select(date => date.Date)
             .Distinct()
             .OrderBy(date => date)
             .ToList();
-        if (dates.Count == 0) return BadRequest(new { message = "At least one training date is required." });
+        if (dates.Count == 0) return BadRequest(new { message = "Please choose at least one date." });
 
         var sessions = dates.Select(date => new TrainingSession
         {
@@ -257,7 +257,7 @@ public class TrainingController : ControllerBase
             .Include(item => item.Team)
             .FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId);
 
-        if (session == null) return NotFound(new { message = "Training session not found." });
+        if (session == null) return NotFound(new { message = "We could not find this training session. It may have been deleted." });
 
         if (User.IsInRole("COACH"))
         {
@@ -265,7 +265,7 @@ public class TrainingController : ControllerBase
             if (coach == null || session.Team.CoachId != coach.CoachId) return Forbid();
             // Approved sessions are already on athletes' calendars; only the Director can remove them.
             if (session.ApprovalStatus == "APPROVED")
-                return BadRequest(new { message = "Approved sessions can only be removed by the Sports Director." });
+                return BadRequest(new { message = "This training is already approved. Only the Sports Director can remove it." });
         }
 
         // Parents were told about approved sessions, so tell them when one is cancelled.
@@ -286,7 +286,7 @@ public class TrainingController : ControllerBase
     public async Task<IActionResult> GetAttendance(int sessionId)
     {
         var session = await _context.TrainingSessions.Include(item => item.Team).FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId);
-        if (session == null) return NotFound(new { message = "Training session not found." });
+        if (session == null) return NotFound(new { message = "We could not find this training session. It may have been deleted." });
         if (!await CanViewTeamAsync(session.TeamId)) return Forbid();
         return Ok(await _context.Attendances.Where(attendance => attendance.TrainingSessionId == sessionId).Select(attendance => new { attendance.AttendanceId, attendance.AthleteId, attendance.AttendanceStatus, attendance.Remarks }).ToListAsync());
     }
@@ -297,12 +297,12 @@ public class TrainingController : ControllerBase
     {
         var coach = await GetCoachAsync();
         var session = await _context.TrainingSessions.FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId);
-        if (coach == null || session == null) return NotFound(new { message = "Training session not found." });
+        if (coach == null || session == null) return NotFound(new { message = "We could not find this training session. It may have been deleted." });
         if (!await _context.Teams.AnyAsync(team => team.TeamId == session.TeamId && team.CoachId == coach.CoachId)) return Forbid();
-        if (!ValidStatuses.Contains(request.AttendanceStatus.Trim().ToUpperInvariant())) return BadRequest(new { message = "Attendance status must be PRESENT, ABSENT, LATE, or EXCUSED." });
-        if (!await _context.TeamMembers.AnyAsync(member => member.TeamId == session.TeamId && member.AthleteId == request.AthleteId && member.DateLeft == null)) return BadRequest(new { message = "Athlete is not an active member of this team." });
+        if (!ValidStatuses.Contains(request.AttendanceStatus.Trim().ToUpperInvariant())) return BadRequest(new { message = "Please choose Present, Absent, Late, or Excused." });
+        if (!await _context.TeamMembers.AnyAsync(member => member.TeamId == session.TeamId && member.AthleteId == request.AthleteId && member.DateLeft == null)) return BadRequest(new { message = "This student-athlete is not on this team." });
         if (!await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == request.AthleteId && athlete.User.AccountStatus == "ACTIVE"))
-            return BadRequest(new { message = "Attendance cannot be recorded for a suspended or inactive account." });
+            return BadRequest(new { message = "You cannot take attendance for this student because their account is suspended or inactive." });
         var attendance = await _context.Attendances.FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId && item.AthleteId == request.AthleteId);
         if (attendance == null) { attendance = new Attendance { TrainingSessionId = sessionId, AthleteId = request.AthleteId }; _context.Attendances.Add(attendance); }
         var previousStatus = attendance.AttendanceStatus;

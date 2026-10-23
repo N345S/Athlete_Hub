@@ -16,6 +16,12 @@ public partial class User
 
     public string PasswordHash { get; set; } = null!;
 
+    /// <summary>
+    /// The Sports Director's separate password for the confidential pages (Grades and Accounts). Null until they
+    /// set one up the first time they open those pages.
+    /// </summary>
+    public string? ConfidentialPasswordHash { get; set; }
+
     public string FirstName { get; set; } = null!;
 
     public string? MiddleName { get; set; }

@@ -6,7 +6,8 @@ namespace AthleteHub.API.Services;
 /// Stand-in for the ICTD university database of grades. Athlete-Hub has no live connection to it yet, so this
 /// imitates one: every student's final grades for a term are generated from their student number, program,
 /// and year level. The same student and term always return the same grades, the way a real database would.
-/// To connect the real ICTD database later, replace <see cref="GetFinalGrades"/> with a call to its API.
+/// To connect the real ICTD database later, replace <see cref="ReleasedTerms"/> and <see cref="GetFinalGrades"/>
+/// with calls to its API; <see cref="IctdGradeSync"/> pulls whatever they report.
 /// </summary>
 public class IctdUniversityDatabase
 {
@@ -55,27 +56,30 @@ public class IctdUniversityDatabase
     public IctdUniversityDatabase(AppClock clock) => _clock = clock;
 
     /// <summary>
-    /// ICTD only has grades for terms that have started: 1st Semester in August, 2nd Semester in January,
-    /// Summer in June. Returns null when the term is valid and available, otherwise the reason it is not.
+    /// ICTD releases a term's final grades about ten days after the term ends: 1st Semester (August to December)
+    /// on 10 January, 2nd Semester (January to May) on 10 June, and Summer (June and July) on 10 August.
     /// </summary>
-    public string? CheckTerm(string academicYear, string semester)
+    public static DateTime GradesReleasedOn(int startYear, string semester) => semester switch
     {
-        var parts = academicYear.Split('-');
-        if (parts.Length != 2 || !int.TryParse(parts[0], out var startYear) || !int.TryParse(parts[1], out var endYear)
-            || parts[0].Length != 4 || endYear != startYear + 1)
-            return "Enter the academic year as YYYY-YYYY, e.g. 2026-2027.";
-        if (!Semesters.Contains(semester))
-            return "Semester must be 1st Semester, 2nd Semester, or Summer.";
+        "1st Semester" => new DateTime(startYear + 1, 1, 10),
+        "2nd Semester" => new DateTime(startYear + 1, 6, 10),
+        _ => new DateTime(startYear + 1, 8, 10),
+    };
 
-        var termStart = semester switch
+    /// <summary>The <paramref name="count"/> most recent terms whose final grades ICTD has released, newest first.</summary>
+    public IReadOnlyList<(string AcademicYear, string Semester)> ReleasedTerms(int count)
+    {
+        var today = _clock.LocalToday;
+        var terms = new List<(string AcademicYear, string Semester)>();
+        for (var startYear = today.Year; terms.Count < count; startYear--)
         {
-            "1st Semester" => new DateTime(startYear, 8, 1),
-            "2nd Semester" => new DateTime(endYear, 1, 1),
-            _ => new DateTime(endYear, 6, 1),
-        };
-        return termStart > _clock.LocalToday
-            ? $"The ICTD database has no grades for {semester} {academicYear} yet; the term has not started."
-            : null;
+            for (var index = Semesters.Length - 1; index >= 0 && terms.Count < count; index--)
+            {
+                if (GradesReleasedOn(startYear, Semesters[index]) <= today)
+                    terms.Add(($"{startYear}-{startYear + 1}", Semesters[index]));
+            }
+        }
+        return terms;
     }
 
     /// <summary>The student's final grades for one term, as the ICTD database reports them.</summary>

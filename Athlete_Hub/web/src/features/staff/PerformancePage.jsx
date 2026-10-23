@@ -38,7 +38,7 @@ function RecordPerformanceModal({ athlete, sessions, savedWorkouts, session, onC
 
   const submit = async (event) => {
     event.preventDefault()
-    if (!selectedSession) return setError('Select a completed training session.')
+    if (!selectedSession) return setError('Please choose a training session that has already finished.')
     setSaving(true)
     setError('')
     try {

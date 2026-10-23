@@ -9,6 +9,7 @@ import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Card, ConfirmDialog, EmptyState, Loading, PageHeader, ProgressBar, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
+import { NOTIFICATION_ROUTES } from '../../lib/notifications.js'
 import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
@@ -119,7 +120,7 @@ export default function CoachPortal({ session, onLogout }) {
   } else if (view === 'performance') {
     content = <ErrorBoundary><PerformancePage athletes={athletes} session={session} canEdit /></ErrorBoundary>
   } else if (view === 'notifications') {
-    content = <NotificationsPage session={session} onChanged={refreshUnread} />
+    content = <NotificationsPage session={session} routes={NOTIFICATION_ROUTES.coach} onNavigate={navigate} onChanged={refreshUnread} />
   } else {
     content = <>
       <PageHeader title={`${greeting()}, ${session.firstName || 'Coach'}`} subtitle={longToday()} actions={addScheduleButton} />
@@ -250,13 +251,14 @@ export default function CoachPortal({ session, onLogout }) {
         { key: 'schedule', label: 'Schedule', icon: 'calendar' },
         { key: 'attendance', label: 'Attendance', icon: 'clipboard' },
         { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
-        { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}
       pageTitle={profileAthlete && view === 'athletes' ? 'Athlete profile' : TITLES[view]}
       onNavigate={navigate}
       onLogout={onLogout}
       unreadCount={unread}
+      notificationRoutes={NOTIFICATION_ROUTES.coach}
+      onNotificationsChanged={refreshUnread}
       help={HELP.coach[view]}
     >
       {content}

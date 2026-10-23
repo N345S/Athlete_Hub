@@ -43,7 +43,7 @@ public class NotificationsController : ControllerBase
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
         var notification = await _context.Notifications.FirstOrDefaultAsync(item => item.NotificationId == notificationId && item.UserId == userId);
-        if (notification == null) return NotFound(new { message = "Notification not found." });
+        if (notification == null) return NotFound(new { message = "We could not find this notification. It may have been deleted." });
 
         notification.IsRead = true;
         await _context.SaveChangesAsync();

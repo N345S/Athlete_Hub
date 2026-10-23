@@ -179,9 +179,9 @@ public class SchedulesController : ControllerBase
     public async Task<IActionResult> Create(ScheduleRequest request)
     {
         var type = request.ScheduleType.Trim().ToUpperInvariant();
-        if (!ValidTypes.Contains(type)) return BadRequest(new { message = "Invalid schedule type." });
-        if (!request.StartDate.HasValue || !request.StartTime.HasValue) return BadRequest(new { message = "Start date and start time are required." });
-        if (request.EndDate.HasValue != request.EndTime.HasValue) return BadRequest(new { message = "End date and end time must be provided together." });
+        if (!ValidTypes.Contains(type)) return BadRequest(new { message = "Please choose what kind of event this is." });
+        if (!request.StartDate.HasValue || !request.StartTime.HasValue) return BadRequest(new { message = "Please enter the start date and time." });
+        if (request.EndDate.HasValue != request.EndTime.HasValue) return BadRequest(new { message = "Please enter both the end date and the end time, or leave both empty." });
 
         var dates = (request.Dates is { Count: > 0 } ? request.Dates : [request.StartDate.Value])
             .Select(date => date.Date)
@@ -196,7 +196,7 @@ public class SchedulesController : ControllerBase
             return new Schedule { Title = request.Title.Trim(), Description = request.Description, ScheduleType = type, StartDatetime = startDatetime, EndDatetime = endDatetime, Location = request.Location, CreatedBy = GetUserId() };
         }).ToList();
 
-        if (schedules.Any(schedule => schedule.EndDatetime.HasValue && schedule.EndDatetime <= schedule.StartDatetime)) return BadRequest(new { message = "End date and time must be after start date and time." });
+        if (schedules.Any(schedule => schedule.EndDatetime.HasValue && schedule.EndDatetime <= schedule.StartDatetime)) return BadRequest(new { message = "The end must be later than the start." });
         _context.Schedules.AddRange(schedules);
         var label = type == "COMPETITION" ? "competition" : "sports event";
         var when = schedules.Count == 1

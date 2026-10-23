@@ -51,7 +51,7 @@ public class DocumentsController : ControllerBase
 
         if (athlete == null)
         {
-            return NotFound(new { message = "Athlete profile not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         var documents = await _context.Documents
@@ -101,7 +101,7 @@ public class DocumentsController : ControllerBase
         // Grade evaluations have their own endpoint with registrar review rules.
         if (document == null || document.DocumentType == "GRADE_EVALUATION")
         {
-            return NotFound(new { message = "Document not found." });
+            return NotFound(new { message = "We could not find this document. It may have been deleted." });
         }
 
         if (!await _access.CanViewAthleteAsync(User, document.AthleteId, includeRegistrar: false))
@@ -112,7 +112,7 @@ public class DocumentsController : ControllerBase
         var path = _storage.ResolvePath(document.FileUrl);
         if (path == null)
         {
-            return NotFound(new { message = "The file is unavailable." });
+            return NotFound(new { message = "This file cannot be opened right now. It may have been removed." });
         }
 
         Response.Headers.ContentDisposition = new System.Net.Mime.ContentDisposition
@@ -146,11 +146,11 @@ public class DocumentsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(documentType))
         {
-            return BadRequest(new { message = "Document type is required." });
+            return BadRequest(new { message = "Please choose what kind of document this is." });
         }
         if (string.Equals(documentType.Trim(), "GRADE_EVALUATION", StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest(new { message = "Grade Evaluation PDFs must be uploaded by the Registrar." });
+            return BadRequest(new { message = "Only the Registrar can upload a Grade Evaluation." });
         }
 
         var files = GetUploadedFiles(Request.Form.Files);
@@ -164,13 +164,13 @@ public class DocumentsController : ControllerBase
 
         if (athlete == null)
         {
-            return NotFound(new { message = "Athlete profile not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         if (achievementId.HasValue && !await _context.Achievements.AnyAsync(achievement =>
                 achievement.AchievementId == achievementId.Value && achievement.AthleteId == athlete.AthleteId))
         {
-            return BadRequest(new { message = "The evidence achievement does not belong to this athlete." });
+            return BadRequest(new { message = "This proof belongs to another student-athlete's achievement." });
         }
 
         var documents = await _storage.CreateDocumentsAsync(files, athlete.AthleteId, documentType.Trim(), title, description, achievementId);
@@ -200,11 +200,11 @@ public class DocumentsController : ControllerBase
 
         if (document == null)
         {
-            return NotFound(new { message = "Document not found." });
+            return NotFound(new { message = "We could not find this document. It may have been deleted." });
         }
         if (string.Equals(document.DocumentType, "GRADE_EVALUATION", StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest(new { message = "Grade Evaluation PDFs cannot be deleted from the athlete document portal." });
+            return BadRequest(new { message = "You cannot delete a Grade Evaluation here." });
         }
 
         _context.Documents.Remove(document);

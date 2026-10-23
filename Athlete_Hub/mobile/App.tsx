@@ -40,6 +40,15 @@ type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+/** A message anyone can understand: no-connection and other technical errors become plain sentences. */
+function plainError(error: any, fallback: string): string {
+  if (error instanceof TypeError || /network request failed/i.test(error?.message ?? '')) {
+    return 'We cannot connect right now. Check your internet connection and try again.';
+  }
+  if (error instanceof SyntaxError) return fallback;
+  return error?.message || fallback;
+}
+
 async function getStoredSession(): Promise<Session | null> {
   try {
     const raw = await AsyncStorage.getItem(SESSION_KEY);
@@ -70,7 +79,7 @@ function LoginScreen({ navigation }: { navigation: any }) {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing login data', 'Please enter both email and password.');
+      Alert.alert('Email and password needed', 'Please enter your email and your password.');
       return;
     }
 
@@ -86,7 +95,7 @@ function LoginScreen({ navigation }: { navigation: any }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.message || 'Login failed.');
+        throw new Error(data?.message || 'You could not be signed in. Please try again.');
       }
 
       const role = String(data.role || '').toUpperCase();
@@ -108,7 +117,7 @@ function LoginScreen({ navigation }: { navigation: any }) {
         navigation.replace('RoleDashboard', { session });
       }
     } catch (error: any) {
-      Alert.alert('Login error', error.message || 'Unable to sign in.');
+      Alert.alert('Could not sign in', plainError(error, 'You could not be signed in. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -289,7 +298,7 @@ function PerformanceEntryScreen({ route, navigation }: { route: any; navigation:
 
   const handleSubmit = async () => {
     if (!value.trim()) {
-      Alert.alert('Missing value', 'Please enter a performance value.');
+      Alert.alert('Result needed', 'Please enter the result first.');
       return;
     }
 
@@ -310,12 +319,12 @@ function PerformanceEntryScreen({ route, navigation }: { route: any; navigation:
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result?.message || 'Failed to save record.');
+      if (!response.ok) throw new Error(result?.message || 'The result could not be saved. Please try again.');
 
       Alert.alert('Success', 'Performance record saved successfully!');
       navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save record.');
+      Alert.alert('Could not save', plainError(error, 'The result could not be saved. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -395,10 +404,10 @@ function PerformanceTrendScreen({ route, navigation }: { route: any; navigation:
           headers: { Authorization: `Bearer ${session.token}` },
         });
         const data = await result.json();
-        if (!result.ok) throw new Error(data?.message || 'Failed to load trend data');
+        if (!result.ok) throw new Error(data?.message || 'The progress chart could not be loaded. Please try again.');
         setChartData(data);
       } catch (err: any) {
-        setError(err.message);
+        setError(plainError(err, 'The progress chart could not be loaded. Please try again.'));
       } finally {
         setLoading(false);
       }

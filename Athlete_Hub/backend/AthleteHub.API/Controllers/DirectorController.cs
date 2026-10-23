@@ -29,7 +29,7 @@ public class DirectorController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "Invalid or missing JWT token." });
+            return Unauthorized(new { message = "You have been signed out. Please sign in again." });
         }
 
         var coaches = await _context.CoachProfiles
@@ -77,7 +77,7 @@ public class DirectorController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "Invalid or missing JWT token." });
+            return Unauthorized(new { message = "You have been signed out. Please sign in again." });
         }
 
         var coach = await _context.CoachProfiles
@@ -90,7 +90,7 @@ public class DirectorController : ControllerBase
 
         if (coach == null)
         {
-            return NotFound(new { message = $"Coach with ID {coachId} not found." });
+            return NotFound(new { message = "We could not find this coach." });
         }
 
         // Get all assigned athletes across all teams (distinct)
@@ -152,7 +152,7 @@ public class DirectorController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "Invalid or missing JWT token." });
+            return Unauthorized(new { message = "You have been signed out. Please sign in again." });
         }
 
         var athleteId = request.AthleteId;
@@ -163,7 +163,7 @@ public class DirectorController : ControllerBase
 
         if (coach == null)
         {
-            return NotFound(new { message = $"Coach with ID {coachId} not found." });
+            return NotFound(new { message = "We could not find this coach." });
         }
 
         var athlete = await _context.AthleteProfiles
@@ -172,7 +172,7 @@ public class DirectorController : ControllerBase
 
         if (athlete == null)
         {
-            return NotFound(new { message = $"Athlete with ID {athleteId} not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         // Find an active team for this coach
@@ -181,7 +181,7 @@ public class DirectorController : ControllerBase
 
         if (team == null)
         {
-            return BadRequest(new { message = $"Coach is not assigned to any active team." });
+            return BadRequest(new { message = "This coach has no team yet, so athletes cannot be added." });
         }
 
         // Check if athlete is already on this team
@@ -190,7 +190,7 @@ public class DirectorController : ControllerBase
 
         if (existingTeamMember != null)
         {
-            return Conflict(new { message = $"Athlete is already assigned to team '{team.TeamName}'." });
+            return Conflict(new { message = $"This student-athlete is already on {team.TeamName}." });
         }
 
         var teamMember = new TeamMember
@@ -245,7 +245,7 @@ public class DirectorController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "Invalid or missing JWT token." });
+            return Unauthorized(new { message = "You have been signed out. Please sign in again." });
         }
 
         var coach = await _context.CoachProfiles
@@ -253,7 +253,7 @@ public class DirectorController : ControllerBase
 
         if (coach == null)
         {
-            return NotFound(new { message = $"Coach with ID {coachId} not found." });
+            return NotFound(new { message = "We could not find this coach." });
         }
 
         var athlete = await _context.AthleteProfiles
@@ -261,7 +261,7 @@ public class DirectorController : ControllerBase
 
         if (athlete == null)
         {
-            return NotFound(new { message = $"Athlete with ID {athleteId} not found." });
+            return NotFound(new { message = "We could not find this student-athlete." });
         }
 
         // Find the team member record for this coach's team
@@ -275,7 +275,7 @@ public class DirectorController : ControllerBase
 
         if (teamMember == null)
         {
-            return NotFound(new { message = "Athlete is not assigned to this coach." });
+            return NotFound(new { message = "This student-athlete is not on this coach's team." });
         }
 
         teamMember.DateLeft = DateTime.UtcNow;
@@ -296,7 +296,7 @@ public class DirectorController : ControllerBase
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            return Unauthorized(new { message = "Invalid or missing JWT token." });
+            return Unauthorized(new { message = "You have been signed out. Please sign in again." });
         }
 
         var athletes = await _context.AthleteProfiles

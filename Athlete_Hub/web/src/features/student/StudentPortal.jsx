@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday, statusLabel, timeAgo } from '../../lib/format.js'
+import { formatDate, formatTimeRange, fullName, greeting, localDateISO, longToday, statusLabel } from '../../lib/format.js'
 import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import FileLink from '../../components/FileLink.jsx'
-import NotificationsPage from '../../components/NotificationsPage.jsx'
+import NotificationsPage, { NotificationList } from '../../components/NotificationsPage.jsx'
 import Icon from '../../components/icons.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, PageHeader, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
 import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
-import CoachEvaluationsPage from './CoachEvaluationsPage.jsx'
+import { goToRoute, NOTIFICATION_ROUTES, openNotification } from '../../lib/notifications.js'
+import CoachEvaluationsPage, { CoachEvaluationPrompt } from './CoachEvaluationsPage.jsx'
 import MyPerformancePage from './MyPerformancePage.jsx'
 
 const VIEWS = ['dashboard', 'schedule', 'performance', 'documents', 'portfolio', 'evaluations', 'profile', 'notifications']
@@ -24,8 +25,8 @@ const ACHIEVEMENT_CATEGORIES = ['Competition', 'Award', 'Certification', 'Leader
 
 function fileProblem(file) {
   const extension = `.${file.name.split('.').pop().toLowerCase()}`
-  if (!ALLOWED_EXTENSIONS.includes(extension)) return 'Unsupported file type'
-  if (file.size > MAX_FILE_SIZE) return 'Larger than 10 MB'
+  if (!ALLOWED_EXTENSIONS.includes(extension)) return 'This kind of file cannot be uploaded'
+  if (file.size > MAX_FILE_SIZE) return 'Too big (10 MB at most)'
   return ''
 }
 
@@ -107,12 +108,14 @@ function GettingStarted({ session, profile, documents, portfolio, onNavigate }) 
   )
 }
 
-function StudentDashboard({ session, profile, pendingEvaluations, onNavigate }) {
+function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNotificationsChanged }) {
   const evaluations = useApiData(REGISTRAR_ELIGIBILITY && profile?.athleteId ? `/api/Eligibility/athlete/${profile.athleteId}` : null, session.token)
   const upcoming = useApiData(`/api/Schedules/athlete?from=${localDateISO()}`, session.token, { initialData: [] })
   const portfolio = useApiData('/api/Portfolio/me', session.token, { initialData: [] })
   const documents = useApiData('/api/Documents/me', session.token, { initialData: [] })
   const updates = useApiData('/api/Notifications/me', session.token, { initialData: [] })
+  const allEvaluations = coachEvaluations.data?.evaluations || []
+  const pendingEvaluations = allEvaluations.filter((item) => item.status === 'PENDING')
   const nextEvents = [...(upcoming.data || [])]
     .filter((item) => item.startDate >= localDateISO())
     .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`))
@@ -125,16 +128,15 @@ function StudentDashboard({ session, profile, pendingEvaluations, onNavigate }) 
   const latestDecision = records.find((item) => item.academicStatus !== 'PENDING')
   const pendingRequest = records.find((item) => item.academicStatus === 'PENDING')
   const termOf = (item) => `${item.term.semester} ${item.term.academicYear}`
+  const openUpdate = (item) => {
+    updates.setData((current) => current.map((entry) => entry.notificationId === item.notificationId ? { ...entry, isRead: true } : entry))
+    openNotification(item, { token: session.token, routes: NOTIFICATION_ROUTES.athlete, onNavigate, onRead: onNotificationsChanged })
+  }
 
   return (
     <>
       <PageHeader title={`${greeting()}, ${session.firstName || 'Athlete'}`} subtitle={longToday()} />
-      {pendingEvaluations.length > 0 && (
-        <Alert tone="info">
-          Final grades for {termLabel(pendingEvaluations[0].term)} have been released. Please evaluate your coach{pendingEvaluations.length > 1 ? 'es' : ''}.{' '}
-          <button className="link-button" type="button" onClick={() => onNavigate('evaluations')}>Evaluate now →</button>
-        </Alert>
-      )}
+      <CoachEvaluationPrompt session={session} evaluations={coachEvaluations} onChanged={coachEvaluations.reload} />
       {REGISTRAR_ELIGIBILITY && latestDecision?.academicStatus === 'INELIGIBLE' && (
         <Alert tone="warning">The Registrar marked you ineligible for {termOf(latestDecision)}. Please coordinate with your coach.</Alert>
       )}
@@ -153,9 +155,11 @@ function StudentDashboard({ session, profile, pendingEvaluations, onNavigate }) 
             icon="chat"
             label="Coach evaluation"
             value={pendingEvaluations.length ? `${pendingEvaluations.length} to do` : 'All done'}
-            hint={pendingEvaluations.length ? `For ${termLabel(pendingEvaluations[0].term)}` : 'Sent when final grades are released'}
+            hint={pendingEvaluations.length ? `For ${termLabel(pendingEvaluations[0].term)}` : allEvaluations.length ? 'See your past evaluations' : 'Sent when final grades are released'}
             tone={pendingEvaluations.length ? 'warning' : 'success'}
-            onClick={() => onNavigate('evaluations')}
+            onClick={pendingEvaluations.length
+              ? () => goToRoute({ view: 'dashboard', target: 'coach-evaluation' }, onNavigate)
+              : allEvaluations.length ? () => onNavigate('evaluations') : undefined}
           />
         )}
         <StatCard icon="calendar" label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" onClick={() => onNavigate('schedule')} />
@@ -181,17 +185,7 @@ function StudentDashboard({ session, profile, pendingEvaluations, onNavigate }) 
         </Card>
         <Card title="Latest updates" subtitle="Portfolio reviews, new events, and approved training" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('notifications')}>All notifications →</button>}>
           {(updates.data || []).length ? (
-            <ul className="row-list">
-              {updates.data.slice(0, 5).map((item) => (
-                <li className="row" key={item.notificationId}>
-                  <div className="row-main">
-                    <strong className={item.isRead ? '' : 'text-brand'}>{item.title}</strong>
-                    <span>{item.message}</span>
-                    <small>{timeAgo(item.createdAt)}</small>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <NotificationList items={updates.data.slice(0, 5)} routes={NOTIFICATION_ROUTES.athlete} compact onOpen={openUpdate} />
           ) : <EmptyState icon="bell" title="No updates yet" message="You'll be notified when your portfolio is reviewed or new events are scheduled." />}
         </Card>
         {REGISTRAR_ELIGIBILITY && <Card title="Academic eligibility" subtitle="Registrar decisions from your official Grade Evaluation">
@@ -231,8 +225,8 @@ function DocumentsPage({ session }) {
 
   const upload = async (event) => {
     event.preventDefault()
-    if (!files.length) return setActionError('Add at least one file.')
-    if (files.some(fileProblem)) return setActionError('Remove the files marked as invalid first.')
+    if (!files.length) return setActionError('Please add at least one file.')
+    if (files.some(fileProblem)) return setActionError('Some files cannot be uploaded. Please remove the ones marked in red first.')
     setUploading(true)
     setActionError('')
     setMessage('')
@@ -331,9 +325,9 @@ function PortfolioPage({ session, profile }) {
 
   const submit = async (event) => {
     event.preventDefault()
-    if (!form.title.trim()) return setActionError('Enter the achievement title.')
-    if (!files.length) return setActionError('Attach at least one evidence file.')
-    if (files.some(fileProblem)) return setActionError('Remove the files marked as invalid first.')
+    if (!form.title.trim()) return setActionError('Please enter the title of your achievement.')
+    if (!files.length) return setActionError('Please add at least one file as proof.')
+    if (files.some(fileProblem)) return setActionError('Some files cannot be uploaded. Please remove the ones marked in red first.')
     setSaving(true)
     setActionError('')
     try {
@@ -513,11 +507,10 @@ export default function StudentPortal({ session, onLogout }) {
   const [unread, refreshUnread] = useUnreadNotifications(session.token)
   const profile = useApiData('/api/AthleteProfile/me', session.token)
   const evaluations = useApiData('/api/CoachEvaluations/me', session.token)
-  const pendingEvaluations = (evaluations.data?.evaluations || []).filter((item) => item.status === 'PENDING')
   const schedule = useApiData(view === 'schedule' ? '/api/Schedules/athlete' : null, session.token, { initialData: [] })
 
   const pages = {
-    dashboard: <StudentDashboard session={session} profile={profile.data} pendingEvaluations={pendingEvaluations} onNavigate={setView} />,
+    dashboard: <StudentDashboard session={session} profile={profile.data} coachEvaluations={evaluations} onNavigate={setView} onNotificationsChanged={refreshUnread} />,
     schedule: <>
       <PageHeader title="Schedule" subtitle="Approved training sessions, sports events, and competitions" />
       <Alert>{schedule.error}</Alert>
@@ -526,9 +519,9 @@ export default function StudentPortal({ session, onLogout }) {
     performance: <MyPerformancePage session={session} profile={profile.data} />,
     documents: <DocumentsPage session={session} />,
     portfolio: <PortfolioPage session={session} profile={profile.data} />,
-    evaluations: <CoachEvaluationsPage session={session} evaluations={evaluations} onChanged={evaluations.reload} />,
+    evaluations: <CoachEvaluationsPage session={session} evaluations={evaluations} onChanged={evaluations.reload} onBack={() => setView('dashboard')} />,
     profile: <ProfilePage key={profile.data ? 'loaded' : 'loading'} session={session} profile={profile.data} onSaved={profile.reload} />,
-    notifications: <NotificationsPage session={session} onChanged={refreshUnread} />,
+    notifications: <NotificationsPage session={session} routes={NOTIFICATION_ROUTES.athlete} onNavigate={setView} onChanged={refreshUnread} />,
   }
 
   return (
@@ -542,15 +535,15 @@ export default function StudentPortal({ session, onLogout }) {
         { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
         { key: 'documents', label: 'Documents', shortLabel: 'Docs', icon: 'file' },
         { key: 'portfolio', label: 'Portfolio', icon: 'trophy' },
-        { key: 'evaluations', label: 'Coach evaluation', shortLabel: 'Evaluate', icon: 'chat', badge: pendingEvaluations.length },
         { key: 'profile', label: 'Profile', icon: 'user' },
-        { key: 'notifications', label: 'Notifications', icon: 'bell', badge: unread },
       ]}
       activeKey={view}
       pageTitle={TITLES[view]}
       onNavigate={setView}
       onLogout={onLogout}
       unreadCount={unread}
+      notificationRoutes={NOTIFICATION_ROUTES.athlete}
+      onNotificationsChanged={refreshUnread}
       help={HELP.athlete[view]}
     >
       <Alert>{profile.error}</Alert>

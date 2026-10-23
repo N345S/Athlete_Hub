@@ -27,7 +27,7 @@ export default function TrainingApprovals({ sessions, session, onReviewed }) {
   }
 
   return (
-    <Card title="Training approvals" subtitle="Coach-submitted sessions are published to athletes once approved." actions={<span className="badge badge-neutral">{sessions.length} pending</span>}>
+    <Card className="scroll-target" id="training-approvals" title="Training approvals" subtitle="Coach-submitted sessions are published to athletes once approved." actions={<span className="badge badge-neutral">{sessions.length} pending</span>}>
       <Alert>{!rejecting && error}</Alert>
       {sessions.length ? (
         <ul className="row-list">

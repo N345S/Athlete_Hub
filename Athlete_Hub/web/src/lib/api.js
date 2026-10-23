@@ -20,7 +20,7 @@ async function send(endpoint, { method = 'GET', body, token, raw = false } = {})
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     })
   } catch {
-    throw new Error('Unable to reach the Athlete-Hub server. Check your connection and try again.')
+    throw new Error('We cannot connect right now. Check your internet connection and try again.')
   }
 
   if (response.status === 401 && token) {
@@ -39,13 +39,17 @@ async function send(endpoint, { method = 'GET', body, token, raw = false } = {})
   return data
 }
 
+// Used when the server sends no message of its own. Written for anyone: no codes or technical words.
 function friendlyStatus(status) {
-  if (status === 401) return 'Your session has expired. Please sign in again.'
-  if (status === 403) return 'You do not have permission to do that.'
-  if (status === 404) return 'The requested record was not found.'
-  if (status === 429) return 'Too many attempts. Please wait a minute and try again.'
-  if (status >= 500) return 'The server ran into a problem. Please try again.'
-  return `Request failed (${status}).`
+  if (status === 400) return 'Some of the information is missing or not right. Please check and try again.'
+  if (status === 401) return 'You have been signed out. Please sign in again.'
+  if (status === 403) return 'You are not allowed to do this.'
+  if (status === 404) return 'We could not find what you were looking for. It may have been deleted.'
+  if (status === 409) return 'This was already changed by someone else. Please reload the page and try again.'
+  if (status === 413) return 'The file is too big. Please choose a smaller file.'
+  if (status === 429) return 'You tried too many times. Please wait a minute and try again.'
+  if (status >= 500) return 'Something went wrong on our side. Please try again in a moment.'
+  return 'Something went wrong. Please try again.'
 }
 
 export const api = {

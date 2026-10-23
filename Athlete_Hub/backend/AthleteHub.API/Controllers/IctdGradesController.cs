@@ -1,5 +1,4 @@
 using AthleteHub.API.Data;
-using AthleteHub.API.Models;
 using AthleteHub.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,26 +7,22 @@ using Microsoft.EntityFrameworkCore;
 namespace AthleteHub.API.Controllers;
 
 /// <summary>
-/// Final grades pulled from the ICTD university database. Only the Sports Director can pull or see them.
-/// Pulling a term's released final grades automatically sends students their coach evaluation forms.
+/// Final grades from the ICTD university database, pulled automatically by <see cref="IctdGradeSyncWorker"/> once
+/// ICTD releases them. Only the Sports Director can see them, after re-entering their password (see
+/// <see cref="SensitiveAccess"/>).
 /// </summary>
 [ApiController]
 [Route("api/IctdGrades")]
-[Authorize(Roles = "DIRECTOR")]
+[Authorize(Roles = "DIRECTOR", Policy = SensitiveAccess.Policy)]
 public class IctdGradesController : ControllerBase
 {
-    // Grades pulled from ICTD are stored as API records, apart from any older file imports or manual entries.
-    private const string IctdSource = "API";
+    private const string IctdSource = IctdGradeSync.IctdSource;
 
     private readonly AthleteHubDbContext _context;
-    private readonly IctdUniversityDatabase _ictd;
-    private readonly CoachEvaluationService _evaluations;
 
-    public IctdGradesController(AthleteHubDbContext context, IctdUniversityDatabase ictd, CoachEvaluationService evaluations)
+    public IctdGradesController(AthleteHubDbContext context)
     {
         _context = context;
-        _ictd = ictd;
-        _evaluations = evaluations;
     }
 
     /// <summary>Every term with pulled grades, newest first, with failed and INC counts and evaluation progress.</summary>
@@ -134,92 +129,4 @@ public class IctdGradesController : ControllerBase
 
         return Ok(new { term = new { term.TermId, term.AcademicYear, term.Semester }, athletes });
     }
-
-    /// <summary>
-    /// Pulls the released final grades for one term from ICTD for every active student-athlete, replacing grades
-    /// pulled for that term before. Students then receive their coach evaluation forms.
-    /// </summary>
-    [HttpPost("pull")]
-    public async Task<IActionResult> Pull(PullIctdGradesRequest request)
-    {
-        var academicYear = request.AcademicYear.Trim();
-        var semester = request.Semester.Trim();
-        var problem = _ictd.CheckTerm(academicYear, semester);
-        if (problem != null) return BadRequest(new { message = problem });
-
-        var term = await _context.AcademicTerms.FirstOrDefaultAsync(item => item.AcademicYear == academicYear && item.Semester == semester);
-        if (term == null)
-        {
-            term = new AcademicTerm { AcademicYear = academicYear, Semester = semester };
-            _context.AcademicTerms.Add(term);
-            await _context.SaveChangesAsync();
-        }
-
-        var athletes = await _context.AthleteProfiles
-            .Where(athlete => athlete.User.AccountStatus == "ACTIVE")
-            .Select(athlete => new { athlete.AthleteId, athlete.StudentNumber, athlete.Course, athlete.YearLevel })
-            .ToListAsync();
-        if (athletes.Count == 0) return BadRequest(new { message = "There are no active student-athletes to pull grades for." });
-
-        var now = DateTime.UtcNow;
-        var athleteIds = athletes.Select(athlete => athlete.AthleteId).ToList();
-        var subjectCount = 0;
-        await using (var transaction = await _context.Database.BeginTransactionAsync())
-        {
-            await _context.AcademicRecords
-                .Where(record => record.TermId == term.TermId && record.SourceType == IctdSource && athleteIds.Contains(record.AthleteId))
-                .ExecuteDeleteAsync();
-
-            var batch = new AcademicImportBatch
-            {
-                SourceSystem = IctdUniversityDatabase.SourceSystem,
-                ImportMethod = "API",
-                ImportStatus = "COMPLETED",
-                ImportedBy = AthleteAccessService.GetUserId(User),
-                ImportedAt = now
-            };
-            _context.AcademicImportBatches.Add(batch);
-
-            foreach (var athlete in athletes)
-            {
-                var grades = _ictd.GetFinalGrades(athlete.StudentNumber, athlete.Course, athlete.YearLevel, academicYear, semester);
-                subjectCount += grades.Count;
-                _context.AcademicRecords.AddRange(grades.Select(grade => new AcademicRecord
-                {
-                    AthleteId = athlete.AthleteId,
-                    TermId = term.TermId,
-                    ImportBatch = batch,
-                    SubjectCode = grade.SubjectCode,
-                    SubjectName = grade.SubjectName,
-                    SectionCode = grade.SectionCode,
-                    Units = grade.Units,
-                    Grade = grade.Grade,
-                    Remarks = grade.Remarks,
-                    SourceType = IctdSource,
-                    ImportedAt = now
-                }));
-            }
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-        }
-
-        // Final grades are now released in Athlete-Hub, so the coach evaluations go out.
-        var evaluationsSent = await _evaluations.SendForTermAsync(term);
-
-        return Ok(new
-        {
-            message = $"Pulled {subjectCount} final grades for {athletes.Count} student-athletes from the ICTD database.",
-            term = new { term.TermId, term.AcademicYear, term.Semester },
-            athleteCount = athletes.Count,
-            subjectCount,
-            evaluationsSent
-        });
-    }
-}
-
-public sealed class PullIctdGradesRequest
-{
-    public string AcademicYear { get; set; } = string.Empty;
-    public string Semester { get; set; } = string.Empty;
 }

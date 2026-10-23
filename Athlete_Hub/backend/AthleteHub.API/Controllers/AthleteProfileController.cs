@@ -38,7 +38,7 @@ public class AthleteProfileController : ControllerBase
         {
             return Unauthorized(new
             {
-                message = "User ID was not found in the JWT."
+                message = "You have been signed out. Please sign in again."
             });
         }
 
@@ -47,7 +47,7 @@ public class AthleteProfileController : ControllerBase
         {
             return Unauthorized(new
             {
-                message = "Invalid User ID in JWT."
+                message = "You have been signed out. Please sign in again."
             });
         }
 
@@ -64,7 +64,7 @@ public class AthleteProfileController : ControllerBase
         {
             return NotFound(new
             {
-                message = "Athlete profile not found.",
+                message = "We could not find this student-athlete.",
                 userId = userId
             });
         }
@@ -123,7 +123,7 @@ public async Task<IActionResult> UpdateMyProfile(
     {
         return Unauthorized(new
         {
-            message = "User ID was not found in the JWT."
+            message = "You have been signed out. Please sign in again."
         });
     }
 
@@ -131,7 +131,7 @@ public async Task<IActionResult> UpdateMyProfile(
     {
         return Unauthorized(new
         {
-            message = "Invalid User ID in JWT."
+            message = "You have been signed out. Please sign in again."
         });
     }
 
@@ -146,7 +146,7 @@ public async Task<IActionResult> UpdateMyProfile(
     {
         return NotFound(new
         {
-            message = "Athlete profile not found.",
+            message = "We could not find this student-athlete.",
             userId = userId
         });
     }
@@ -157,12 +157,12 @@ public async Task<IActionResult> UpdateMyProfile(
         && !(Uri.TryCreate(request.ProfilePhotoUrl.Trim(), UriKind.Absolute, out var photoUri)
             && (photoUri.Scheme == Uri.UriSchemeHttps || photoUri.Scheme == Uri.UriSchemeHttp)))
     {
-        return BadRequest(new { message = "Profile photo must be an http(s) URL." });
+        return BadRequest(new { message = "The photo link must start with http:// or https://." });
     }
 
     if (request.BirthDate.HasValue && request.BirthDate.Value.Date >= DateTime.UtcNow.Date)
     {
-        return BadRequest(new { message = "Birth date must be in the past." });
+        return BadRequest(new { message = "The birth date must be before today." });
     }
 
     athlete.Course = string.IsNullOrWhiteSpace(request.Course) ? null : request.Course.Trim();

@@ -67,7 +67,7 @@ export default function AttendancePage({ teams, session }) {
     setBulkSaving(false)
     const count = Object.keys(saved).length
     if (count) toast.success(`Marked ${count} athlete${count === 1 ? '' : 's'} present.`)
-    if (failed) setError(`${failed} athlete${failed === 1 ? '' : 's'} could not be marked. Try again.`)
+    if (failed) setError(`${failed} athlete${failed === 1 ? '' : 's'} could not be marked. Please try again.`)
   }
 
   return (

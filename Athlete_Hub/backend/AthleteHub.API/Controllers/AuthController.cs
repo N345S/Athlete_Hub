@@ -63,7 +63,7 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new
             {
-                message = "University ID is already registered."
+                message = "Someone already uses this University ID."
             });
         }
 
@@ -75,7 +75,7 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new
             {
-                message = "Email is already registered."
+                message = "Someone already uses this email."
             });
         }
 
@@ -87,7 +87,7 @@ public class AuthController : ControllerBase
         {
             return StatusCode(500, new
             {
-                message = "ATHLETE role was not found in the database."
+                message = "Sign-up is not working right now. Please contact the athletics office."
             });
         }
 
@@ -169,7 +169,7 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new
             {
-                message = "Invalid email or password."
+                message = "Your email or password is wrong. Please check both and try again."
             });
         }
 
@@ -178,20 +178,20 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new
             {
-                message = $"This account is {user.AccountStatus.ToLowerInvariant()}. Please contact the athletics office or the Sports Director."
+                message = $"Your account is {user.AccountStatus.ToLowerInvariant()}, so you cannot sign in. Please contact the athletics office or the Sports Director."
             });
         }
 
         if (user.Role == null)
         {
-            return StatusCode(500, new { message = "This account is missing a valid role assignment." });
+            return StatusCode(500, new { message = "Your account is not set up correctly. Please contact the Sports Director." });
         }
 
         if (HiddenRoles.Contains(user.Role.RoleName))
         {
             return Unauthorized(new
             {
-                message = "This role is no longer used in Athlete-Hub. Please contact the Sports Director."
+                message = "This kind of account is no longer used. Please contact the Sports Director."
             });
         }
 
@@ -201,100 +201,17 @@ public class AuthController : ControllerBase
         // ==========================================
 
         var jwtKey = _configuration["Jwt:Key"];
-        var jwtIssuer = _configuration["Jwt:Issuer"];
-        var jwtAudience = _configuration["Jwt:Audience"];
-
         if (string.IsNullOrEmpty(jwtKey))
         {
             return StatusCode(500, new
             {
-                message = "JWT key is not configured."
+                message = "Signing in is not working right now. Please try again later or contact the athletics office."
             });
         }
 
 
-        // ==========================================
-        // JWT CLAIMS
-        // ==========================================
-
-        var claims = new List<Claim>
-        {
-            // User ID
-            new Claim(
-                ClaimTypes.NameIdentifier,
-                user.UserId.ToString()
-            ),
-
-            // Email
-            new Claim(
-                ClaimTypes.Name,
-                user.Email
-            ),
-
-            // Role
-            new Claim(
-                ClaimTypes.Role,
-                user.Role.RoleName
-            ),
-
-            // University ID
-            new Claim(
-                "UniversityId",
-                user.UniversityId ?? string.Empty
-            ),
-
-            // First Name
-            new Claim(
-                "FirstName",
-                user.FirstName
-            ),
-
-            // Last Name
-            new Claim(
-                "LastName",
-                user.LastName
-            )
-        };
-
-
-        // ==========================================
-        // CREATE SIGNING KEY
-        // ==========================================
-
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtKey)
-        );
-
-
-        // ==========================================
-        // CREATE SIGNING CREDENTIALS
-        // ==========================================
-
-        var credentials = new SigningCredentials(
-            key,
-            SecurityAlgorithms.HmacSha256
-        );
-
-
-        // ==========================================
-        // CREATE JWT TOKEN
-        // ==========================================
-
-        var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
-            claims: claims,
-
-            // Token expires after 2 hours
-            expires: DateTime.UtcNow.AddHours(2),
-
-            signingCredentials: credentials
-        );
-
-
-        // Convert token to string
-        var tokenString = new JwtSecurityTokenHandler()
-            .WriteToken(token);
+        // Token expires after 2 hours
+        var tokenString = CreateToken(user, user.Role.RoleName, DateTime.UtcNow.AddHours(2));
 
 
         // ==========================================
@@ -378,4 +295,248 @@ public class AuthController : ControllerBase
             role
         });
     }
+
+    /// <summary>
+    /// Whether the Sports Director has set up the separate password for the confidential pages (Grades and Accounts).
+    /// </summary>
+    [Authorize(Roles = "DIRECTOR")]
+    [HttpGet("confidential-password")]
+    public async Task<IActionResult> GetConfidentialPassword()
+    {
+        var userId = AthleteAccessService.GetUserId(User);
+        var isSet = await _context.Users.AnyAsync(u => u.UserId == userId && u.ConfidentialPasswordHash != null);
+        return Ok(new { isSet });
+    }
+
+    /// <summary>
+    /// Sets up the confidential-page password the first time. The sign-in password proves it is really the director,
+    /// so someone using a computer they left signed in cannot set it. Opens the pages straight away.
+    /// </summary>
+    /// <response code="400">Wrong sign-in password, or the new password is too short or the same as the sign-in one.</response>
+    /// <response code="409">A password is already set up; use the change endpoint.</response>
+    [Authorize(Roles = "DIRECTOR")]
+    [HttpPost("confidential-password")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> SetUpConfidentialPassword(SetUpConfidentialPasswordRequest request)
+    {
+        var user = await CurrentUserAsync();
+        if (user?.Role == null) return Unauthorized(new { message = "You have been signed out. Please sign in again." });
+        if (user.ConfidentialPasswordHash != null)
+        {
+            return Conflict(new { message = "You already have a password for these pages. Use it to open them." });
+        }
+        if (!BCrypt.Net.BCrypt.Verify(request.SignInPassword ?? string.Empty, user.PasswordHash))
+        {
+            return BadRequest(new { message = "Your sign-in password is wrong. Please try again." });
+        }
+
+        var problem = CheckNewConfidentialPassword(request.NewPassword, user);
+        if (problem != null) return BadRequest(new { message = problem });
+
+        user.ConfidentialPasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _context.SaveChangesAsync();
+        return Ok(UnlockedResponse(user));
+    }
+
+    /// <summary>Replaces the confidential-page password after the current one is entered, and opens the pages.</summary>
+    [Authorize(Roles = "DIRECTOR")]
+    [HttpPut("confidential-password")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> ChangeConfidentialPassword(ChangeConfidentialPasswordRequest request)
+    {
+        var user = await CurrentUserAsync();
+        if (user?.Role == null) return Unauthorized(new { message = "You have been signed out. Please sign in again." });
+        if (user.ConfidentialPasswordHash == null)
+        {
+            return BadRequest(new { message = "You have not made a password for these pages yet.", code = "NOT_SET_UP" });
+        }
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword ?? string.Empty, user.ConfidentialPasswordHash))
+        {
+            return BadRequest(new { message = "Your current page password is wrong. Please try again." });
+        }
+
+        var problem = CheckNewConfidentialPassword(request.NewPassword, user);
+        if (problem != null) return BadRequest(new { message = problem });
+
+        user.ConfidentialPasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _context.SaveChangesAsync();
+        return Ok(UnlockedResponse(user));
+    }
+
+    /// <summary>
+    /// Checks the confidential-page password and returns a short-lived token that the Grades and Accounts
+    /// endpoints accept (see <see cref="SensitiveAccess"/>).
+    /// </summary>
+    /// <response code="200">Password confirmed; returns the token and when it expires.</response>
+    /// <response code="400">Wrong password, or none set up yet (code NOT_SET_UP). Not 401, which would sign the user out.</response>
+    [Authorize(Roles = "DIRECTOR")]
+    [HttpPost("unlock")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> Unlock(UnlockRequest request)
+    {
+        var user = await CurrentUserAsync();
+        if (user?.Role == null) return Unauthorized(new { message = "You have been signed out. Please sign in again." });
+        if (user.ConfidentialPasswordHash == null)
+        {
+            return BadRequest(new { message = "Please make a password for these pages first.", code = "NOT_SET_UP" });
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(request.Password ?? string.Empty, user.ConfidentialPasswordHash))
+        {
+            return BadRequest(new { message = "That password is wrong. Please try again." });
+        }
+
+        return Ok(UnlockedResponse(user));
+    }
+
+    private Task<User?> CurrentUserAsync()
+    {
+        var userId = AthleteAccessService.GetUserId(User);
+        return _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
+    }
+
+    /// <summary>Null when the new confidential-page password is acceptable, otherwise what is wrong with it.</summary>
+    private static string? CheckNewConfidentialPassword(string? password, User user)
+    {
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
+            return "The new password must have at least 8 characters.";
+        if (BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            return "Please choose a password that is different from your sign-in password.";
+        return null;
+    }
+
+    /// <summary>A token that also opens the confidential pages, for <see cref="SensitiveAccess.Lifetime"/>.</summary>
+    private object UnlockedResponse(User user)
+    {
+        // Never outlive the sign-in it was unlocked from.
+        var expires = DateTime.UtcNow.Add(SensitiveAccess.Lifetime);
+        if (long.TryParse(User.FindFirstValue("exp"), out var sessionExpiry))
+        {
+            var sessionExpires = DateTimeOffset.FromUnixTimeSeconds(sessionExpiry).UtcDateTime;
+            if (sessionExpires < expires) expires = sessionExpires;
+        }
+
+        return new
+        {
+            token = CreateToken(user, user.Role.RoleName, expires, sensitive: true),
+            expiresAt = expires,
+            // Clients count down from this rather than comparing expiresAt with their own, possibly wrong, clock.
+            expiresInSeconds = (int)(expires - DateTime.UtcNow).TotalSeconds
+        };
+    }
+
+
+    /// <summary>
+    /// Signs a token for the user. A <paramref name="sensitive"/> token also opens confidential pages; see
+    /// <see cref="SensitiveAccess"/>.
+    /// </summary>
+    private string CreateToken(User user, string roleName, DateTime expires, bool sensitive = false)
+    {
+        // ==========================================
+        // JWT CLAIMS
+        // ==========================================
+
+        var claims = new List<Claim>
+        {
+            // User ID
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                user.UserId.ToString()
+            ),
+
+            // Email
+            new Claim(
+                ClaimTypes.Name,
+                user.Email
+            ),
+
+            // Role
+            new Claim(
+                ClaimTypes.Role,
+                roleName
+            ),
+
+            // University ID
+            new Claim(
+                "UniversityId",
+                user.UniversityId ?? string.Empty
+            ),
+
+            // First Name
+            new Claim(
+                "FirstName",
+                user.FirstName
+            ),
+
+            // Last Name
+            new Claim(
+                "LastName",
+                user.LastName
+            )
+        };
+
+
+        if (sensitive)
+        {
+            claims.Add(new Claim(SensitiveAccess.ClaimType, "true"));
+        }
+
+
+        // ==========================================
+        // CREATE SIGNING KEY
+        // ==========================================
+
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)
+        );
+
+
+        // ==========================================
+        // CREATE SIGNING CREDENTIALS
+        // ==========================================
+
+        var credentials = new SigningCredentials(
+            key,
+            SecurityAlgorithms.HmacSha256
+        );
+
+
+        // ==========================================
+        // CREATE JWT TOKEN
+        // ==========================================
+
+        var token = new JwtSecurityToken(
+            issuer: _configuration["Jwt:Issuer"],
+            audience: _configuration["Jwt:Audience"],
+            claims: claims,
+
+            expires: expires,
+
+            signingCredentials: credentials
+        );
+
+
+        // Convert token to string
+        return new JwtSecurityTokenHandler()
+            .WriteToken(token);
+    }
+}
+
+public sealed class UnlockRequest
+{
+    public string? Password { get; set; }
+}
+
+public sealed class SetUpConfidentialPasswordRequest
+{
+    public string? SignInPassword { get; set; }
+
+    public string? NewPassword { get; set; }
+}
+
+public sealed class ChangeConfidentialPasswordRequest
+{
+    public string? CurrentPassword { get; set; }
+
+    public string? NewPassword { get; set; }
 }

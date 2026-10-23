@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { formatDate } from '../../lib/format.js'
 import { useApiData } from '../../lib/hooks.js'
-import { Alert, Card, EmptyState, Field, Loading } from '../../components/ui.jsx'
+import { Alert, Avatar, Card, EmptyState, Field, Loading } from '../../components/ui.jsx'
 
 const termLabel = (term) => `${term.semester} ${term.academicYear}`
 
@@ -16,7 +17,7 @@ function RatingBar({ value }) {
   )
 }
 
-/** What students said about one coach, per semester. Students' names are never shown. */
+/** What students said about one coach, per semester: the averages, then each student's answers by name. */
 export default function CoachEvaluationsCard({ coach, session }) {
   const { data, loading, error } = useApiData(`/api/CoachEvaluations/coach/${coach.coachId}`, session.token)
   const [picked, setPicked] = useState('')
@@ -26,7 +27,7 @@ export default function CoachEvaluationsCard({ coach, session }) {
   return (
     <Card
       title="Student evaluations"
-      subtitle="Sent automatically when a semester's final grades are pulled from ICTD. Answers are anonymous; 5 means strongly agree."
+      subtitle="Sent automatically when the ICTD database releases a semester's final grades. 5 means strongly agree."
       actions={terms.length > 1 && (
         <Field label="Semester">
           <select value={termLabel(current.term)} onChange={(event) => setPicked(event.target.value)}>
@@ -37,7 +38,7 @@ export default function CoachEvaluationsCard({ coach, session }) {
     >
       <Alert>{error}</Alert>
       {loading && !data ? <Loading label="Loading evaluations…" /> : !current ? (
-        <EmptyState icon="chat" title="No evaluations yet" message="Students receive the form once a semester's final grades are pulled from the ICTD database." />
+        <EmptyState icon="chat" title="No evaluations yet" message="Students receive the form once the ICTD database releases a semester's final grades." />
       ) : <>
         <dl className="detail-grid">
           <div><dt>Semester</dt><dd>{termLabel(current.term)}</dd></div>
@@ -54,12 +55,41 @@ export default function CoachEvaluationsCard({ coach, session }) {
             ))}
           </ul>
         ) : <EmptyState icon="clock" title="Waiting for answers" message={`${current.sent} student${current.sent === 1 ? ' has' : 's have'} the form but nobody has submitted it yet.`} />}
-        {current.comments?.length > 0 && <>
-          <h3 className="card-subheading">Comments</h3>
-          <ul className="row-list">
-            {current.comments.map((comment, index) => <li className="row" key={index}><span className="row-main"><span>“{comment}”</span></span></li>)}
+        {current.responses?.length > 0 && <>
+          <h3 className="card-subheading">Responses</h3>
+          <ul className="row-list evaluation-responses">
+            {current.responses.map((response) => {
+              const [firstName, ...rest] = response.athleteName.split(' ')
+              return (
+                <li className="row" key={`${response.athleteName}-${response.submittedAt}`}>
+                  <div className="row-main">
+                    <span className="evaluation-response-name">
+                      <Avatar firstName={firstName} lastName={rest.join(' ')} size="sm" />
+                      <strong>{response.athleteName}</strong>
+                      <small>Submitted {formatDate(response.submittedAt)}</small>
+                    </span>
+                    {response.comments ? <span>“{response.comments}”</span> : <small className="muted">No comment</small>}
+                    <details className="evaluation-response-answers">
+                      <summary>See answers</summary>
+                      <ul className="rating-results">
+                        {data.questions.map((question) => (
+                          <li key={question.key}>
+                            <span>{question.text}</span>
+                            <RatingBar value={response.ratings[question.key]} />
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  </div>
+                  <div className="row-actions"><RatingBar value={response.average} /></div>
+                </li>
+              )
+            })}
           </ul>
         </>}
+        {current.notSubmitted?.length > 0 && (
+          <p className="evaluation-not-submitted"><strong>Not submitted yet:</strong> {current.notSubmitted.join(', ')}</p>
+        )}
       </>}
     </Card>
   )

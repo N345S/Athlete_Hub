@@ -929,6 +929,9 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.PasswordHash)
                 .HasMaxLength(255)
                 .HasColumnName("password_hash");
+            entity.Property(e => e.ConfidentialPasswordHash)
+                .HasMaxLength(255)
+                .HasColumnName("confidential_password_hash");
             entity.Property(e => e.Phone)
                 .HasMaxLength(30)
                 .HasColumnName("phone");

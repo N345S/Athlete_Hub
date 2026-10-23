@@ -192,8 +192,8 @@ export function TrainingScheduleModal({ teams, session, onClose, onCreated }) {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    if (!form.teamId || !form.title.trim() || !form.dates.length) return setError('Team, title, and at least one date are required. Tap the dates on the calendar, or use “Repeat weekly”.')
-    if (form.startTime && form.endTime && form.endTime <= form.startTime) return setError('End time must be after start time.')
+    if (!form.teamId || !form.title.trim() || !form.dates.length) return setError('Please choose a team, enter a title, and pick at least one date. Tap the dates on the calendar, or use “Repeat weekly”.')
+    if (form.startTime && form.endTime && form.endTime <= form.startTime) return setError('The end time must be later than the start time.')
     submit(() => api.post('/api/Training/sessions', {
       teamId: Number(form.teamId),
       title: form.title.trim(),
@@ -239,8 +239,8 @@ export function EventScheduleModal({ session, onClose, onCreated }) {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    if (!form.title.trim() || !form.dates.length || !form.startTime) return setError('Title, at least one date, and a start time are required. Tap the dates on the calendar, or use “Repeat weekly”.')
-    if (form.endTime && form.endTime <= form.startTime) return setError('End time must be after start time.')
+    if (!form.title.trim() || !form.dates.length || !form.startTime) return setError('Please enter a title and a start time, and pick at least one date. Tap the dates on the calendar, or use “Repeat weekly”.')
+    if (form.endTime && form.endTime <= form.startTime) return setError('The end time must be later than the start time.')
     submit(() => api.post('/api/Schedules', {
       scheduleType: form.scheduleType,
       title: form.title.trim(),
