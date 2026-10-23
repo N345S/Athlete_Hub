@@ -15,6 +15,7 @@ import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import AttendancePage from '../staff/AttendancePage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
+import ManageScheduleCard, { ChangeButtons } from '../staff/ManageSchedule.jsx'
 import { ScheduleChangeModal, TrainingScheduleModal } from '../staff/ScheduleModals.jsx'
 
 const VIEWS = ['dashboard', 'athletes', 'schedule', 'attendance', 'performance', 'notifications']
@@ -95,6 +96,19 @@ export default function CoachPortal({ session, onLogout }) {
     }
   }
 
+  // Coaches change their own upcoming training; rejected and cancelled sessions are final. `close` shuts the
+  // calendar's event dialog first when the action starts there.
+  const changeActions = (event, close = () => {}) => {
+    if (event.type !== 'TRAINING' || event.cancelled || event.approvalStatus === 'REJECTED' || event.startDate < localDateISO()) return []
+    const open = (mode) => { close(); setChanging({ event, mode }) }
+    return [
+      { label: 'Reschedule', onSelect: () => open('reschedule') },
+      event.approvalStatus === 'PENDING'
+        ? { label: 'Withdraw request', tone: 'danger', onSelect: () => { close(); setCancelling(event) } }
+        : { label: 'Cancel session', tone: 'danger', onSelect: () => open('cancel') },
+    ]
+  }
+
   const addScheduleButton = <button className="btn btn-primary" type="button" onClick={() => setShowScheduleModal(true)}>+ Request training session</button>
 
   let content
@@ -107,21 +121,19 @@ export default function CoachPortal({ session, onLogout }) {
       <PageHeader title="Schedule" subtitle="Your training sessions plus the Director's sports events and competitions" actions={addScheduleButton} />
       <Alert tone="info">New training sessions are sent to the Sports Director for approval before athletes can see them. Sports events and competitions are published by the Director.</Alert>
       <Alert>{schedule.error || actionError}</Alert>
+      <ManageScheduleCard
+        title="Your upcoming training"
+        subtitle="Reschedule or cancel a session here, or select it on the calendar. You will be asked for the reason."
+        events={schedule.data || []}
+        loading={schedule.loading}
+        actionsFor={(event) => changeActions(event)}
+        empty={<EmptyState icon="calendar" title="No upcoming training" message="Request a training session. You can reschedule it while it waits for approval, and reschedule or cancel it once it is approved." action={addScheduleButton} />}
+      />
       <Card>
         <CalendarView
           events={schedule.data || []}
           loading={schedule.loading}
-          renderActions={(event, close) => {
-            // Coaches change their own upcoming training; rejected and cancelled sessions are final.
-            if (event.type !== 'TRAINING' || event.cancelled || event.approvalStatus === 'REJECTED' || event.startDate < localDateISO()) return null
-            const open = (mode) => { close(); setChanging({ event, mode }) }
-            return <>
-              <button className="btn btn-secondary" type="button" onClick={() => open('reschedule')}>Reschedule</button>
-              {event.approvalStatus === 'PENDING'
-                ? <button className="btn btn-danger-outline" type="button" onClick={() => { close(); setCancelling(event) }}>Withdraw request</button>
-                : <button className="btn btn-danger-outline" type="button" onClick={() => open('cancel')}>Cancel session</button>}
-            </>
-          }}
+          renderActions={(event, close) => <ChangeButtons actions={changeActions(event, close)} />}
         />
       </Card>
     </>
@@ -224,6 +236,7 @@ export default function CoachPortal({ session, onLogout }) {
                     <div className="row-actions">
                       {item.type !== 'TRAINING' && <span className={`badge type-${item.type.toLowerCase()}`}>{item.type === 'COMPETITION' ? 'Competition' : 'Sports event'}</span>}
                       <ScheduleStatusBadge item={item} />
+                      <ChangeButtons actions={changeActions(item)} small />
                     </div>
                   </li>
                 ))}

@@ -1710,3 +1710,5 @@ button.day-number:hover { background: var(--brand-100); color: var(--brand-700);
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.manage-schedule-more { margin-top: var(--space-3); }

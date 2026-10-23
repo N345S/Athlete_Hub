@@ -3,7 +3,7 @@ import { api } from '../../lib/api.js'
 import { accountLabel, average, eventTypeLabel, formatDate, formatDateTime, formatTimeRange, fullName, isActiveAccount, localDateISO, longToday, matchesSearch, mergeAthleteTeams } from '../../lib/format.js'
 import { useApiData, useHashView, usePageDetail, useSensitiveAccess, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
-import CalendarView from '../../components/CalendarView.jsx'
+import CalendarView, { ScheduleStatusBadge } from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
 import { useToast } from '../../components/toast.jsx'
@@ -16,6 +16,7 @@ import AccountsPage from '../accounts/AccountsPage.jsx'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
+import ManageScheduleCard, { ChangeButtons } from '../staff/ManageSchedule.jsx'
 import { EventScheduleModal, ScheduleChangeModal } from '../staff/ScheduleModals.jsx'
 import TrainingApprovals from '../staff/TrainingApprovals.jsx'
 import CoachEvaluationsCard from './CoachEvaluationsCard.jsx'
@@ -421,6 +422,17 @@ export default function DirectorPortal({ session, onLogout }) {
     schedule.reload()
   }
 
+  // Upcoming approved training, sports events, and competitions can be moved or cancelled. `close` shuts the
+  // calendar's event dialog first when the action starts there.
+  const changeActions = (event, close = () => {}) => {
+    if (event.cancelled || event.startDate < today || (event.type === 'TRAINING' && event.approvalStatus && event.approvalStatus !== 'APPROVED')) return []
+    const open = (mode) => { close(); setChanging({ event, mode }) }
+    return [
+      { label: 'Reschedule', onSelect: () => open('reschedule') },
+      { label: event.type === 'TRAINING' ? 'Cancel session' : 'Cancel event', tone: 'danger', onSelect: () => open('cancel') },
+    ]
+  }
+
   const addEventButton = <button className="btn btn-primary" type="button" onClick={() => setShowEventModal(true)}>+ Add sports event</button>
 
   let content
@@ -444,19 +456,19 @@ export default function DirectorPortal({ session, onLogout }) {
       <Alert>{schedule.error || pending.error}</Alert>
       <div className="stack">
         {pending.data?.length > 0 && <TrainingApprovals sessions={pending.data} session={session} onReviewed={onReviewed} />}
+        <ManageScheduleCard
+          title="Upcoming schedule"
+          subtitle="Approved training, sports events, and competitions. Reschedule or cancel one here, or select it on the calendar. You will be asked for the reason."
+          events={schedule.data || []}
+          loading={schedule.loading}
+          actionsFor={(event) => changeActions(event)}
+          empty={<EmptyState icon="calendar" title="Nothing upcoming" message="Approved training and the events you publish appear here, ready to reschedule or cancel." action={addEventButton} />}
+        />
         <Card>
           <CalendarView
             events={schedule.data || []}
             loading={schedule.loading}
-            renderActions={(event, close) => {
-              // Upcoming approved training, sports events, and competitions can be moved or cancelled.
-              if (event.cancelled || event.startDate < today || (event.type === 'TRAINING' && event.approvalStatus && event.approvalStatus !== 'APPROVED')) return null
-              const open = (mode) => { close(); setChanging({ event, mode }) }
-              return <>
-                <button className="btn btn-secondary" type="button" onClick={() => open('reschedule')}>Reschedule</button>
-                <button className="btn btn-danger-outline" type="button" onClick={() => open('cancel')}>{event.type === 'TRAINING' ? 'Cancel session' : 'Cancel event'}</button>
-              </>
-            }}
+            renderActions={(event, close) => <ChangeButtons actions={changeActions(event, close)} />}
           />
         </Card>
       </div>
@@ -542,7 +554,11 @@ export default function DirectorPortal({ session, onLogout }) {
                 {upcomingEvents.slice(0, 6).map((item) => (
                   <li className="row" key={item.id}>
                     <div className="row-main"><strong>{item.title}</strong><span>{formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</span><small>{item.location || 'Location TBA'}</small></div>
-                    <span className={`badge type-${item.type.toLowerCase()}`}>{eventTypeLabel(item.type)}</span>
+                    <div className="row-actions">
+                      <span className={`badge type-${item.type.toLowerCase()}`}>{eventTypeLabel(item.type)}</span>
+                      <ScheduleStatusBadge item={item} />
+                      <ChangeButtons actions={changeActions(item)} small />
+                    </div>
                   </li>
                 ))}
               </ul>
