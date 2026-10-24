@@ -33,7 +33,7 @@ const STATUS_ACTIONS = {
 
 /**
  * Chooses the student-athletes a parent monitors: the chosen ones as removable chips, then a search that lists
- * matching athletes to tick. `selected` is a Set of athlete user IDs.
+ * matching athletes to tick once something is typed. `selected` is a Set of athlete user IDs.
  */
 function AthletePicker({ athletes, selected, onChange }) {
   const [search, setSearch] = useState('')
@@ -61,7 +61,7 @@ function AthletePicker({ athletes, selected, onChange }) {
         </ul>
       ) : <small className="muted">No children chosen yet.</small>}
       <SearchInput value={search} onChange={setSearch} placeholder="Search athletes by name or University ID…" label="Search athletes to link" />
-      {matches.length ? (
+      {!search.trim() ? null : matches.length ? (
         <ul className="row-list athlete-picker-list">
           {matches.slice(0, PICKER_LIMIT).map((athlete) => (
             <li className="row" key={athlete.userId}>
@@ -74,7 +74,7 @@ function AthletePicker({ athletes, selected, onChange }) {
           ))}
         </ul>
       ) : <small className="muted">No athletes match “{search}”.</small>}
-      {matches.length > PICKER_LIMIT && <small className="muted">Showing {PICKER_LIMIT} of {matches.length}. Type more of the name or ID to narrow the list.</small>}
+      {search.trim() && matches.length > PICKER_LIMIT && <small className="muted">Showing {PICKER_LIMIT} of {matches.length}. Type more of the name or ID to narrow the list.</small>}
     </div>
   )
 }
