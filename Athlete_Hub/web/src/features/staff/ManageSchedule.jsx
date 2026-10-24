@@ -16,11 +16,11 @@ export function ChangeButtons({ actions, small }) {
 }
 
 /**
- * Upcoming items the coach or Director can change, each with its own Reschedule and Cancel buttons, so the actions
- * are in plain sight rather than only inside the calendar's event dialog. `actionsFor(event)` returns the actions
- * for an item, or none when it cannot be changed; only items with actions are listed.
+ * Schedule items the coach or Director can change, each with its own buttons, so the actions are in plain sight
+ * rather than only inside the calendar's event dialog. `actionsFor(event)` returns the actions for an item, or none
+ * when it cannot be changed; only items with actions are listed. `countLabel` names the count badge.
  */
-export default function ManageScheduleCard({ title, subtitle, events, loading, actionsFor, empty }) {
+export default function ManageScheduleCard({ title, subtitle, events, loading, actionsFor, empty, countLabel = 'upcoming', id }) {
   const [showAll, setShowAll] = useState(false)
   const rows = events
     .filter((item) => actionsFor(item).length)
@@ -28,7 +28,7 @@ export default function ManageScheduleCard({ title, subtitle, events, loading, a
   const shown = showAll ? rows : rows.slice(0, PREVIEW_COUNT)
 
   return (
-    <Card title={title} subtitle={subtitle} actions={rows.length > 0 && <span className="badge badge-neutral">{rows.length} upcoming</span>}>
+    <Card className={id ? 'scroll-target' : ''} id={id} title={title} subtitle={subtitle} actions={rows.length > 0 && <span className="badge badge-neutral">{rows.length} {countLabel}</span>}>
       {loading && !events.length ? <Loading /> : rows.length ? <>
         <ul className="row-list">
           {shown.map((item) => (

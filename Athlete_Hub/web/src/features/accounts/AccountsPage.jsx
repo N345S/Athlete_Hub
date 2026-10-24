@@ -4,13 +4,14 @@ import { fullName, matchesSearch, statusLabel } from '../../lib/format.js'
 import { useApiData } from '../../lib/hooks.js'
 import { useToast } from '../../components/toast.jsx'
 import { roleName } from './roles.js'
+import ImportAccountsModal from './ImportAccounts.jsx'
 import { ActionMenu, Alert, Card, ConfirmDialog, EmptyState, Field, Loading, Modal, PageHeader, SearchInput, StatusBadge } from '../../components/ui.jsx'
 
 const STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED']
-const EMPTY_FORM = { roleId: '', universityId: '', childUniversityIds: '', relationship: '', email: '', password: '', firstName: '', middleName: '', lastName: '', phone: '', accountStatus: 'ACTIVE' }
+const EMPTY_FORM = { roleId: '', universityId: '', relationship: '', email: '', password: '', firstName: '', middleName: '', lastName: '', phone: '', accountStatus: 'ACTIVE' }
 
-/** Parents have no university ID; the director enters their children's IDs instead (comma or line separated). */
-const splitIds = (text) => text.split(/[\s,;]+/).map((id) => id.trim()).filter(Boolean)
+// How many search matches the athlete picker lists at once.
+const PICKER_LIMIT = 8
 
 /** "Juan Dela Cruz (SEED-A-001)" for each athlete a parent is linked to. */
 const linkedLabel = (user) => (user.linkedAthletes || []).map((child) => `${fullName(child)} (${child.universityId})`).join(', ')
@@ -30,7 +31,55 @@ const STATUS_ACTIONS = {
   INACTIVE: { verb: 'Deactivate', message: 'Use this when someone has left the school. They are signed out immediately and cannot sign in.' },
 }
 
-function UserFormModal({ user, roles, session, onClose, onSaved }) {
+/**
+ * Chooses the student-athletes a parent monitors: the chosen ones as removable chips, then a search that lists
+ * matching athletes to tick. `selected` is a Set of athlete user IDs.
+ */
+function AthletePicker({ athletes, selected, onChange }) {
+  const [search, setSearch] = useState('')
+  const chosen = athletes.filter((athlete) => selected.has(athlete.userId))
+  const matches = athletes
+    .filter((athlete) => matchesSearch(search, athlete.firstName, athlete.lastName, athlete.email, athlete.universityId))
+    .sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`))
+  const toggle = (userId) => {
+    const next = new Set(selected)
+    if (next.has(userId)) next.delete(userId)
+    else next.add(userId)
+    onChange(next)
+  }
+
+  return (
+    <div className="athlete-picker">
+      {chosen.length > 0 ? (
+        <ul className="chip-list" aria-label="Chosen children">
+          {chosen.map((athlete) => (
+            <li className="chip" key={athlete.userId}>
+              {fullName(athlete)} ({athlete.universityId})
+              <button type="button" onClick={() => toggle(athlete.userId)} aria-label={`Remove ${fullName(athlete)}`}>×</button>
+            </li>
+          ))}
+        </ul>
+      ) : <small className="muted">No children chosen yet.</small>}
+      <SearchInput value={search} onChange={setSearch} placeholder="Search athletes by name or University ID…" label="Search athletes to link" />
+      {matches.length ? (
+        <ul className="row-list athlete-picker-list">
+          {matches.slice(0, PICKER_LIMIT).map((athlete) => (
+            <li className="row" key={athlete.userId}>
+              <label className="row-main">
+                <span><input type="checkbox" checked={selected.has(athlete.userId)} onChange={() => toggle(athlete.userId)} /> <strong>{fullName(athlete)}</strong></span>
+                <small>{athlete.universityId} · {athlete.email}</small>
+              </label>
+              {athlete.accountStatus !== 'ACTIVE' && <StatusBadge status={athlete.accountStatus} />}
+            </li>
+          ))}
+        </ul>
+      ) : <small className="muted">No athletes match “{search}”.</small>}
+      {matches.length > PICKER_LIMIT && <small className="muted">Showing {PICKER_LIMIT} of {matches.length}. Type more of the name or ID to narrow the list.</small>}
+    </div>
+  )
+}
+
+function UserFormModal({ user, roles, athletes, session, onClose, onSaved }) {
   const roleIdFor = (name) => String(roles.find((role) => role.roleName === name)?.roleId || roles[0]?.roleId || '')
   const [form, setForm] = useState(user ? {
     roleId: roleIdFor(user.role),
@@ -44,6 +93,8 @@ function UserFormModal({ user, roles, session, onClose, onSaved }) {
     accountStatus: user.accountStatus || 'ACTIVE',
   } : { ...EMPTY_FORM, roleId: roleIdFor('ATHLETE') })
   const isParent = roles.find((role) => String(role.roleId) === String(form.roleId))?.roleName === 'PARENT'
+  const savedChildren = (user?.linkedAthletes || []).map((child) => child.athleteUserId)
+  const [children, setChildren] = useState(() => new Set(savedChildren))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -52,6 +103,10 @@ function UserFormModal({ user, roles, session, onClose, onSaved }) {
 
   const submit = async (event) => {
     event.preventDefault()
+    if (isParent && !children.size) {
+      setError('Choose at least one child for this parent.')
+      return
+    }
     setSaving(true)
     setError('')
     const body = {
@@ -64,11 +119,15 @@ function UserFormModal({ user, roles, session, onClose, onSaved }) {
       phone: form.phone.trim() || null,
     }
     try {
-      if (user) await api.put(`/api/Accounts/users/${user.userId}`, { ...body, password: form.password || null, accountStatus: form.accountStatus }, session.token)
-      else await api.post('/api/Accounts/users', {
+      const relationship = form.relationship.trim() || null
+      if (user) {
+        await api.put(`/api/Accounts/users/${user.userId}`, { ...body, password: form.password || null, accountStatus: form.accountStatus }, session.token)
+        const changed = children.size !== savedChildren.length || savedChildren.some((id) => !children.has(id))
+        if (isParent && (changed || relationship)) await api.put(`/api/Accounts/users/${user.userId}/children`, { athleteUserIds: [...children], relationship }, session.token)
+      } else await api.post('/api/Accounts/users', {
         ...body,
         password: form.password,
-        ...(isParent && { childUniversityIds: splitIds(form.childUniversityIds), relationship: form.relationship.trim() || null }),
+        ...(isParent && { childUniversityIds: athletes.filter((athlete) => children.has(athlete.userId)).map((athlete) => athlete.universityId), relationship }),
       }, session.token)
       onSaved()
     } catch (err) {
@@ -96,19 +155,16 @@ function UserFormModal({ user, roles, session, onClose, onSaved }) {
         <Field label="Phone" optional><input type="tel" value={form.phone} onChange={update('phone')} placeholder="e.g. 0917 123 4567" /></Field>
         <Field label="Email" required hint="Used to sign in."><input type="email" value={form.email} onChange={update('email')} required placeholder="name@university.edu" /></Field>
         {!isParent && <Field label="University ID" required hint="Students: A (regular) or T (transfer), entry year, student number, e.g. A24-31842. Coaches C, Director D, e.g. C18-20415."><input value={form.universityId} onChange={update('universityId')} required /></Field>}
-        {isParent && !user && <>
-          <Field label="Child's University ID(s)" required hint="The athlete's University ID. Separate several children with commas.">
-            <input value={form.childUniversityIds} onChange={update('childUniversityIds')} placeholder="e.g. A24-31842" required />
-          </Field>
-          <Field label="Relationship" optional hint="e.g. Mother, Father, Guardian.">
+        {isParent && <>
+          <div className="field span-2">
+            <span className="field-label">Children<span className="field-required" aria-hidden="true"> *</span></span>
+            <AthletePicker athletes={athletes} selected={children} onChange={setChildren} />
+            <small className="field-hint">Parents have no University ID. Tick each of their children; they see only these athletes' training and notifications.</small>
+          </div>
+          <Field label="Relationship" optional hint={user ? 'e.g. Mother, Father, Guardian. Leave blank to keep the saved one.' : 'e.g. Mother, Father, Guardian. Applies to every child.'}>
             <input value={form.relationship} onChange={update('relationship')} maxLength={50} />
           </Field>
         </>}
-        {isParent && user && (
-          <Field label="Linked children" className="span-2" hint="Parents have no university ID. Use More → Link children to change who they monitor.">
-            <input value={linkedLabel(user) || 'None linked yet'} readOnly />
-          </Field>
-        )}
         {user && (
           <Field label="Status" hint={isSelf ? 'You cannot change your own status.' : undefined}>
             <select value={form.accountStatus} onChange={update('accountStatus')} disabled={isSelf}>
@@ -129,70 +185,6 @@ function UserFormModal({ user, roles, session, onClose, onSaved }) {
   )
 }
 
-/** Chooses which athlete accounts a parent may monitor. Parents see only these children's training. */
-function ParentChildrenModal({ parent, athletes, session, onClose, onSaved }) {
-  const linked = useApiData(`/api/Accounts/users/${parent.userId}/children`, session.token)
-  const [picked, setPicked] = useState(null)
-  const [relationship, setRelationship] = useState('')
-  const [search, setSearch] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  // Start from the saved links until the director changes something.
-  const selected = picked ?? new Set((linked.data || []).map((child) => child.athleteUserId))
-  const shown = athletes
-    .filter((athlete) => selected.has(athlete.userId) || matchesSearch(search, athlete.firstName, athlete.lastName, athlete.email, athlete.universityId))
-    .sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`))
-
-  const toggle = (userId) => {
-    const next = new Set(selected)
-    if (next.has(userId)) next.delete(userId)
-    else next.add(userId)
-    setPicked(next)
-  }
-
-  const save = async () => {
-    setSaving(true)
-    setError('')
-    try {
-      await api.put(`/api/Accounts/users/${parent.userId}/children`, { athleteUserIds: [...selected], relationship: relationship.trim() || null }, session.token)
-      onSaved(selected.size)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Modal title="Link children" subtitle={`${fullName(parent)} will see only these athletes' training sessions and notifications.`} onClose={onClose} size="lg" closeOnBackdrop={false}
-      footer={<>
-        <button className="btn btn-secondary" type="button" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" type="button" onClick={save} disabled={saving || linked.loading}>{saving ? 'Saving…' : `Save ${selected.size} linked`}</button>
-      </>}>
-      <Alert>{linked.error || error}</Alert>
-      <div className="form-grid">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search athletes by name, email, or ID…" label="Search athletes" />
-        <Field label="Relationship" hint="Optional, e.g. Mother, Father, Guardian. Applies to every linked child.">
-          <input value={relationship} onChange={(event) => setRelationship(event.target.value)} maxLength={50} />
-        </Field>
-      </div>
-      {linked.loading ? <Loading label="Loading linked children…" /> : shown.length ? (
-        <ul className="row-list">
-          {shown.slice(0, 50).map((athlete) => (
-            <li className="row" key={athlete.userId}>
-              <label className="row-main">
-                <span><input type="checkbox" checked={selected.has(athlete.userId)} onChange={() => toggle(athlete.userId)} /> <strong>{fullName(athlete)}</strong></span>
-                <small>{athlete.universityId} · {athlete.email}</small>
-              </label>
-              {athlete.accountStatus !== 'ACTIVE' && <StatusBadge status={athlete.accountStatus} />}
-            </li>
-          ))}
-        </ul>
-      ) : <EmptyState icon="users" title="No athletes match" message="Try another name or university ID." />}
-    </Modal>
-  )
-}
-
 /**
  * Create accounts, reset passwords, and control who can sign in. Used by the Sports Director; `initialFilter`
  * ({ role, status }) opens the list already filtered.
@@ -204,7 +196,7 @@ export default function AccountsPage({ session, initialFilter = {} }) {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [statusChange, setStatusChange] = useState(null)
-  const [linking, setLinking] = useState(null)
+  const [importing, setImporting] = useState(false)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState(initialFilter.role || '')
   const [statusFilter, setStatusFilter] = useState(initialFilter.status || '')
@@ -212,6 +204,7 @@ export default function AccountsPage({ session, initialFilter = {} }) {
   const [error, setError] = useState('')
 
   const userList = users.data?.users || []
+  const athletes = userList.filter((user) => user.role === 'ATHLETE')
   const filtered = userList
     .filter((user) => (!roleFilter || user.role === roleFilter) && (!statusFilter || user.accountStatus === statusFilter)
       && matchesSearch(search, user.firstName, user.lastName, user.email, user.universityId, user.role, linkedLabel(user)))
@@ -252,7 +245,10 @@ export default function AccountsPage({ session, initialFilter = {} }) {
 
   return (
     <>
-      <PageHeader title="User accounts" subtitle="Create accounts, reset passwords, and control who can sign in." actions={<button className="btn btn-primary" type="button" onClick={() => setEditing('new')}>+ Create account</button>} />
+      <PageHeader title="User accounts" subtitle="Create accounts, reset passwords, and control who can sign in." actions={<>
+        <button className="btn btn-secondary" type="button" onClick={() => setImporting(true)}>Import CSV</button>
+        <button className="btn btn-primary" type="button" onClick={() => setEditing('new')}>+ Create account</button>
+      </>} />
       <Alert>{users.error || error}</Alert>
       <div className="toolbar">
         <SearchInput value={search} onChange={setSearch} placeholder="Search name, email, or ID…" label="Search accounts" />
@@ -291,7 +287,7 @@ export default function AccountsPage({ session, initialFilter = {} }) {
                             <ActionMenu
                               ariaLabel={`More actions for ${fullName(user)}`}
                               items={[
-                                { label: 'Link children', onSelect: () => setLinking(user), hidden: user.role !== 'PARENT' },
+                                { label: 'Link children', onSelect: () => setEditing(user), hidden: user.role !== 'PARENT' },
                                 ...STATUSES.filter((status) => status !== user.accountStatus).map((status) => ({
                                   label: STATUS_ACTIONS[status].verb,
                                   tone: status === 'ACTIVE' ? 'success' : 'warning',
@@ -312,14 +308,12 @@ export default function AccountsPage({ session, initialFilter = {} }) {
         ) : <EmptyState icon="users" title="No accounts match" message="Try another search or filter." action={(search || roleFilter || statusFilter) && <button className="btn btn-secondary btn-sm" type="button" onClick={clearFilters}>Clear filters</button>} />}
       </Card>
 
-      {editing && <UserFormModal user={editing === 'new' ? null : editing} roles={roles.data || []} session={session} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); toast.success(editing === 'new' ? 'Account created. Share the password with the user securely.' : `${fullName(editing)}'s account was updated.`); users.reload() }} />}
-      {linking && (
-        <ParentChildrenModal
-          parent={linking}
-          athletes={userList.filter((user) => user.role === 'ATHLETE')}
+      {editing && <UserFormModal user={editing === 'new' ? null : editing} roles={roles.data || []} athletes={athletes} session={session} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); toast.success(editing === 'new' ? 'Account created. Share the password with the user securely.' : `${fullName(editing)}'s account was updated.`); users.reload() }} />}
+      {importing && (
+        <ImportAccountsModal
           session={session}
-          onClose={() => setLinking(null)}
-          onSaved={(count) => { toast.success(`${fullName(linking)} is now linked to ${count} athlete${count === 1 ? '' : 's'}.`); setLinking(null); users.reload() }}
+          onClose={() => setImporting(false)}
+          onImported={(count, mode) => { if (count) toast.success(mode === 'accounts' ? `${count} account${count === 1 ? '' : 's'} created.` : `${count} athlete profile${count === 1 ? '' : 's'} updated.`); users.reload() }}
         />
       )}
       {statusChange && (

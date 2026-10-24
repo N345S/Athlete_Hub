@@ -16,7 +16,7 @@ import AccountsPage from '../accounts/AccountsPage.jsx'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
-import ManageScheduleCard, { ChangeButtons } from '../staff/ManageSchedule.jsx'
+import { ChangeButtons } from '../staff/ManageSchedule.jsx'
 import { EventScheduleModal, ScheduleChangeModal } from '../staff/ScheduleModals.jsx'
 import TrainingApprovals from '../staff/TrainingApprovals.jsx'
 import CoachEvaluationsCard from './CoachEvaluationsCard.jsx'
@@ -455,15 +455,6 @@ export default function DirectorPortal({ session, onLogout }) {
       <PageHeader title="Schedule" subtitle="Publish sports events and competitions, and approve coaches' training sessions" actions={addEventButton} />
       <Alert>{schedule.error || pending.error}</Alert>
       <div className="stack">
-        {pending.data?.length > 0 && <TrainingApprovals sessions={pending.data} session={session} onReviewed={onReviewed} />}
-        <ManageScheduleCard
-          title="Upcoming schedule"
-          subtitle="Approved training, sports events, and competitions. Reschedule or cancel one here, or select it on the calendar. You will be asked for the reason."
-          events={schedule.data || []}
-          loading={schedule.loading}
-          actionsFor={(event) => changeActions(event)}
-          empty={<EmptyState icon="calendar" title="Nothing upcoming" message="Approved training and the events you publish appear here, ready to reschedule or cancel." action={addEventButton} />}
-        />
         <Card>
           <CalendarView
             events={schedule.data || []}
@@ -471,6 +462,7 @@ export default function DirectorPortal({ session, onLogout }) {
             renderActions={(event, close) => <ChangeButtons actions={changeActions(event, close)} />}
           />
         </Card>
+        <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
       </div>
     </>
   } else if (view === 'performance') {

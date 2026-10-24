@@ -121,14 +121,6 @@ export default function CoachPortal({ session, onLogout }) {
       <PageHeader title="Schedule" subtitle="Your training sessions plus the Director's sports events and competitions" actions={addScheduleButton} />
       <Alert tone="info">New training sessions are sent to the Sports Director for approval before athletes can see them. Sports events and competitions are published by the Director.</Alert>
       <Alert>{schedule.error || actionError}</Alert>
-      <ManageScheduleCard
-        title="Your upcoming training"
-        subtitle="Reschedule or cancel a session here, or select it on the calendar. You will be asked for the reason."
-        events={schedule.data || []}
-        loading={schedule.loading}
-        actionsFor={(event) => changeActions(event)}
-        empty={<EmptyState icon="calendar" title="No upcoming training" message="Request a training session. You can reschedule it while it waits for approval, and reschedule or cancel it once it is approved." action={addScheduleButton} />}
-      />
       <Card>
         <CalendarView
           events={schedule.data || []}
@@ -136,6 +128,16 @@ export default function CoachPortal({ session, onLogout }) {
           renderActions={(event, close) => <ChangeButtons actions={changeActions(event, close)} />}
         />
       </Card>
+      <ManageScheduleCard
+        id="training-approvals"
+        title="Training approvals"
+        subtitle="Your requests waiting for the Sports Director. You can reschedule or withdraw one while it waits."
+        events={(schedule.data || []).filter((event) => event.approvalStatus === 'PENDING')}
+        loading={schedule.loading}
+        actionsFor={(event) => changeActions(event)}
+        countLabel="waiting"
+        empty={<EmptyState icon="check" title="Nothing waiting for approval" message="Training sessions you request appear here until the Sports Director approves them." />}
+      />
     </>
   } else if (view === 'attendance') {
     content = <AttendancePage teams={teams} session={session} />
