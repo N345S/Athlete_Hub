@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { accountLabel, formatDate, fullName, isActiveAccount, localDateISO } from '../../lib/format.js'
+import { accountLabel, formatDate, formatTime, fullName, isActiveAccount, localDateISO } from '../../lib/format.js'
 import { useApiData } from '../../lib/hooks.js'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, EmptyState, Field, Loading, PageHeader, ProgressBar, StatusBadge } from '../../components/ui.jsx'
@@ -19,11 +19,15 @@ export default function AttendancePage({ teams, session }) {
   const approved = (sessions.data || [])
     .filter((item) => String(item.approvalStatus || 'APPROVED').toUpperCase() === 'APPROVED')
     .sort((a, b) => b.trainingDate.localeCompare(a.trainingDate))
-  const today = localDateISO()
-  const defaultId = (approved.find((item) => item.trainingDate <= today) || approved[0])?.trainingSessionId
+  // Attendance opens when a session starts (the API enforces this too); one without a start time opens that morning.
+  const now = new Date()
+  const nowStamp = `${localDateISO(now)}T${now.toTimeString().slice(0, 8)}`
+  const hasStarted = (item) => `${item.trainingDate}T${item.startTime || '00:00:00'}` <= nowStamp
+  const defaultId = (approved.find(hasStarted) || approved[0])?.trainingSessionId
   const [chosenId, setChosenId] = useState('')
   const selectedId = chosenId || (defaultId ? String(defaultId) : '')
   const selected = approved.find((item) => String(item.trainingSessionId) === selectedId)
+  const started = Boolean(selected && hasStarted(selected))
   const attendance = useApiData(selectedId ? `/api/Training/sessions/${selectedId}/attendance` : null, session.token, { initialData: [] })
   const [overrides, setOverrides] = useState({})
   const [savingId, setSavingId] = useState(null)
@@ -89,14 +93,18 @@ export default function AttendancePage({ teams, session }) {
                   <ProgressBar value={Math.round((100 * marked) / markable.length)} tone={marked === markable.length ? 'success' : 'brand'} label={`${marked} of ${markable.length} athletes marked`} />
                 </div>
               )}
-              {selected && unmarked.length > 0 && selected.trainingDate <= today && (
+              {started && unmarked.length > 0 && (
                 <button className="btn btn-secondary" type="button" onClick={markRestPresent} disabled={bulkSaving}>
                   {bulkSaving ? 'Saving…' : marked ? `Mark everyone else present (${unmarked.length})` : `Mark all present (${unmarked.length})`}
                 </button>
               )}
             </div>
             {selected && markable.length > 0 && marked === markable.length && <Alert tone="success">Attendance is complete for this session.</Alert>}
-            {selected && selected.trainingDate > today && <Alert tone="info">This session has not happened yet.</Alert>}
+            {selected && !started && (
+              <Alert tone="info">
+                This session has not started yet. You can take attendance from {formatDate(selected.trainingDate)}{selected.startTime ? ` at ${formatTime(selected.startTime)}` : ''}.
+              </Alert>
+            )}
             {athletes.length ? (
               <ul className="row-list">
                 {athletes.map((athlete) => (
@@ -108,7 +116,7 @@ export default function AttendancePage({ teams, session }) {
                     {!isActiveAccount(athlete) ? <StatusBadge status={athlete.accountStatus} label={`${accountLabel(athlete)} — cannot be marked`} /> : <div className="segmented attendance-options" role="group" aria-label={`Attendance for ${fullName(athlete)}`}>
                       {STATUSES.map(([value, label]) => (
                         <button key={value} type="button" className={`${statuses[athlete.athleteId] === value ? 'active' : ''} status-${value.toLowerCase()}`}
-                          aria-pressed={statuses[athlete.athleteId] === value} disabled={savingId === athlete.athleteId || bulkSaving} onClick={() => mark(athlete.athleteId, value)}>
+                          aria-pressed={statuses[athlete.athleteId] === value} disabled={!started || savingId === athlete.athleteId || bulkSaving} onClick={() => mark(athlete.athleteId, value)}>
                           {label}
                         </button>
                       ))}

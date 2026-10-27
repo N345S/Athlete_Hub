@@ -363,6 +363,10 @@ public class TrainingController : ControllerBase
         var session = await _context.TrainingSessions.FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId);
         if (coach == null || session == null) return NotFound(new { message = "We could not find this training session. It may have been deleted." });
         if (!await _context.Teams.AnyAsync(team => team.TeamId == session.TeamId && team.CoachId == coach.CoachId)) return Forbid();
+        // Attendance opens when the session starts (so late arrivals can be marked during it). Training times are
+        // local wall-clock values; a session without a start time opens at the start of its day.
+        if (_clock.LocalNow < session.TrainingDate.Date + (session.StartTime ?? TimeSpan.Zero))
+            return BadRequest(new { message = "This training has not started yet. You can take attendance once it begins." });
         if (!ValidStatuses.Contains(request.AttendanceStatus.Trim().ToUpperInvariant())) return BadRequest(new { message = "Please choose Present, Absent, Late, or Excused." });
         if (!await _context.TeamMembers.AnyAsync(member => member.TeamId == session.TeamId && member.AthleteId == request.AthleteId && member.DateLeft == null)) return BadRequest(new { message = "This student-athlete is not on this team." });
         if (!await _context.AthleteProfiles.AnyAsync(athlete => athlete.AthleteId == request.AthleteId && athlete.User.AccountStatus == "ACTIVE"))
