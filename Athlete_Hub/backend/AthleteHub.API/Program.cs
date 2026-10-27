@@ -85,7 +85,10 @@ builder.Services.AddCors(options =>
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
                 "http://localhost:5174",
-                "http://127.0.0.1:5174"
+                "http://127.0.0.1:5174",
+                // Expo's web preview of the mobile app (npm run web in mobile/).
+                "http://localhost:8081",
+                "http://127.0.0.1:8081"
             )
             .WithHeaders("Authorization", "Content-Type", "Accept", "X-Requested-With")
             .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");

@@ -9,6 +9,7 @@
     "@react-navigation/native-stack": "^7.18.10",
     "@react-navigation/stack": "^7.10.24",
     "expo": "~57.0.18",
+    "expo-constants": "~57.0.22",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3",

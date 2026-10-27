@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer } from '@react-navigation/native';
+import { createNavigationContainerRef, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   Alert,
-  Platform,
+  Dimensions,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -16,8 +17,15 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { LineChart } from 'react-native-chart-kit';
+import {
+  apiRequest,
+  formatDate,
+  formatTimeRange,
+  localDateISO,
+  setUnauthorizedHandler,
+  useApiData,
+} from './api';
 
-const API_BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:5007' : 'http://localhost:5007';
 const SESSION_KEY = 'athleteHubSession';
 
 type Session = {
@@ -30,24 +38,33 @@ type Session = {
   universityId: string;
 };
 
+type Athlete = { athleteId: number; firstName: string; lastName: string; teamId?: number };
+
 type RootStackParamList = {
   Login: undefined;
   StudentDashboard: { session: Session };
   RoleDashboard: { session: Session };
-  PerformanceEntry: { session: Session; athlete: any };
-  PerformanceTrend: { session: Session; athlete: any };
+  PerformanceEntry: { session: Session; athlete: Athlete };
+  PerformanceTrend: { session: Session; athlete: Athlete };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-/** A message anyone can understand: no-connection and other technical errors become plain sentences. */
-function plainError(error: any, fallback: string): string {
-  if (error instanceof TypeError || /network request failed/i.test(error?.message ?? '')) {
-    return 'We cannot connect right now. Check your internet connection and try again.';
-  }
-  if (error instanceof SyntaxError) return fallback;
-  return error?.message || fallback;
-}
+// An expired or revoked token sends the user back to sign in, once, whichever request noticed it.
+setUnauthorizedHandler(() => {
+  if (!navigationRef.isReady() || navigationRef.getCurrentRoute()?.name === 'Login') return;
+  AsyncStorage.removeItem(SESSION_KEY).finally(() => {
+    navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+    Alert.alert('Signed out', 'You have been signed out. Please sign in again.');
+  });
+});
+
+type DataSource = { loading: boolean; error: string; reload: () => Promise<void> };
+
+const isStudentRole = (role?: string) => ['ATHLETE', 'STUDENT'].includes(String(role || '').toUpperCase());
+const fullName = (person: { firstName?: string; lastName?: string }) => `${person.firstName || ''} ${person.lastName || ''}`.trim();
+const readable = (value?: string | null) => String(value || '').replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 
 async function getStoredSession(): Promise<Session | null> {
   try {
@@ -66,14 +83,7 @@ function LoginScreen({ navigation }: { navigation: any }) {
 
   useEffect(() => {
     getStoredSession().then((session) => {
-      if (session) {
-        const role = String(session.role || '').toUpperCase();
-        if (role === 'ATHLETE' || role === 'STUDENT') {
-          navigation.replace('StudentDashboard', { session });
-          return;
-        }
-        navigation.replace('RoleDashboard', { session });
-      }
+      if (session) navigation.replace(isStudentRole(session.role) ? 'StudentDashboard' : 'RoleDashboard', { session });
     });
   }, [navigation]);
 
@@ -86,19 +96,11 @@ function LoginScreen({ navigation }: { navigation: any }) {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/Auth/login`, {
+      const data = await apiRequest('/api/Auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: { email: email.trim().toLowerCase(), password },
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || 'You could not be signed in. Please try again.');
-      }
-
-      const role = String(data.role || '').toUpperCase();
       const session: Session = {
         email: data.email,
         role: data.role,
@@ -110,14 +112,9 @@ function LoginScreen({ navigation }: { navigation: any }) {
       };
 
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
-      if (role === 'ATHLETE' || role === 'STUDENT') {
-        navigation.replace('StudentDashboard', { session });
-      } else {
-        navigation.replace('RoleDashboard', { session });
-      }
+      navigation.replace(isStudentRole(session.role) ? 'StudentDashboard' : 'RoleDashboard', { session });
     } catch (error: any) {
-      Alert.alert('Could not sign in', plainError(error, 'You could not be signed in. Please try again.'));
+      Alert.alert('Could not sign in', error?.message || 'You could not be signed in. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -156,17 +153,22 @@ function LoginScreen({ navigation }: { navigation: any }) {
   );
 }
 
-function StudentDashboardScreen({ route, navigation }: { route: any; navigation: any }) {
-  const { session } = route.params;
-  const [profile, setProfile] = useState(session);
+/** Scrollable dashboard page: pull down to reload every data source, errors shown at the top, log out at the bottom. */
+function DashboardShell({ title, subtitle, sources, navigation, children }: {
+  title: string;
+  subtitle?: string;
+  sources: DataSource[];
+  navigation: any;
+  children: React.ReactNode;
+}) {
+  const [refreshing, setRefreshing] = useState(false);
+  const errors = [...new Set(sources.map((source) => source.error).filter(Boolean))];
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      const saved = await getStoredSession();
-      if (saved) setProfile(saved);
-    };
-    loadProfile();
-  }, []);
+  const refresh = async () => {
+    setRefreshing(true);
+    await Promise.all(sources.map((source) => source.reload()));
+    setRefreshing(false);
+  };
 
   const logout = async () => {
     await AsyncStorage.removeItem(SESSION_KEY);
@@ -175,39 +177,14 @@ function StudentDashboardScreen({ route, navigation }: { route: any; navigation:
 
   return (
     <SafeAreaView style={styles.dashboardContainer}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.heading}>Student-Athlete Dashboard</Text>
-        <Text style={styles.greeting}>Welcome, {profile.firstName || 'Athlete'}!</Text>
-        <Text style={styles.subtle}>Role: {profile.role || 'ATHLETE'}</Text>
-        <Text style={styles.subtle}>University ID: {profile.universityId || 'N/A'}</Text>
-
-        <View style={styles.cardGrid}>
-          <View style={styles.statCardPrimary}>
-            <Text style={styles.cardLabel}>Current GPA</Text>
-            <Text style={styles.cardValue}>1.80</Text>
-            <Text style={styles.cardMeta}>Eligible</Text>
-          </View>
-
-          <View style={styles.statCardBlue}>
-            <Text style={styles.cardLabel}>Enrolled Units</Text>
-            <Text style={styles.cardValue}>21</Text>
-            <Text style={styles.cardMeta}>6 Subjects</Text>
-          </View>
-
-          <View style={styles.statCardGreen}>
-            <Text style={styles.cardLabel}>Next Game</Text>
-            <Text style={styles.cardValueSmall}>Basketball Practice</Text>
-            <Text style={styles.cardMeta}>Apr 7 • 4:00 PM</Text>
-          </View>
-        </View>
-
-        <View style={styles.listCard}>
-          <Text style={styles.listTitle}>My Grades</Text>
-          <Text style={styles.listItem}>PE 101 - 92.5</Text>
-          <Text style={styles.listItem}>Math 205 - 88.0</Text>
-          <Text style={styles.listItem}>NSTP 102 - 3.00</Text>
-        </View>
-
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+      >
+        <Text style={styles.heading}>{title}</Text>
+        {subtitle ? <Text style={styles.subtle}>{subtitle}</Text> : null}
+        {errors.map((error) => <Text key={error} style={styles.errorText}>{error}</Text>)}
+        {children}
         <Pressable style={styles.logoutButton} onPress={logout}>
           <Text style={styles.logoutText}>Log out</Text>
         </Pressable>
@@ -216,115 +193,348 @@ function StudentDashboardScreen({ route, navigation }: { route: any; navigation:
   );
 }
 
-function RoleDashboardScreen({ route, navigation }: { route: any; navigation: any }) {
-  const { session } = route.params;
-  const role = String(session.role || '').toUpperCase();
+function StatCard({ label, value, meta, style }: { label: string; value: string | number; meta?: string; style: object }) {
+  return (
+    <View style={style}>
+      <Text style={styles.cardLabel}>{label}</Text>
+      <Text style={String(value).length > 8 ? styles.cardValueSmall : styles.cardValue}>{value}</Text>
+      {meta ? <Text style={styles.cardMeta}>{meta}</Text> : null}
+    </View>
+  );
+}
 
-  const logout = async () => {
-    await AsyncStorage.removeItem(SESSION_KEY);
-    navigation.replace('Login');
-  };
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.listCard}>
+      <Text style={styles.listTitle}>{title}</Text>
+      {children}
+    </View>
+  );
+}
 
-  const isCoachOrDirector = role === 'COACH' || role === 'DIRECTOR';
+/** Loading text while the first load runs, the empty message when nothing came back, otherwise the rows. */
+function ListBody({ loading, empty, emptyText, children }: { loading: boolean; empty: boolean; emptyText: string; children: React.ReactNode }) {
+  if (empty) return <Text style={styles.emptyText}>{loading ? 'Loading...' : emptyText}</Text>;
+  return <>{children}</>;
+}
+
+function UpdatesSection({ updates }: { updates: ReturnType<typeof useApiData<any[]>> }) {
+  const items = (updates.data || []).slice(0, 5);
+  return (
+    <Section title="Latest updates">
+      <ListBody loading={updates.loading} empty={!items.length} emptyText="No updates yet.">
+        {items.map((item) => (
+          <View key={item.notificationId} style={styles.row}>
+            <Text style={[styles.rowTitle, !item.isRead && styles.unread]}>{item.title}</Text>
+            <Text style={styles.rowMeta}>{item.message}</Text>
+            <Text style={styles.rowSmall}>{formatDate(item.createdAt)}</Text>
+          </View>
+        ))}
+      </ListBody>
+    </Section>
+  );
+}
+
+function StudentDashboardScreen({ route, navigation }: { route: any; navigation: any }) {
+  const { session } = route.params as { session: Session };
+  const today = localDateISO();
+  const profile = useApiData('/api/AthleteProfile/me', session.token);
+  const schedule = useApiData<any[]>(`/api/Schedules/athlete?from=${today}`, session.token, []);
+  const evaluations = useApiData('/api/CoachEvaluations/me', session.token);
+  const portfolio = useApiData<any[]>('/api/Portfolio/me', session.token, []);
+  const documents = useApiData<any[]>('/api/Documents/me', session.token, []);
+  const updates = useApiData<any[]>('/api/Notifications/me', session.token, []);
+
+  const nextEvents = [...(schedule.data || [])]
+    .filter((item) => item.startDate >= today)
+    .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`));
+  const nextTraining = nextEvents.find((item) => item.type === 'TRAINING' && !item.cancelled);
+  const pendingEvaluations = (evaluations.data?.evaluations || []).filter((item: any) => item.status === 'PENDING');
+  const verified = (portfolio.data || []).filter((item) => ['VERIFIED', 'APPROVED'].includes(String(item.achievementStatus || item.verificationStatus).toUpperCase())).length;
+  const clearanceDocuments = (documents.data || []).filter((item) => item.documentType !== 'Achievement Evidence');
+  const hasMedicalClearance = clearanceDocuments.some((item) => item.documentType === 'Medical Clearance');
+  const me = profile.data;
 
   return (
-    <SafeAreaView style={styles.dashboardContainer}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.heading}>{role} Dashboard</Text>
-        <Text style={styles.greeting}>Welcome, {session.firstName || 'User'}!</Text>
-        <Text style={styles.subtle}>This dashboard is connected to the ASP.NET backend.</Text>
-        <Text style={styles.subtle}>Database access is handled by the backend API, not directly from React Native.</Text>
+    <DashboardShell
+      title="Student-Athlete Dashboard"
+      subtitle={me ? [me.course, me.yearLevel && `Year ${me.yearLevel}`, me.studentNumber].filter(Boolean).join(' · ') : undefined}
+      sources={[profile, schedule, evaluations, portfolio, documents, updates]}
+      navigation={navigation}
+    >
+      <Text style={styles.greeting}>Welcome, {me?.firstName || session.firstName || 'Athlete'}!</Text>
 
-        {isCoachOrDirector && (
-          <View style={styles.listCard}>
-            <Text style={styles.listTitle}>Performance Tracking</Text>
-            <Pressable style={styles.button} onPress={() => Alert.alert('Feature', 'Navigate to athlete list to record performance')}>
-              <Text style={styles.buttonText}>Record Athlete Performance</Text>
-            </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={() => Alert.alert('Feature', 'Navigate to athlete list to view trends')}>
-              <Text style={styles.secondaryButtonText}>View Performance Trends</Text>
-            </Pressable>
-          </View>
+      <View style={styles.cardGrid}>
+        <StatCard
+          style={styles.statCardGreen}
+          label="Next training"
+          value={nextTraining ? formatDate(nextTraining.startDate) : '—'}
+          meta={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'}
+        />
+        <StatCard
+          style={styles.statCardPrimary}
+          label="Coach evaluation"
+          value={pendingEvaluations.length ? `${pendingEvaluations.length} to do` : 'All done'}
+          meta={pendingEvaluations.length ? 'Please answer it on the Athlete-Hub website' : 'Nothing to answer right now'}
+        />
+        <StatCard style={styles.statCardBlue} label="Verified achievements" value={verified} meta={`${(portfolio.data || []).length} submitted`} />
+        <StatCard
+          style={styles.statCardSlate}
+          label="Documents on file"
+          value={clearanceDocuments.length}
+          meta={hasMedicalClearance ? 'Medical clearance uploaded' : 'Medical clearance not uploaded yet'}
+        />
+      </View>
+
+      <Pressable
+        style={[styles.button, !me && styles.buttonDisabled]}
+        disabled={!me}
+        onPress={() => navigation.navigate('PerformanceTrend', { session, athlete: { athleteId: me.athleteId, firstName: me.firstName, lastName: me.lastName } })}
+      >
+        <Text style={styles.buttonText}>My performance</Text>
+      </Pressable>
+
+      <Section title="Coming up">
+        <ListBody loading={schedule.loading} empty={!nextEvents.length} emptyText="Nothing scheduled. Approved training and events will appear here.">
+          {nextEvents.slice(0, 5).map((item) => (
+            <View key={item.id} style={styles.row}>
+              <Text style={styles.rowTitle}>{item.title}{item.cancelled ? ' (cancelled)' : ''}</Text>
+              <Text style={styles.rowMeta}>{formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</Text>
+              <Text style={styles.rowSmall}>{item.location || 'Location TBA'}{item.teamName ? ` · ${item.teamName}` : ''} · {readable(item.type)}</Text>
+              {item.cancellationReason ? <Text style={styles.errorSmall}>Cancelled: {item.cancellationReason}</Text> : null}
+            </View>
+          ))}
+        </ListBody>
+      </Section>
+
+      <UpdatesSection updates={updates} />
+    </DashboardShell>
+  );
+}
+
+function RoleDashboardScreen({ route, navigation }: { route: any; navigation: any }) {
+  const { session } = route.params as { session: Session };
+  const role = String(session.role || '').toUpperCase();
+  if (role === 'COACH') return <CoachDashboard session={session} navigation={navigation} />;
+  if (role === 'DIRECTOR') return <DirectorDashboard session={session} navigation={navigation} />;
+  if (role === 'PARENT') return <ParentDashboard session={session} navigation={navigation} />;
+  return <GeneralDashboard session={session} navigation={navigation} />;
+}
+
+function AthleteRow({ athlete, detail, onRecord, onProgress }: { athlete: any; detail: string; onRecord?: () => void; onProgress: () => void }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.rowTitle}>{fullName(athlete)}</Text>
+      <Text style={styles.rowMeta}>{detail}</Text>
+      <View style={styles.rowActions}>
+        {onRecord && (
+          <Pressable style={styles.smallButton} onPress={onRecord}>
+            <Text style={styles.smallButtonText}>Record result</Text>
+          </Pressable>
         )}
-
-        <View style={styles.listCard}>
-          <Text style={styles.listTitle}>Session Info</Text>
-          <Text style={styles.listItem}>Email: {session.email}</Text>
-          <Text style={styles.listItem}>Role: {session.role}</Text>
-          <Text style={styles.listItem}>University ID: {session.universityId}</Text>
-        </View>
-
-        <Pressable style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutText}>Log out</Text>
+        <Pressable style={styles.smallButtonOutline} onPress={onProgress}>
+          <Text style={styles.smallButtonOutlineText}>Progress</Text>
         </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </View>
+  );
+}
+
+function CoachDashboard({ session, navigation }: { session: Session; navigation: any }) {
+  const dashboard = useApiData('/api/CoachDashboard', session.token);
+  const updates = useApiData<any[]>('/api/Notifications/me', session.token, []);
+  const data = dashboard.data;
+  const sessions = data?.upcomingSessions || [];
+  const teams = data?.teams || [];
+
+  const toAthlete = (athlete: any, teamId: number): Athlete => ({ athleteId: athlete.athleteId, firstName: athlete.firstName, lastName: athlete.lastName, teamId });
+
+  return (
+    <DashboardShell title="Coach Dashboard" subtitle={`Welcome, ${session.firstName || 'Coach'}!`} sources={[dashboard, updates]} navigation={navigation}>
+      {data?.message ? <Text style={styles.subtle}>{data.message}</Text> : null}
+      <View style={styles.cardGrid}>
+        <StatCard style={styles.statCardBlue} label="Teams" value={data ? data.teamCount : '—'} />
+        <StatCard style={styles.statCardGreen} label="Athletes" value={data ? data.athleteCount : '—'} />
+      </View>
+
+      <Section title="Upcoming training">
+        <ListBody loading={dashboard.loading} empty={!sessions.length} emptyText="No upcoming training.">
+          {sessions.map((item: any) => (
+            <View key={item.trainingSessionId} style={styles.row}>
+              <Text style={styles.rowTitle}>{item.title}</Text>
+              <Text style={styles.rowMeta}>{formatDate(item.trainingDate)} · {formatTimeRange(item.startTime, item.endTime)}</Text>
+              <Text style={styles.rowSmall}>{item.location || 'Location TBA'} · {readable(item.approvalStatus || 'APPROVED')}</Text>
+            </View>
+          ))}
+        </ListBody>
+      </Section>
+
+      {teams.map((team: any) => (
+        <Section key={team.teamId} title={`${team.teamName} · ${team.sport}`}>
+          <ListBody loading={false} empty={!team.athletes.length} emptyText="No athletes on this team yet.">
+            {team.athletes.map((athlete: any) => (
+              <AthleteRow
+                key={athlete.athleteId}
+                athlete={athlete}
+                detail={[athlete.course, athlete.attendanceRate != null && `Attendance ${athlete.attendanceRate}%`].filter(Boolean).join(' · ') || athlete.studentNumber}
+                onRecord={() => navigation.navigate('PerformanceEntry', { session, athlete: toAthlete(athlete, team.teamId) })}
+                onProgress={() => navigation.navigate('PerformanceTrend', { session, athlete: toAthlete(athlete, team.teamId) })}
+              />
+            ))}
+          </ListBody>
+        </Section>
+      ))}
+
+      <UpdatesSection updates={updates} />
+    </DashboardShell>
+  );
+}
+
+function DirectorDashboard({ session, navigation }: { session: Session; navigation: any }) {
+  const dashboard = useApiData('/api/DirectorDashboard', session.token);
+  const pending = useApiData<any[]>('/api/Training/pending', session.token, []);
+  const [search, setSearch] = useState('');
+  const athletes: any[] = dashboard.data?.athletes || [];
+  const query = search.trim().toLowerCase();
+  const shown = athletes
+    .filter((athlete) => !query || `${fullName(athlete)} ${athlete.studentNumber || ''}`.toLowerCase().includes(query))
+    .sort((a, b) => fullName(a).localeCompare(fullName(b)));
+
+  return (
+    <DashboardShell title="Director Dashboard" subtitle={`Welcome, ${session.firstName || 'Director'}!`} sources={[dashboard, pending]} navigation={navigation}>
+      <View style={styles.cardGrid}>
+        <StatCard style={styles.statCardBlue} label="Student-athletes" value={dashboard.data ? dashboard.data.athleteCount : '—'} />
+        <StatCard style={styles.statCardPrimary} label="Training to approve" value={pending.data?.length ?? '—'} meta="Approve them on the Athlete-Hub website" />
+      </View>
+
+      <Section title="Student-athletes">
+        <TextInput style={styles.input} placeholder="Search by name or student number" value={search} onChangeText={setSearch} autoCapitalize="none" />
+        <ListBody loading={dashboard.loading} empty={!shown.length} emptyText={query ? 'No one matches that search.' : 'No student-athletes yet.'}>
+          {shown.slice(0, 30).map((athlete) => (
+            <AthleteRow
+              key={athlete.athleteId}
+              athlete={athlete}
+              detail={[athlete.teams?.map((team: any) => team.teamName).join(', ') || 'No team', athlete.attendanceRate != null && `Attendance ${athlete.attendanceRate}%`].filter(Boolean).join(' · ')}
+              onProgress={() => navigation.navigate('PerformanceTrend', { session, athlete: { athleteId: athlete.athleteId, firstName: athlete.firstName, lastName: athlete.lastName } })}
+            />
+          ))}
+          {shown.length > 30 ? <Text style={styles.emptyText}>Showing 30 of {shown.length}. Search to find someone else.</Text> : null}
+        </ListBody>
+      </Section>
+    </DashboardShell>
+  );
+}
+
+function ParentDashboard({ session, navigation }: { session: Session; navigation: any }) {
+  const children = useApiData<any[]>('/api/Parent/children', session.token, []);
+  const training = useApiData<any[]>(`/api/Parent/training?from=${localDateISO()}`, session.token, []);
+  const updates = useApiData<any[]>('/api/Notifications/me', session.token, []);
+  const kids = children.data || [];
+  const sessions = (training.data || []).slice(0, 8);
+
+  return (
+    <DashboardShell title="Parent Dashboard" subtitle={`Welcome, ${session.firstName || 'Parent'}!`} sources={[children, training, updates]} navigation={navigation}>
+      <Section title={kids.length > 1 ? 'My children' : 'My child'}>
+        <ListBody loading={children.loading} empty={!kids.length} emptyText="No student-athlete is linked to your account yet. Please contact the school.">
+          {kids.map((child) => (
+            <View key={child.athleteId} style={styles.row}>
+              <Text style={styles.rowTitle}>{fullName(child)}</Text>
+              <Text style={styles.rowMeta}>{child.teams?.map((team: any) => `${team.teamName} (${team.sport})`).join(', ') || 'Not on a team yet'}</Text>
+            </View>
+          ))}
+        </ListBody>
+      </Section>
+
+      <Section title="Upcoming training">
+        <ListBody loading={training.loading} empty={!sessions.length} emptyText="No upcoming training.">
+          {sessions.map((item) => (
+            <View key={item.id} style={styles.row}>
+              <Text style={styles.rowTitle}>{item.title}</Text>
+              <Text style={styles.rowMeta}>{formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</Text>
+              <Text style={styles.rowSmall}>{item.location || 'Location TBA'} · {item.teamName} · Coach {item.coachName}</Text>
+              {kids.length > 1 && <Text style={styles.rowSmall}>For {item.children?.map((child: any) => child.firstName).join(', ')}</Text>}
+            </View>
+          ))}
+        </ListBody>
+      </Section>
+
+      <UpdatesSection updates={updates} />
+    </DashboardShell>
+  );
+}
+
+function GeneralDashboard({ session, navigation }: { session: Session; navigation: any }) {
+  const updates = useApiData<any[]>('/api/Notifications/me', session.token, []);
+  const role = String(session.role || '').toUpperCase();
+
+  return (
+    <DashboardShell title={`${readable(role)} Dashboard`} subtitle={`Welcome, ${session.firstName || 'User'}! The full tools for your role are on the Athlete-Hub website.`} sources={[updates]} navigation={navigation}>
+      <UpdatesSection updates={updates} />
+      <Section title="Account">
+        <Text style={styles.listItem}>Email: {session.email}</Text>
+        <Text style={styles.listItem}>University ID: {session.universityId}</Text>
+      </Section>
+    </DashboardShell>
   );
 }
 
 // Performance Entry Screen - for coaches to record athlete performance
 function PerformanceEntryScreen({ route, navigation }: { route: any; navigation: any }) {
-  const { session, athlete } = route.params;
+  const { session, athlete } = route.params as { session: Session; athlete: Athlete };
   const [dataType, setDataType] = useState('PUSH_UP');
   const [value, setValue] = useState('');
-  const [sessionId, setSessionId] = useState('');
+  const [sessionId, setSessionId] = useState(0);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [metrics, setMetrics] = useState<any[]>([]);
+  const metrics = useApiData<any[]>('/api/Performance/metrics', session.token, []);
+  const trainingSessions = useApiData<any[]>('/api/Training/sessions', session.token, []);
+
+  // Results can only be recorded for approved training on this athlete's team that has already ended.
+  const finished = useMemo(() => {
+    const now = new Date();
+    const today = localDateISO(now);
+    const clock = now.toTimeString().slice(0, 8);
+    return (trainingSessions.data || [])
+      .filter((item) => item.approvalStatus === 'APPROVED')
+      .filter((item) => !athlete.teamId || item.teamId === athlete.teamId)
+      .filter((item) => item.trainingDate < today || (item.trainingDate === today && item.endTime && item.endTime <= clock))
+      .sort((a, b) => b.trainingDate.localeCompare(a.trainingDate));
+  }, [trainingSessions.data, athlete.teamId]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch available metrics
-        const metricsRes = await fetch(`${API_BASE_URL}/api/Performance/metrics`, {
-          headers: { Authorization: `Bearer ${session.token}` },
-        });
-        const metricsData = await metricsRes.json();
-        setMetrics(metricsData);
-
-        // Fetch training sessions for the coach
-        const sessionsRes = await fetch(`${API_BASE_URL}/api/Training/sessions`, {
-          headers: { Authorization: `Bearer ${session.token}` },
-        });
-        const sessionsData = await sessionsRes.json();
-        setSessions(sessionsData);
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-      }
-    };
-    fetchData();
-  }, [session.token]);
+    if (!sessionId && finished.length) setSessionId(finished[0].trainingSessionId);
+  }, [finished, sessionId]);
 
   const handleSubmit = async () => {
-    if (!value.trim()) {
-      Alert.alert('Result needed', 'Please enter the result first.');
+    if (!value.trim() || Number.isNaN(Number(value))) {
+      Alert.alert('Result needed', 'Please enter the result as a number.');
+      return;
+    }
+    if (!sessionId) {
+      Alert.alert('Training needed', 'Please choose the training session this result is from.');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/Performance/record`, {
+      await apiRequest('/api/Performance/record', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
-        body: JSON.stringify({
+        token: session.token,
+        body: {
           athleteId: athlete.athleteId,
-          metricId: metrics[0]?.metricId || 1,
+          metricId: metrics.data?.[0]?.metricId || 0,
           recordedValue: Number(value),
-          recordedDate: new Date().toISOString().slice(0, 10),
+          recordedDate: localDateISO(),
           dataType,
-          sessionId: Number(sessionId) || 0,
+          sessionId,
           notes,
-        }),
+        },
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result?.message || 'The result could not be saved. Please try again.');
-
-      Alert.alert('Success', 'Performance record saved successfully!');
+      Alert.alert('Saved', 'The result was saved.');
       navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Could not save', plainError(error, 'The result could not be saved. Please try again.'));
+      Alert.alert('Could not save', error?.message || 'The result could not be saved. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -334,10 +544,24 @@ function PerformanceEntryScreen({ route, navigation }: { route: any; navigation:
     <SafeAreaView style={styles.dashboardContainer}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.heading}>Record Performance</Text>
-        <Text style={styles.greeting}>Athlete: {athlete.firstName} {athlete.lastName}</Text>
+        <Text style={styles.greeting}>Athlete: {fullName(athlete)}</Text>
+        {trainingSessions.error ? <Text style={styles.errorText}>{trainingSessions.error}</Text> : null}
 
         <View style={styles.listCard}>
           <Text style={styles.listTitle}>Performance Details</Text>
+
+          <Text style={styles.fieldLabel}>Training session</Text>
+          {finished.length ? (
+            <Picker selectedValue={sessionId} onValueChange={(id) => setSessionId(Number(id))} style={styles.picker}>
+              {finished.map((item) => (
+                <Picker.Item key={item.trainingSessionId} label={`${formatDate(item.trainingDate)} · ${item.title}`} value={item.trainingSessionId} />
+              ))}
+            </Picker>
+          ) : (
+            <Text style={styles.emptyText}>
+              {trainingSessions.loading ? 'Loading...' : 'No finished, approved training for this athlete yet. Results can be recorded after a session ends.'}
+            </Text>
+          )}
 
           <Text style={styles.fieldLabel}>Data Type</Text>
           <Picker selectedValue={dataType} onValueChange={setDataType} style={styles.picker}>
@@ -357,15 +581,6 @@ function PerformanceEntryScreen({ route, navigation }: { route: any; navigation:
             keyboardType="numeric"
           />
 
-          <Text style={styles.fieldLabel}>Session ID (Optional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter session ID"
-            value={sessionId}
-            onChangeText={setSessionId}
-            keyboardType="numeric"
-          />
-
           <Text style={styles.fieldLabel}>Notes</Text>
           <TextInput
             style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
@@ -376,7 +591,7 @@ function PerformanceEntryScreen({ route, navigation }: { route: any; navigation:
           />
         </View>
 
-        <Pressable style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSubmit} disabled={loading}>
+        <Pressable style={[styles.button, (loading || !finished.length) && styles.buttonDisabled]} onPress={handleSubmit} disabled={loading || !finished.length}>
           <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save Record'}</Text>
         </Pressable>
 
@@ -390,86 +605,83 @@ function PerformanceEntryScreen({ route, navigation }: { route: any; navigation:
 
 // Performance Trend Screen - for viewing athlete progress
 function PerformanceTrendScreen({ route, navigation }: { route: any; navigation: any }) {
-  const { session, athlete } = route.params;
+  const { session, athlete } = route.params as { session: Session; athlete: Athlete };
   const [timeRange, setTimeRange] = useState<'overall' | 'monthly' | 'weekly'>('overall');
-  const [chartData, setChartData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [seriesIndex, setSeriesIndex] = useState(0);
+  const trend = useApiData(`/api/Performance/athlete/${athlete.athleteId}/trend?timeRange=${timeRange}`, session.token);
+  const records = useApiData(`/api/Performance/athlete/${athlete.athleteId}`, session.token);
 
-  useEffect(() => {
-    const fetchTrend = async () => {
-      try {
-        setLoading(true);
-        const result = await fetch(`${API_BASE_URL}/api/Performance/athlete/${athlete.athleteId}/trend?timeRange=${timeRange}`, {
-          headers: { Authorization: `Bearer ${session.token}` },
-        });
-        const data = await result.json();
-        if (!result.ok) throw new Error(data?.message || 'The progress chart could not be loaded. Please try again.');
-        setChartData(data);
-      } catch (err: any) {
-        setError(plainError(err, 'The progress chart could not be loaded. Please try again.'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTrend();
-  }, [athlete.athleteId, session.token, timeRange]);
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.dashboardContainer}>
-        <View style={styles.scrollContent}>
-          <Text style={styles.heading}>Loading trend data...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={styles.dashboardContainer}>
-        <View style={styles.scrollContent}>
-          <Text style={styles.heading}>Error: {error}</Text>
-          <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.secondaryButtonText}>Go Back</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const chartConfig = chartData ? {
-    data: chartData,
-    width: 350,
-    height: 300,
-    chartConfig: {
-      backgroundColor: '#f5f7fb',
-      backgroundGradientFrom: '#f5f7fb',
-      backgroundGradientTo: '#f5f7fb',
-      color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
-    },
-    bezier: true,
-  } : null;
+  const datasets: any[] = trend.data?.datasets || [];
+  const series = datasets[Math.min(seriesIndex, datasets.length - 1)];
+  // The API leaves gaps (null) for sessions without this workout; the chart needs only real points.
+  const points = series
+    ? (series.data as (number | null)[])
+        .map((value, index) => ({ value, label: String(trend.data.labels[index] ?? '') }))
+        .filter((point): point is { value: number; label: string } => point.value != null)
+    : [];
+  const recent = (records.data?.records || []).slice(0, 10);
 
   return (
     <SafeAreaView style={styles.dashboardContainer}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.heading}>Performance Trend</Text>
-        <Text style={styles.greeting}>{athlete.firstName} {athlete.lastName}</Text>
+        <Text style={styles.greeting}>{fullName(athlete)}</Text>
+        {[trend.error, records.error].filter(Boolean).map((error) => <Text key={error} style={styles.errorText}>{error}</Text>)}
 
         <View style={styles.timeRangeButtons}>
-          <Pressable style={[styles.timeRangeButton, timeRange === 'overall' && styles.timeRangeButtonActive]} onPress={() => setTimeRange('overall')}>
-            <Text style={[styles.timeRangeButtonText, timeRange === 'overall' && styles.timeRangeButtonTextActive]}>Overall</Text>
-          </Pressable>
-          <Pressable style={[styles.timeRangeButton, timeRange === 'monthly' && styles.timeRangeButtonActive]} onPress={() => setTimeRange('monthly')}>
-            <Text style={[styles.timeRangeButtonText, timeRange === 'monthly' && styles.timeRangeButtonTextActive]}>Monthly</Text>
-          </Pressable>
-          <Pressable style={[styles.timeRangeButton, timeRange === 'weekly' && styles.timeRangeButtonActive]} onPress={() => setTimeRange('weekly')}>
-            <Text style={[styles.timeRangeButtonText, timeRange === 'weekly' && styles.timeRangeButtonTextActive]}>Weekly</Text>
-          </Pressable>
+          {(['overall', 'monthly', 'weekly'] as const).map((range) => (
+            <Pressable key={range} style={[styles.timeRangeButton, timeRange === range && styles.timeRangeButtonActive]} onPress={() => setTimeRange(range)}>
+              <Text style={[styles.timeRangeButtonText, timeRange === range && styles.timeRangeButtonTextActive]}>{readable(range)}</Text>
+            </Pressable>
+          ))}
         </View>
 
-        {chartConfig && <LineChart data={chartConfig.data} width={chartConfig.width} height={chartConfig.height} chartConfig={chartConfig.chartConfig} bezier={chartConfig.bezier} />}
+        {datasets.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+            {datasets.map((item, index) => (
+              <Pressable key={item.label} style={[styles.timeRangeButton, item === series && styles.timeRangeButtonActive]} onPress={() => setSeriesIndex(index)}>
+                <Text style={[styles.timeRangeButtonText, item === series && styles.timeRangeButtonTextActive]}>{item.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+
+        {trend.loading && !trend.data ? (
+          <Text style={styles.emptyText}>Loading...</Text>
+        ) : points.length ? (
+          <>
+            <Text style={styles.listTitle}>{series.label}</Text>
+            <LineChart
+              data={{ labels: points.map((point) => point.label.slice(0, 10)), datasets: [{ data: points.map((point) => point.value) }] }}
+              width={Dimensions.get('window').width - 40}
+              height={260}
+              verticalLabelRotation={points.length > 4 ? 30 : 0}
+              chartConfig={{
+                backgroundColor: '#f5f7fb',
+                backgroundGradientFrom: '#f5f7fb',
+                backgroundGradientTo: '#f5f7fb',
+                decimalPlaces: 1,
+                color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(71, 85, 105, ${opacity})`,
+              }}
+              bezier
+            />
+          </>
+        ) : (
+          <Text style={styles.emptyText}>No results recorded for this time range yet.</Text>
+        )}
+
+        <Section title="Recent results">
+          <ListBody loading={records.loading} empty={!recent.length} emptyText="No results recorded yet.">
+            {recent.map((record: any) => (
+              <View key={record.performanceRecordId} style={styles.row}>
+                <Text style={styles.rowTitle}>{readable(record.dataType)}: {record.recordedValue}{record.unit ? ` ${readable(record.unit).toLowerCase()}` : ''}</Text>
+                <Text style={styles.rowMeta}>{formatDate(record.recordedDate)}{record.sessionTitle ? ` · ${record.sessionTitle}` : ''}</Text>
+                {record.notes ? <Text style={styles.rowSmall}>{record.notes}</Text> : null}
+              </View>
+            ))}
+          </ListBody>
+        </Section>
 
         <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
           <Text style={styles.secondaryButtonText}>Back</Text>
@@ -481,7 +693,7 @@ function PerformanceTrendScreen({ route, navigation }: { route: any; navigation:
 
 export default function App() {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="StudentDashboard" component={StudentDashboardScreen} />
@@ -555,11 +767,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  helpText: {
-    color: '#475569',
-    marginTop: 12,
-    fontSize: 13,
-  },
   dashboardContainer: {
     flex: 1,
     backgroundColor: '#f5f7fb',
@@ -585,8 +792,17 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginBottom: 10,
   },
+  errorText: {
+    fontSize: 14,
+    color: '#b91c1c',
+    backgroundColor: '#fee2e2',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
   cardGrid: {
     marginTop: 18,
+    marginBottom: 8,
     gap: 12,
   },
   statCardPrimary: {
@@ -601,6 +817,11 @@ const styles = StyleSheet.create({
   },
   statCardGreen: {
     backgroundColor: '#16a34a',
+    borderRadius: 18,
+    padding: 18,
+  },
+  statCardSlate: {
+    backgroundColor: '#475569',
     borderRadius: 18,
     padding: 18,
   },
@@ -649,6 +870,67 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginBottom: 8,
   },
+  row: {
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e2e8f0',
+  },
+  rowTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  unread: {
+    color: '#2563eb',
+  },
+  rowMeta: {
+    fontSize: 14,
+    color: '#334155',
+    marginTop: 2,
+  },
+  rowSmall: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  errorSmall: {
+    fontSize: 12,
+    color: '#b91c1c',
+    marginTop: 2,
+  },
+  rowActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  smallButton: {
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  smallButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  smallButtonOutline: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  smallButtonOutlineText: {
+    color: '#2563eb',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#64748b',
+    paddingVertical: 6,
+  },
   logoutButton: {
     marginTop: 24,
     backgroundColor: '#0f172a',
@@ -683,6 +965,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginTop: 16,
     marginBottom: 16,
+  },
+  chipRow: {
+    gap: 8,
+    paddingBottom: 16,
   },
   timeRangeButton: {
     paddingHorizontal: 16,
