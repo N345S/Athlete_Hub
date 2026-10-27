@@ -16,4 +16,13 @@ public static class HiddenRoles
 
     public static bool Contains(string? roleName) =>
         roleName != null && Names.Contains(roleName, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Roles kept out of every account list and role picker: the hidden roles plus the ICTD grades office, which
+    /// can sign in but is not an account the Sports Director manages (see <see cref="IctdOffice"/>).
+    /// </summary>
+    public static readonly string[] Unlisted = [.. Names, IctdOffice.Role];
+
+    public static bool IsUnlisted(string? roleName) =>
+        roleName != null && Unlisted.Contains(roleName, StringComparer.OrdinalIgnoreCase);
 }

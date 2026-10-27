@@ -539,6 +539,9 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--brand-600); wi
 .row-main.with-avatar > div { display: flex; flex-direction: column; }
 .row-main.with-avatar small { color: var(--ink-500); }
 .row-actions { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
+/* A row whose details (e.g. a grade sheet) open underneath it at full width. */
+.row-stacked { flex-wrap: wrap; }
+.row-stacked > .grade-sheet { flex-basis: 100%; }
 .evidence-list { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: 4px; font-size: 0.88rem; }
 
 /* Tables */

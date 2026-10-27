@@ -82,6 +82,23 @@ public class IctdUniversityDatabase
         return terms;
     }
 
+    /// <summary>The next <paramref name="count"/> terms whose final grades are not released yet, soonest first.</summary>
+    public IReadOnlyList<(string AcademicYear, string Semester, DateTime ReleasesOn)> UpcomingTerms(int count)
+    {
+        var today = _clock.LocalToday;
+        var terms = new List<(string AcademicYear, string Semester, DateTime ReleasesOn)>();
+        // Within a school year the terms are released in order: 1st Semester, 2nd Semester, then Summer.
+        for (var startYear = today.Year - 1; terms.Count < count; startYear++)
+        {
+            foreach (var semester in Semesters)
+            {
+                var releasesOn = GradesReleasedOn(startYear, semester);
+                if (releasesOn > today && terms.Count < count) terms.Add(($"{startYear}-{startYear + 1}", semester, releasesOn));
+            }
+        }
+        return terms;
+    }
+
     /// <summary>The student's final grades for one term, as the ICTD database reports them.</summary>
     public IReadOnlyList<SubjectGrade> GetFinalGrades(string studentNumber, string? course, int? yearLevel, string academicYear, string semester)
     {

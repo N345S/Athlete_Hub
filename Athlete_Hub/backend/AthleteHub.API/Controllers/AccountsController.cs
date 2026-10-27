@@ -28,7 +28,7 @@ public class AccountsController : ControllerBase
         _context = context;
     }
 
-    private IQueryable<User> VisibleUsers => _context.Users.Where(u => !HiddenRoles.Names.Contains(u.Role.RoleName));
+    private IQueryable<User> VisibleUsers => _context.Users.Where(u => !HiddenRoles.Unlisted.Contains(u.Role.RoleName));
 
     // ==========================================
     // GET ALL USERS
@@ -89,7 +89,7 @@ public class AccountsController : ControllerBase
     {
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
 
-        if (role == null || HiddenRoles.Contains(role.RoleName))
+        if (role == null || HiddenRoles.IsUnlisted(role.RoleName))
         {
             return BadRequest(new { message = "Please choose a role from the list." });
         }
@@ -193,7 +193,7 @@ public class AccountsController : ControllerBase
         {
             targetRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId.Value);
 
-            if (targetRole == null || HiddenRoles.Contains(targetRole.RoleName))
+            if (targetRole == null || HiddenRoles.IsUnlisted(targetRole.RoleName))
             {
                 return BadRequest(new { message = "Please choose a role from the list." });
             }

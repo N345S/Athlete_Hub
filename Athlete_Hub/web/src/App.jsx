@@ -10,6 +10,7 @@ const StudentPortal = lazy(() => import('./features/student/StudentPortal.jsx'))
 const CoachPortal = lazy(() => import('./features/coach/CoachPortal.jsx'))
 const DirectorPortal = lazy(() => import('./features/director/DirectorPortal.jsx'))
 const ParentPortal = lazy(() => import('./features/parent/ParentPortal.jsx'))
+const IctdOfficePortal = lazy(() => import('./features/ictd/IctdOfficePortal.jsx'))
 
 const SESSION_KEY = 'athletehub-session'
 const EXPIRY_WARNING_MS = 5 * 60 * 1000
@@ -22,6 +23,8 @@ const PORTALS = {
   COACH: CoachPortal,
   DIRECTOR: DirectorPortal,
   PARENT: ParentPortal,
+  // The ICTD grades office sign-in, for testing the end of a term (backend Services/IctdOffice.cs).
+  ICTD: IctdOfficePortal,
 }
 
 function isExpired(session) {

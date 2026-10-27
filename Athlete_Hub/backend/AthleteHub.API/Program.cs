@@ -347,6 +347,13 @@ if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))
     if (await seeder.IsEmptyAsync()) await seeder.SeedAsync();
 }
 
+// The ICTD grades office sign-in (Services/IctdOffice.cs). After the seeding above, which only fills a database
+// with no accounts at all.
+using (var officeScope = app.Services.CreateScope())
+{
+    await IctdOffice.EnsureAccountAsync(officeScope.ServiceProvider.GetRequiredService<AthleteHubDbContext>());
+}
+
 // ==========================================
 // START APPLICATION
 // ==========================================

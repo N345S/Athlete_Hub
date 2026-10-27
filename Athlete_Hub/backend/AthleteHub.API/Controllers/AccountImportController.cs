@@ -60,7 +60,7 @@ public class AccountImportController : ControllerBase
         if (TooManyOrNone(request.Rows.Count) is { } problem) return problem;
 
         var roles = (await _context.Roles.ToListAsync())
-            .Where(role => !HiddenRoles.Contains(role.RoleName))
+            .Where(role => !HiddenRoles.IsUnlisted(role.RoleName))
             .ToDictionary(role => role.RoleName, role => role.RoleId);
         var teams = await ActiveTeamsAsync();
 

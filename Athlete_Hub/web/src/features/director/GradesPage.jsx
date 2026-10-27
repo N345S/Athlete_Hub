@@ -39,7 +39,7 @@ export function GradeLines({ subjects }) {
 }
 
 /** "7 subjects · 20 units" plus a badge for failed and INC subjects. */
-function GradeSummary({ subjects }) {
+export function GradeSummary({ subjects }) {
   const units = subjects.reduce((total, subject) => total + Number(subject.units || 0), 0)
   const failed = subjects.filter((subject) => subject.remarks === 'FAILED').length
   const incomplete = subjects.filter((subject) => subject.remarks === 'INC').length
