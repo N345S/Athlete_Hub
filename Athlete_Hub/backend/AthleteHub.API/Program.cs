@@ -318,6 +318,26 @@ if (args.Contains("--reset-demo-data") || args.Contains("--wipe-all-data"))
     return;
 }
 
+// One-time switch for a hosted database that still holds older data and cannot be reached from a PC: set
+// App__ResetToDemoData=yes and restart. Everything is deleted and the demo data created, unless the demo data is
+// already there, so later restarts leave it alone. Remove the variable afterwards.
+if (string.Equals(builder.Configuration["App:ResetToDemoData"], "yes", StringComparison.OrdinalIgnoreCase))
+{
+    using var resetScope = app.Services.CreateScope();
+    var seeder = NewDemoSeeder(resetScope.ServiceProvider);
+    if (await seeder.HasDemoDataAsync())
+    {
+        app.Logger.LogWarning("App:ResetToDemoData is set, but the demo data is already there, so nothing was deleted. Remove the variable.");
+    }
+    else
+    {
+        app.Logger.LogWarning("App:ResetToDemoData is set: deleting all data and creating the demo data.");
+        await seeder.WipeAsync();
+        await seeder.SeedAsync();
+        app.Logger.LogWarning("Demo data created. Remove App__ResetToDemoData.");
+    }
+}
+
 // Hosted deployments set App:SeedTestDataIfEmpty so a start with an empty database (no accounts at all) fills it
 // with the demo data and its sample files in private-uploads. A database with any account is left as it is.
 if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))

@@ -206,6 +206,9 @@ public class DemoDataSeeder
     /// <summary>True when the database has no accounts at all, so demo data can be added without mixing.</summary>
     public async Task<bool> IsEmptyAsync() => !await _context.Users.AnyAsync();
 
+    /// <summary>True when the demo accounts are already in the database (the demo Sports Director exists).</summary>
+    public async Task<bool> HasDemoDataAsync() => await _context.Users.AnyAsync(user => user.UniversityId == Director.Id);
+
     // ------------------------------------------------------------------ wipe
 
     /// <summary>
