@@ -60,6 +60,12 @@ public partial class AthleteHubDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    public virtual DbSet<DocumentType> DocumentTypes { get; set; }
+
+    public virtual DbSet<EventLineup> EventLineups { get; set; }
+
+    public virtual DbSet<EventLineupPlayer> EventLineupPlayers { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AcademicImportBatch>(entity =>
@@ -331,6 +337,15 @@ public partial class AthleteHubDbContext : DbContext
                 .HasColumnName("student_number");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.YearLevel).HasColumnName("year_level");
+            entity.Property(e => e.EligibilityStatus)
+                .HasMaxLength(20)
+                .HasColumnName("eligibility_status");
+            entity.Property(e => e.EligibilityReasons)
+                .HasColumnType("text")
+                .HasColumnName("eligibility_reasons");
+            entity.Property(e => e.EligibilityCheckedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("eligibility_checked_at");
 
             entity.HasOne(d => d.User).WithOne(p => p.AthleteProfile)
                 .HasForeignKey<AthleteProfile>(d => d.UserId)
@@ -752,6 +767,19 @@ public partial class AthleteHubDbContext : DbContext
             entity.Property(e => e.RescheduledAt)
                 .HasColumnType("timestamp")
                 .HasColumnName("rescheduled_at");
+            entity.Property(e => e.LineupSportId).HasColumnName("lineup_sport_id");
+            entity.Property(e => e.LineupMinPlayers).HasColumnName("lineup_min_players");
+            entity.Property(e => e.LineupMaxPlayers).HasColumnName("lineup_max_players");
+            entity.Property(e => e.LineupRequiredDocuments)
+                .HasColumnType("text")
+                .HasColumnName("lineup_required_documents");
+            entity.Property(e => e.LineupMaxAge).HasColumnName("lineup_max_age");
+            entity.Property(e => e.LineupMaxYearLevel).HasColumnName("lineup_max_year_level");
+            entity.HasIndex(e => e.LineupSportId, "fk_schedule_lineup_sport");
+            entity.HasOne(d => d.LineupSport).WithMany()
+                .HasForeignKey(d => d.LineupSportId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_schedule_lineup_sport");
             entity.Property(e => e.StartDatetime)
                 .HasColumnType("datetime")
                 .HasColumnName("start_datetime");
@@ -973,6 +1001,97 @@ public partial class AthleteHubDbContext : DbContext
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_users_role");
+        });
+
+        modelBuilder.Entity<DocumentType>(entity =>
+        {
+            entity.HasKey(e => e.DocumentTypeId).HasName("PRIMARY");
+
+            entity.ToTable("document_types");
+
+            entity.HasIndex(e => e.Name, "document_type_name").IsUnique();
+            entity.HasIndex(e => e.CreatedBy, "fk_document_type_creator");
+
+            entity.Property(e => e.DocumentTypeId).HasColumnName("document_type_id");
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
+            entity.Property(e => e.RequiredForEligibility).HasColumnName("required_for_eligibility");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany()
+                .HasForeignKey(d => d.CreatedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_document_type_creator");
+        });
+
+        modelBuilder.Entity<EventLineup>(entity =>
+        {
+            entity.HasKey(e => e.LineupId).HasName("PRIMARY");
+
+            entity.ToTable("event_lineups");
+
+            entity.HasIndex(e => new { e.ScheduleId, e.TeamId }, "event_lineup_unique").IsUnique();
+            entity.HasIndex(e => e.TeamId, "fk_event_lineup_team");
+
+            entity.Property(e => e.LineupId).HasColumnName("lineup_id");
+            entity.Property(e => e.ScheduleId).HasColumnName("schedule_id");
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.Property(e => e.Status)
+                .HasDefaultValueSql("'PENDING'")
+                .HasColumnType("enum('PENDING','APPROVED','REJECTED')")
+                .HasColumnName("status");
+            entity.Property(e => e.Notes)
+                .HasColumnType("text")
+                .HasColumnName("notes");
+            entity.Property(e => e.SubmittedBy).HasColumnName("submitted_by");
+            entity.Property(e => e.SubmittedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("submitted_at");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.ReviewedAt)
+                .HasColumnType("timestamp")
+                .HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewNote)
+                .HasColumnType("text")
+                .HasColumnName("review_note");
+
+            entity.HasOne(d => d.Schedule).WithMany(p => p.Lineups)
+                .HasForeignKey(d => d.ScheduleId)
+                .HasConstraintName("fk_event_lineup_schedule");
+
+            entity.HasOne(d => d.Team).WithMany()
+                .HasForeignKey(d => d.TeamId)
+                .HasConstraintName("fk_event_lineup_team");
+        });
+
+        modelBuilder.Entity<EventLineupPlayer>(entity =>
+        {
+            entity.HasKey(e => e.LineupPlayerId).HasName("PRIMARY");
+
+            entity.ToTable("event_lineup_players");
+
+            entity.HasIndex(e => new { e.LineupId, e.AthleteId }, "event_lineup_player_unique").IsUnique();
+            entity.HasIndex(e => e.AthleteId, "fk_event_lineup_player_athlete");
+
+            entity.Property(e => e.LineupPlayerId).HasColumnName("lineup_player_id");
+            entity.Property(e => e.LineupId).HasColumnName("lineup_id");
+            entity.Property(e => e.AthleteId).HasColumnName("athlete_id");
+            entity.Property(e => e.Position)
+                .HasMaxLength(50)
+                .HasColumnName("position");
+
+            entity.HasOne(d => d.Lineup).WithMany(p => p.Players)
+                .HasForeignKey(d => d.LineupId)
+                .HasConstraintName("fk_event_lineup_player_lineup");
+
+            entity.HasOne(d => d.Athlete).WithMany()
+                .HasForeignKey(d => d.AthleteId)
+                .HasConstraintName("fk_event_lineup_player_athlete");
         });
 
         OnModelCreatingPartial(modelBuilder);

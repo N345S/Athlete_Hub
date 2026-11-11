@@ -15,11 +15,13 @@ public class CoachDashboardController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
     private readonly AppClock _clock;
+    private readonly EligibilityService _eligibilityService;
 
-    public CoachDashboardController(AthleteHubDbContext context, AppClock clock)
+    public CoachDashboardController(AthleteHubDbContext context, AppClock clock, EligibilityService eligibilityService)
     {
         _context = context;
         _clock = clock;
+        _eligibilityService = eligibilityService;
     }
 
     [HttpGet]
@@ -58,15 +60,7 @@ public class CoachDashboardController : ControllerBase
             .GroupBy(item => item.AttendanceStatus)
             .Select(group => new { status = group.Key, count = group.Count() })
             .ToListAsync();
-        var eligibilityRecords = await _context.EligibilityRecords
-            .Where(item => athleteIds.Contains(item.AthleteId))
-            .OrderByDescending(item => item.EvaluatedAt)
-            .ThenByDescending(item => item.EligibilityId)
-            .Select(item => new { item.AthleteId, item.AcademicStatus, item.EvaluatedAt, item.EligibilityId, Term = item.Term.Semester + " " + item.Term.AcademicYear })
-            .ToListAsync();
-        var latestEligibility = eligibilityRecords
-            .GroupBy(item => item.AthleteId)
-            .ToDictionary(group => group.Key, group => group.First());
+        var latestEligibility = await _eligibilityService.RefreshAsync(athleteIds);
         var attendanceByAthlete = await _context.Attendances
             .Where(item => athleteIds.Contains(item.AthleteId) && teamIds.Contains(item.TrainingSession.TeamId))
             .GroupBy(item => item.AthleteId)
@@ -77,12 +71,16 @@ public class CoachDashboardController : ControllerBase
                 Attended = group.Count(item => item.AttendanceStatus == "PRESENT" || item.AttendanceStatus == "LATE")
             })
             .ToDictionaryAsync(item => item.AthleteId);
-        var eligibility = eligibilityRecords
-            .GroupBy(item => item.AthleteId)
-            .Select(group => group.First())
-            .GroupBy(item => item.AcademicStatus)
+        var eligibility = latestEligibility.Values
+            .GroupBy(item => item.Status)
             .Select(group => new { status = group.Key, count = group.Count() })
             .ToList();
+        // This coach's lineups for upcoming events, so returned ones can be fixed in time.
+        var today = _clock.LocalToday;
+        var lineups = await _context.EventLineups
+            .Where(lineup => teamIds.Contains(lineup.TeamId) && lineup.Schedule.CancelledAt == null && lineup.Schedule.StartDatetime >= today)
+            .Select(lineup => new { lineup.Status })
+            .ToListAsync();
         var upcomingSessions = await _context.TrainingSessions
             .Where(item => teamIds.Contains(item.TeamId) && item.TrainingDate >= _clock.LocalToday)
             .OrderBy(item => item.TrainingDate)
@@ -139,7 +137,8 @@ public class CoachDashboardController : ControllerBase
                     member.Athlete.User.AccountStatus,
                     member.Athlete.Course,
                     member.Athlete.YearLevel,
-                    eligibilityStatus = latestEligibility.GetValueOrDefault(member.AthleteId)?.AcademicStatus,
+                    eligibilityStatus = latestEligibility.GetValueOrDefault(member.AthleteId)?.Status ?? EligibilityService.UnderReview,
+                    eligibilityReasons = latestEligibility.GetValueOrDefault(member.AthleteId)?.Reasons ?? [],
                     eligibilityTerm = latestEligibility.GetValueOrDefault(member.AthleteId)?.Term,
                     attendanceRate = AttendanceRate(attendanceByAthlete.GetValueOrDefault(member.AthleteId)?.Attended, attendanceByAthlete.GetValueOrDefault(member.AthleteId)?.Total)
                 })
@@ -157,7 +156,13 @@ public class CoachDashboardController : ControllerBase
                 session.Location,
                 session.ApprovalStatus
             }),
-            portfolioItems
+            portfolioItems,
+            lineups = new
+            {
+                pending = lineups.Count(lineup => lineup.Status == "PENDING"),
+                returned = lineups.Count(lineup => lineup.Status == "REJECTED"),
+                approved = lineups.Count(lineup => lineup.Status == "APPROVED")
+            }
         });
     }
 

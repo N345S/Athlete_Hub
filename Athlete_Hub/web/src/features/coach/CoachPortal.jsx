@@ -1,25 +1,27 @@
 import { useState } from 'react'
 import { api } from '../../lib/api.js'
-import { average, formatDate, formatTimeRange, fullName, greeting, isActiveAccount, localDateISO, longToday, mergeAthleteTeams } from '../../lib/format.js'
+import { formatDate, formatTimeRange, fullName, greeting, isActiveAccount, localDateISO, longToday, mergeAthleteTeams } from '../../lib/format.js'
 import { useApiData, useHashView, usePageDetail, useUnreadNotifications } from '../../lib/hooks.js'
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView, { ScheduleStatusBadge } from '../../components/CalendarView.jsx'
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
 import { useToast } from '../../components/toast.jsx'
-import { Alert, Card, ConfirmDialog, EmptyState, Loading, PageHeader, ProgressBar, StatCard, StatusBadge } from '../../components/ui.jsx'
+import { Alert, Card, ConfirmDialog, EmptyState, Loading, PageHeader, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
 import { NOTIFICATION_ROUTES } from '../../lib/notifications.js'
-import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
+import { EligibilityRulesDialog } from '../../components/Eligibility.jsx'
+import Icon from '../../components/icons.jsx'
 import AthletesPage from '../staff/AthletesPage.jsx'
 import AthleteProfilePage from '../staff/AthleteProfilePage.jsx'
 import AttendancePage from '../staff/AttendancePage.jsx'
+import LineupsPage from '../staff/LineupsPage.jsx'
 import PerformancePage from '../staff/PerformancePage.jsx'
 import ManageScheduleCard, { ChangeButtons } from '../staff/ManageSchedule.jsx'
 import { ScheduleChangeModal, TrainingScheduleModal } from '../staff/ScheduleModals.jsx'
 
-const VIEWS = ['dashboard', 'athletes', 'schedule', 'attendance', 'performance', 'notifications']
-const TITLES = { dashboard: 'Dashboard', athletes: 'My athletes', schedule: 'Schedule', attendance: 'Attendance', performance: 'Performance', notifications: 'Notifications' }
+const VIEWS = ['dashboard', 'athletes', 'lineups', 'schedule', 'attendance', 'performance', 'notifications']
+const TITLES = { dashboard: 'Dashboard', athletes: 'My athletes', lineups: 'Event lineups', schedule: 'Schedule', attendance: 'Attendance', performance: 'Performance', notifications: 'Notifications' }
 
 function addDays(days) {
   const date = new Date()
@@ -37,6 +39,8 @@ export default function CoachPortal({ session, onLogout }) {
   const [changing, setChanging] = useState(null)
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [athleteFilter, setAthleteFilter] = useState(null)
+  const [showRules, setShowRules] = useState(false)
   const [unread, refreshUnread] = useUnreadNotifications(session.token)
   const dashboard = useApiData('/api/CoachDashboard', session.token)
   const upcoming = useApiData(`/api/Schedules/staff?from=${localDateISO()}&to=${addDays(14)}`, session.token, { initialData: [] })
@@ -46,24 +50,33 @@ export default function CoachPortal({ session, onLogout }) {
   const athletes = mergeAthleteTeams(teams.flatMap((team) => (team.athletes || []).map((athlete) => ({ ...athlete, teamName: team.teamName, sport: team.sport }))))
   const activeAthletes = athletes.filter(isActiveAccount)
   const pendingPortfolio = (dashboard.data?.portfolioItems || []).filter((item) => String(item.achievementStatus || item.verificationStatus || 'PENDING').toUpperCase() === 'PENDING')
-  const awaiting = athletes.filter((athlete) => athlete.eligibilityStatus === 'PENDING')
-  const notEvaluated = activeAthletes.filter((athlete) => !athlete.eligibilityStatus)
-  const teamAttendance = average(activeAthletes.map((athlete) => athlete.attendanceRate))
+  const restricted = athletes.filter((athlete) => athlete.eligibilityStatus === 'RESTRICTED')
+  const lowAttendance = activeAthletes.filter((athlete) => athlete.attendanceRate != null && athlete.attendanceRate < 60)
+  const lineups = dashboard.data?.lineups || { pending: 0, returned: 0, approved: 0 }
   const pendingSessions = (upcoming.data || []).filter((item) => item.type === 'TRAINING' && item.approvalStatus === 'PENDING')
   // One row per athlete, most serious issue first, listing every issue that applies.
   const attentionRows = athletes
     .map((athlete) => {
       const issues = []
-      if (!isActiveAccount(athlete)) issues.push({ label: `Account ${athlete.accountStatus.toLowerCase()}`, status: athlete.accountStatus })
-      if (REGISTRAR_ELIGIBILITY && athlete.eligibilityStatus === 'INELIGIBLE') issues.push({ label: 'Ineligible', status: 'INELIGIBLE' })
+      // A restricted athlete's reasons already mention an inactive or suspended account.
+      if (!isActiveAccount(athlete) && athlete.eligibilityStatus !== 'RESTRICTED') issues.push({ label: `Account ${athlete.accountStatus.toLowerCase()}`, status: athlete.accountStatus })
+      if (athlete.eligibilityStatus === 'RESTRICTED') issues.push({ label: 'Restricted', status: 'RESTRICTED', detail: (athlete.eligibilityReasons || []).join(' · ') })
       if (isActiveAccount(athlete) && athlete.attendanceRate != null && athlete.attendanceRate < 60) issues.push({ label: `${athlete.attendanceRate}% attendance`, status: 'LATE' })
       return { athlete, issues }
     })
     .filter((row) => row.issues.length)
+    // Restricted athletes first: they cannot be put in a lineup until it is fixed.
+    .sort((a, b) => Number(b.issues.some((issue) => issue.status === 'RESTRICTED')) - Number(a.issues.some((issue) => issue.status === 'RESTRICTED')))
 
   const navigate = (key) => {
     setProfileAthlete(null)
+    setAthleteFilter(null)
     setView(key)
+  }
+
+  const showAthletes = (filter) => {
+    navigate('athletes')
+    setAthleteFilter(filter)
   }
 
   const openAthlete = (athleteId) => {
@@ -115,7 +128,17 @@ export default function CoachPortal({ session, onLogout }) {
   if (view === 'athletes' && profileAthlete) {
     content = <AthleteProfilePage athlete={profileAthlete} session={session} canEdit onBack={() => { setProfileAthlete(null); dashboard.reload() }} />
   } else if (view === 'athletes') {
-    content = <AthletesPage athletes={athletes} title="My athletes" subtitle="Student-athletes on the teams you coach" onViewProfile={setProfileAthlete} />
+    content = <AthletesPage
+      key={JSON.stringify(athleteFilter)}
+      athletes={athletes}
+      title="My athletes"
+      subtitle="Student-athletes on the teams you coach. Restricted athletes cannot be put in an event lineup."
+      initialFilter={athleteFilter}
+      onViewProfile={setProfileAthlete}
+      actions={<button className="btn btn-ghost" type="button" onClick={() => setShowRules(true)}><Icon name="help" size={16} />Eligibility rules</button>}
+    />
+  } else if (view === 'lineups') {
+    content = <LineupsPage session={session} role="coach" onChanged={dashboard.reload} />
   } else if (view === 'schedule') {
     content = <>
       <PageHeader title="Schedule" subtitle="Your training sessions plus the Director's sports events and competitions" actions={addScheduleButton} />
@@ -151,44 +174,17 @@ export default function CoachPortal({ session, onLogout }) {
       <Alert>{dashboard.error}</Alert>
       {dashboard.loading && !dashboard.data ? <Loading label="Loading your dashboard…" /> : <>
         {dashboard.data?.message && <Alert tone="info">{dashboard.data.message}</Alert>}
-        <div className="stat-grid">
+        <div className="stat-grid stat-grid-actions">
           <StatCard icon="users" label="My athletes" value={activeAthletes.length} hint={`Across ${teams.length} team${teams.length === 1 ? '' : 's'}`} onClick={() => navigate('athletes')} />
-          {REGISTRAR_ELIGIBILITY
-            ? <StatCard icon="check" label="Eligible" value={athletes.filter((athlete) => athlete.eligibilityStatus === 'ELIGIBLE').length} hint={`${notEvaluated.length} not yet evaluated`} tone="success" />
-            : <StatCard icon="check" label="Avg. attendance" value={teamAttendance == null ? '—' : `${teamAttendance}%`} hint="Across your active athletes" tone="success" onClick={() => navigate('attendance')} />}
-          <StatCard icon="alert" label="Need attention" value={attentionRows.length} hint={REGISTRAR_ELIGIBILITY ? 'Ineligible, low attendance, or inactive' : 'Low attendance or inactive'} tone="warning" onClick={() => document.getElementById('coach-attention')?.scrollIntoView({ behavior: 'smooth' })} />
+          <StatCard icon="alert" label="Restricted" value={restricted.length} hint="Cannot be put in a lineup" tone="danger" onClick={() => showAthletes({ eligibility: 'RESTRICTED' })} />
+          <StatCard icon="clipboard" label="Below 60% attendance" value={lowAttendance.length} hint="Active athletes" tone="warning" onClick={() => document.getElementById('coach-attention')?.scrollIntoView({ behavior: 'smooth' })} />
           <StatCard icon="trophy" label="Portfolio reviews" value={pendingPortfolio.length} hint="Waiting for your verification" tone="info" onClick={() => document.getElementById('coach-portfolio')?.scrollIntoView({ behavior: 'smooth' })} />
+          <StatCard icon="team" label="Event lineups" value={lineups.returned ? `${lineups.returned} returned` : lineups.pending ? `${lineups.pending} waiting` : lineups.approved} hint={lineups.returned ? 'Fix and resend to the Director' : lineups.pending ? 'Awaiting the Director' : 'Approved for upcoming events'} tone={lineups.returned ? 'danger' : 'brand'} onClick={() => navigate('lineups')} />
         </div>
 
-        <Card title="Team overview" subtitle={REGISTRAR_ELIGIBILITY ? 'Average attendance and eligibility per team' : 'Average attendance per team'}>
-          {teams.length ? (
-            <div className="table-wrap">
-              <table className="table">
-                <thead><tr><th>Team</th><th className="numeric">Athletes</th><th>Avg. attendance</th>{REGISTRAR_ELIGIBILITY && <><th className="numeric">Eligible</th><th className="numeric">Ineligible</th><th className="numeric">Awaiting / not evaluated</th></>}</tr></thead>
-                <tbody>
-                  {teams.map((team) => {
-                    const members = (team.athletes || []).filter(isActiveAccount)
-                    return (
-                      <tr key={team.teamId}>
-                        <td><strong>{team.teamName}</strong><br /><small className="muted">{team.sport}</small></td>
-                        <td className="numeric">{members.length}</td>
-                        <td><ProgressBar value={average(members.map((member) => member.attendanceRate))} /></td>
-                        {REGISTRAR_ELIGIBILITY && <>
-                          <td className="numeric">{members.filter((member) => member.eligibilityStatus === 'ELIGIBLE').length}</td>
-                          <td className="numeric">{members.filter((member) => member.eligibilityStatus === 'INELIGIBLE').length}</td>
-                          <td className="numeric">{members.filter((member) => !member.eligibilityStatus || member.eligibilityStatus === 'PENDING').length}</td>
-                        </>}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : <EmptyState icon="team" title="No teams assigned" message="Ask the Sports Director to assign you to a team." />}
-        </Card>
-
         <div className="dashboard-grid">
-          <Card className="scroll-target" id="coach-attention" title="Athletes needing attention" subtitle={REGISTRAR_ELIGIBILITY ? 'Eligibility, attendance, or account issues' : 'Attendance or account issues'}>
+          <Card className="scroll-target" id="coach-attention" title="Athletes needing attention" subtitle="Restricted, low attendance, or inactive"
+            actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => setShowRules(true)}>Rules</button>}>
             {attentionRows.length ? (
               <ul className="row-list">
                 {attentionRows.slice(0, 8).map(({ athlete, issues }) => (
@@ -196,6 +192,7 @@ export default function CoachPortal({ session, onLogout }) {
                     <div className="row-main">
                       <strong>{fullName(athlete)}</strong>
                       <span>{athlete.teamName}</span>
+                      {issues.filter((issue) => issue.detail).map((issue) => <small key={issue.label} className="text-danger">{issue.detail}</small>)}
                     </div>
                     <div className="row-actions">
                       {issues.map((issue) => <StatusBadge key={issue.label} status={issue.status} label={issue.label} />)}
@@ -204,8 +201,8 @@ export default function CoachPortal({ session, onLogout }) {
                   </li>
                 ))}
               </ul>
-            ) : <EmptyState icon="check" title="All clear" message={REGISTRAR_ELIGIBILITY ? 'No athlete is ineligible, inactive, or below 60% attendance.' : 'No athlete is inactive or below 60% attendance.'} />}
-            {REGISTRAR_ELIGIBILITY && awaiting.length > 0 && <p className="card-footnote">{awaiting.length} athlete{awaiting.length === 1 ? ' is' : 's are'} awaiting a Registrar decision.</p>}
+            ) : <EmptyState icon="check" title="All clear" message="No athlete is restricted, inactive, or below 60% attendance." />}
+            {attentionRows.length > 8 && <p className="card-footnote">{attentionRows.length - 8} more. Use the filters in My athletes to see everyone.</p>}
           </Card>
 
           <Card className="scroll-target" id="coach-portfolio" title="Portfolio verification" subtitle="Submissions waiting for your review">
@@ -225,7 +222,7 @@ export default function CoachPortal({ session, onLogout }) {
             ) : <EmptyState icon="trophy" title="All caught up" message="No portfolio submissions are waiting for review." />}
           </Card>
 
-          <Card title="Upcoming schedule" subtitle="Next two weeks" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('schedule')}>Full schedule →</button>}>
+          <Card title="Upcoming schedule" subtitle="Next two weeks · reschedule or cancel from the Schedule page" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('schedule')}>Full schedule →</button>}>
             {upcoming.loading && !upcoming.data?.length ? <Loading /> : upcoming.data?.length ? (
               <ul className="row-list">
                 {[...upcoming.data].sort((a, b) => `${a.startDate}${a.startTime}`.localeCompare(`${b.startDate}${b.startTime}`)).slice(0, 6).map((item) => (
@@ -238,7 +235,6 @@ export default function CoachPortal({ session, onLogout }) {
                     <div className="row-actions">
                       {item.type !== 'TRAINING' && <span className={`badge type-${item.type.toLowerCase()}`}>{item.type === 'COMPETITION' ? 'Competition' : 'Sports event'}</span>}
                       <ScheduleStatusBadge item={item} />
-                      <ChangeButtons actions={changeActions(item)} small />
                     </div>
                   </li>
                 ))}
@@ -274,6 +270,7 @@ export default function CoachPortal({ session, onLogout }) {
       nav={[
         { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard' },
         { key: 'athletes', label: 'My athletes', shortLabel: 'Athletes', icon: 'users' },
+        { key: 'lineups', label: 'Event lineups', shortLabel: 'Lineups', icon: 'team', badge: lineups.returned },
         { key: 'schedule', label: 'Schedule', icon: 'calendar' },
         { key: 'attendance', label: 'Attendance', icon: 'clipboard' },
         { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
@@ -288,6 +285,7 @@ export default function CoachPortal({ session, onLogout }) {
       help={HELP.coach[view]}
     >
       {content}
+      {showRules && <EligibilityRulesDialog session={session} onClose={() => setShowRules(false)} />}
       {showScheduleModal && <TrainingScheduleModal teams={teams} session={session} onClose={() => setShowScheduleModal(false)} onCreated={() => { toast.success('Training request sent. The Sports Director will review it.'); refreshSchedules() }} />}
       {changing && (
         <ScheduleChangeModal

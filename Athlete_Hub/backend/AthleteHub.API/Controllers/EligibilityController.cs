@@ -28,13 +28,41 @@ public class EligibilityController : ControllerBase
     private readonly IWebHostEnvironment _environment;
     private readonly AthleteAccessService _access;
     private readonly NotificationService _notifications;
+    private readonly EligibilityService _eligibility;
 
-    public EligibilityController(AthleteHubDbContext context, IWebHostEnvironment environment, AthleteAccessService access, NotificationService notifications)
+    public EligibilityController(AthleteHubDbContext context, IWebHostEnvironment environment, AthleteAccessService access, NotificationService notifications, EligibilityService eligibility)
     {
         _context = context;
         _environment = environment;
         _access = access;
         _notifications = notifications;
+        _eligibility = eligibility;
+    }
+
+    /// <summary>The eligibility rules in plain words, with the documents currently required.</summary>
+    [HttpGet("rules")]
+    public async Task<IActionResult> GetRules() => Ok(await _eligibility.DescribeRulesAsync());
+
+    /// <summary>The signed-in student-athlete's own status: Eligible, Restricted (with reasons) or Under Review.</summary>
+    [HttpGet("me")]
+    [Authorize(Roles = "ATHLETE,STUDENT")]
+    public async Task<IActionResult> GetMyStatus()
+    {
+        var userId = GetCurrentUserId();
+        var athleteId = await _context.AthleteProfiles.Where(athlete => athlete.UserId == userId).Select(athlete => (int?)athlete.AthleteId).FirstOrDefaultAsync();
+        if (athleteId == null) return NotFound(new { message = "We could not find this student-athlete." });
+        var results = await _eligibility.RefreshAsync([athleteId.Value]);
+        return Ok(EligibilityService.Describe(results.GetValueOrDefault(athleteId.Value)));
+    }
+
+    /// <summary>One athlete's current status, for their coach or the Sports Director.</summary>
+    [HttpGet("athlete/{athleteId:int}/status")]
+    [Authorize(Roles = "COACH,DIRECTOR")]
+    public async Task<IActionResult> GetAthleteStatus(int athleteId)
+    {
+        if (!await _access.CanViewAthleteAsync(User, athleteId)) return Forbid();
+        var results = await _eligibility.RefreshAsync([athleteId]);
+        return Ok(EligibilityService.Describe(results.GetValueOrDefault(athleteId)));
     }
 
     [HttpGet("athlete/{athleteId}")]

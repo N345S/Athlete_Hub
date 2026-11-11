@@ -19,6 +19,17 @@ public partial class AthleteProfile
 
     public string? ProfilePhotoUrl { get; set; }
 
+    /// <summary>
+    /// Result of the last eligibility check (see Services/EligibilityService.cs): ELIGIBLE, RESTRICTED or
+    /// UNDER_REVIEW. Kept so a change can be noticed and the athlete's coaches told about it.
+    /// </summary>
+    public string? EligibilityStatus { get; set; }
+
+    /// <summary>JSON array of the reasons behind <see cref="EligibilityStatus"/>.</summary>
+    public string? EligibilityReasons { get; set; }
+
+    public DateTime? EligibilityCheckedAt { get; set; }
+
     public virtual ICollection<AcademicRecord> AcademicRecords { get; set; } = new List<AcademicRecord>();
 
     public virtual ICollection<Achievement> Achievements { get; set; } = new List<Achievement>();

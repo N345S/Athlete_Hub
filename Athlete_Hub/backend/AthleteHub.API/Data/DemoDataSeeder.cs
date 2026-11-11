@@ -220,6 +220,8 @@ public class DemoDataSeeder
         await using var transaction = await _context.Database.BeginTransactionAsync();
         // Children before parents.
         await _context.CoachEvaluations.ExecuteDeleteAsync();
+        await _context.EventLineupPlayers.ExecuteDeleteAsync();
+        await _context.EventLineups.ExecuteDeleteAsync();
         await _context.Attendances.ExecuteDeleteAsync();
         await _context.PerformanceRecords.ExecuteDeleteAsync();
         await _context.AcademicRecords.ExecuteDeleteAsync();

@@ -15,7 +15,12 @@ const KINDS = [
   ['SCHEDULE_CANCELLED', 'calendar', 'danger'],
   ['SCHEDULE_RESCHEDULED', 'clock', 'warning'],
   ['SCHEDULE', 'calendar', 'brand'],
+  ['ELIGIBILITY_RESTRICTED', 'alert', 'danger'],
+  ['ELIGIBILITY_CLEARED', 'check', 'success'],
   ['ELIGIBILITY', 'check', 'info'],
+  ['LINEUP_APPROVED', 'team', 'success'],
+  ['LINEUP_REJECTED', 'team', 'danger'],
+  ['LINEUP', 'team', 'warning'],
   ['GRADE', 'file', 'info'],
 ]
 
@@ -39,6 +44,9 @@ export const NOTIFICATION_ROUTES = {
     SCHEDULE_CREATED: 'schedule',
     SCHEDULE_CANCELLED: 'schedule',
     SCHEDULE_RESCHEDULED: 'schedule',
+    ELIGIBILITY_RESTRICTED: { view: 'dashboard', target: 'my-eligibility' },
+    ELIGIBILITY_CLEARED: { view: 'dashboard', target: 'my-eligibility' },
+    LINEUP_APPROVED: 'schedule',
   },
   coach: {
     PORTFOLIO_SUBMITTED: { view: 'dashboard', target: 'coach-portfolio' },
@@ -51,6 +59,10 @@ export const NOTIFICATION_ROUTES = {
     SCHEDULE_RESCHEDULED: 'schedule',
     GRADE_EVALUATION_REQUEST: 'athletes',
     ELIGIBILITY_DECISION: 'athletes',
+    ELIGIBILITY_RESTRICTED: 'athletes',
+    ELIGIBILITY_CLEARED: 'athletes',
+    LINEUP_APPROVED: 'lineups',
+    LINEUP_REJECTED: 'lineups',
   },
   director: {
     TRAINING_APPROVAL_REQUEST: { view: 'dashboard', target: 'training-approvals' },
@@ -58,6 +70,8 @@ export const NOTIFICATION_ROUTES = {
     TRAINING_RESCHEDULED: 'schedule',
     GRADE_EVALUATION_UPLOADED: 'athletes',
     ELIGIBILITY_DECISION: 'athletes',
+    LINEUP_SUBMITTED: 'lineups',
+    LINEUP_WITHDRAWN: 'lineups',
   },
   registrar: {
     GRADE_EVALUATION_REQUEST: 'requests',

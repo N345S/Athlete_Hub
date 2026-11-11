@@ -13,11 +13,15 @@ public class DirectorDashboardController : ControllerBase
 {
     private readonly AthleteHubDbContext _context;
     private readonly IctdGradeSyncWorker _gradeSync;
+    private readonly EligibilityService _eligibility;
+    private readonly AppClock _clock;
 
-    public DirectorDashboardController(AthleteHubDbContext context, IctdGradeSyncWorker gradeSync)
+    public DirectorDashboardController(AthleteHubDbContext context, IctdGradeSyncWorker gradeSync, EligibilityService eligibility, AppClock clock)
     {
         _context = context;
         _gradeSync = gradeSync;
+        _eligibility = eligibility;
+        _clock = clock;
     }
 
     [HttpGet]
@@ -57,14 +61,28 @@ public class DirectorDashboardController : ControllerBase
                 Attended = group.Count(item => item.AttendanceStatus == "PRESENT" || item.AttendanceStatus == "LATE")
             })
             .ToDictionaryAsync(item => item.AthleteId);
-        var latestEligibility = (await _context.EligibilityRecords
-                .AsNoTracking()
-                .OrderByDescending(item => item.EvaluatedAt)
-                .ThenByDescending(item => item.EligibilityId)
-                .Select(item => new { item.AthleteId, item.AcademicStatus, Term = item.Term.Semester + " " + item.Term.AcademicYear })
-                .ToListAsync())
-            .GroupBy(item => item.AthleteId)
-            .ToDictionary(group => group.Key, group => group.First());
+        // Rule-based eligibility (Services/EligibilityService.cs); coaches are told when someone becomes restricted.
+        var eligibility = await _eligibility.RefreshAsync();
+
+        // What the Director acts on, beyond training approvals: lineups to approve and unanswered coach evaluations.
+        var today = _clock.LocalToday;
+        var pendingLineups = await _context.EventLineups
+            .CountAsync(lineup => lineup.Status == "PENDING" && lineup.Schedule.CancelledAt == null && lineup.Schedule.StartDatetime >= today);
+        var latestEvaluationTerm = await _context.CoachEvaluations
+            .OrderByDescending(evaluation => evaluation.SentAt)
+            .Select(evaluation => new { evaluation.TermId, evaluation.Term.Semester, evaluation.Term.AcademicYear })
+            .FirstOrDefaultAsync();
+        object? coachEvaluations = null;
+        if (latestEvaluationTerm != null)
+        {
+            var termEvaluations = _context.CoachEvaluations.Where(evaluation => evaluation.TermId == latestEvaluationTerm.TermId);
+            coachEvaluations = new
+            {
+                term = $"{latestEvaluationTerm.Semester} {latestEvaluationTerm.AcademicYear}",
+                sent = await termEvaluations.CountAsync(),
+                pending = await termEvaluations.CountAsync(evaluation => evaluation.Status == "PENDING")
+            };
+        }
 
         var portfolioItems = await _context.PortfolioItems
             .AsNoTracking()
@@ -98,12 +116,15 @@ public class DirectorDashboardController : ControllerBase
                     athlete.Course,
                     athlete.YearLevel,
                     athlete.teams,
-                    eligibilityStatus = latestEligibility.GetValueOrDefault(athlete.AthleteId)?.AcademicStatus,
-                    eligibilityTerm = latestEligibility.GetValueOrDefault(athlete.AthleteId)?.Term,
+                    eligibilityStatus = eligibility.GetValueOrDefault(athlete.AthleteId)?.Status ?? EligibilityService.UnderReview,
+                    eligibilityReasons = eligibility.GetValueOrDefault(athlete.AthleteId)?.Reasons ?? [],
+                    eligibilityTerm = eligibility.GetValueOrDefault(athlete.AthleteId)?.Term,
                     attendanceRate = CoachDashboardController.AttendanceRate(attendance?.Attended, attendance?.Total)
                 };
             }),
-            portfolioItems
+            portfolioItems,
+            pendingLineups,
+            coachEvaluations
         });
     }
 

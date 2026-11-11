@@ -54,6 +54,7 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<AthleteAccessService>();
 builder.Services.AddScoped<AchievementReviewService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<EligibilityService>();
 builder.Services.AddScoped<IctdUniversityDatabase>();
 builder.Services.AddScoped<CoachEvaluationService>();
 builder.Services.AddScoped<IctdGradeSync>();

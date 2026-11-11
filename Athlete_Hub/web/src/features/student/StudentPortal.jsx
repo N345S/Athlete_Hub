@@ -11,6 +11,7 @@ import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, PageHeader, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
 import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
+import { EligibilityBadge } from '../../components/Eligibility.jsx'
 import { goToRoute, NOTIFICATION_ROUTES, openNotification } from '../../lib/notifications.js'
 import CoachEvaluationsPage, { CoachEvaluationPrompt } from './CoachEvaluationsPage.jsx'
 import MyPerformancePage from './MyPerformancePage.jsx'
@@ -19,7 +20,9 @@ const VIEWS = ['dashboard', 'schedule', 'performance', 'documents', 'portfolio',
 const TITLES = { dashboard: 'Dashboard', schedule: 'Schedule', performance: 'Performance', documents: 'Documents', portfolio: 'Portfolio', evaluations: 'Coach evaluation', profile: 'Profile', notifications: 'Notifications' }
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx']
 const MAX_FILE_SIZE = 10 * 1024 * 1024
-const DOCUMENT_TYPES = ['Medical Clearance', 'Consent Form', 'Enrollment Form', 'Athletic Eligibility Form', 'Other']
+// Shown until the list loads from the server, and if it cannot be loaded.
+const DEFAULT_DOCUMENT_TYPES = ['Medical Clearance', 'Consent Form', 'Enrollment Form', 'Athletic Eligibility Form', 'Other']
+const NEW_TYPE = '__new__'
 const termLabel = (term) => `${term.semester} ${term.academicYear}`
 const ACHIEVEMENT_CATEGORIES = ['Competition', 'Award', 'Certification', 'Leadership', 'Academic', 'Other']
 
@@ -67,14 +70,14 @@ function FileDropZone({ files, onChange, label, required }) {
 }
 
 /** First-run checklist so new athletes know what to do; hidden once complete or dismissed. */
-function GettingStarted({ session, profile, documents, portfolio, onNavigate }) {
+function GettingStarted({ session, profile, documents, portfolio, requiredDocuments, onNavigate }) {
   const storageKey = `athletehub-checklist-dismissed-${session.userId}`
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(storageKey) === '1' } catch { return false }
   })
   const steps = [
     { done: Boolean(profile?.course && profile?.yearLevel && profile?.phone), label: 'Complete your profile', detail: 'Program, year level, and phone number', view: 'profile' },
-    { done: documents.some((item) => item.documentType === 'Medical Clearance'), label: 'Upload your medical clearance', detail: 'Required before competing', view: 'documents' },
+    { done: requiredDocuments.every((type) => documents.some((item) => item.documentType === type)), label: 'Upload your required clearances', detail: requiredDocuments.length ? `${requiredDocuments.join(', ')} · needed to play in events` : 'Needed to play in events', view: 'documents' },
     { done: portfolio.length > 0, label: 'Add your first achievement', detail: 'Your coach verifies it using your evidence', view: 'portfolio' },
   ]
   const finished = steps.filter((step) => step.done).length
@@ -114,19 +117,22 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
   const portfolio = useApiData('/api/Portfolio/me', session.token, { initialData: [] })
   const documents = useApiData('/api/Documents/me', session.token, { initialData: [] })
   const updates = useApiData('/api/Notifications/me', session.token, { initialData: [] })
+  const eligibility = useApiData('/api/Eligibility/me', session.token)
+  const rules = useApiData('/api/Eligibility/rules', session.token)
+  const requiredDocuments = rules.data?.requiredDocuments || []
   const allEvaluations = coachEvaluations.data?.evaluations || []
   const pendingEvaluations = allEvaluations.filter((item) => item.status === 'PENDING')
   const nextEvents = [...(upcoming.data || [])]
     .filter((item) => item.startDate >= localDateISO())
     .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`))
   const nextTraining = nextEvents.find((item) => item.type === 'TRAINING' && !item.cancelled)
-  const verified = (portfolio.data || []).filter((item) => ['VERIFIED', 'APPROVED'].includes(String(item.achievementStatus || item.verificationStatus).toUpperCase())).length
   const clearanceDocuments = (documents.data || []).filter((item) => item.documentType !== 'Achievement Evidence')
-  const hasMedicalClearance = clearanceDocuments.some((item) => item.documentType === 'Medical Clearance')
+  const missingDocuments = requiredDocuments.filter((type) => !clearanceDocuments.some((item) => item.documentType === type))
+  const myStatus = eligibility.data?.status
+  const myReasons = eligibility.data?.reasons || []
   // Records arrive newest first; the latest decision is what determines eligibility today.
   const records = evaluations.data?.records || []
   const latestDecision = records.find((item) => item.academicStatus !== 'PENDING')
-  const pendingRequest = records.find((item) => item.academicStatus === 'PENDING')
   const termOf = (item) => `${item.term.semester} ${item.term.academicYear}`
   const openUpdate = (item) => {
     updates.setData((current) => current.map((entry) => entry.notificationId === item.notificationId ? { ...entry, isRead: true } : entry))
@@ -140,33 +146,50 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
       {REGISTRAR_ELIGIBILITY && latestDecision?.academicStatus === 'INELIGIBLE' && (
         <Alert tone="warning">The Registrar marked you ineligible for {termOf(latestDecision)}. Please coordinate with your coach.</Alert>
       )}
-      <GettingStarted session={session} profile={profile} documents={documents.data || []} portfolio={portfolio.data || []} onNavigate={onNavigate} />
-      <div className="stat-grid">
-        {REGISTRAR_ELIGIBILITY ? (
-          <StatCard
-            icon="check"
-            label="Academic eligibility"
-            value={latestDecision ? statusLabel(latestDecision.academicStatus) : pendingRequest ? 'Under review' : 'Not evaluated'}
-            hint={latestDecision ? `Registrar decision · ${termOf(latestDecision)}` : pendingRequest ? `Requested for ${termOf(pendingRequest)}` : 'No Grade Evaluation requested yet'}
-            tone={latestDecision?.academicStatus === 'ELIGIBLE' ? 'success' : latestDecision?.academicStatus === 'INELIGIBLE' ? 'danger' : 'info'}
-          />
-        ) : (
-          <StatCard
-            icon="chat"
-            label="Coach evaluation"
-            value={pendingEvaluations.length ? `${pendingEvaluations.length} to do` : 'All done'}
-            hint={pendingEvaluations.length ? `For ${termLabel(pendingEvaluations[0].term)}` : allEvaluations.length ? 'See your past evaluations' : 'Sent when final grades are released'}
-            tone={pendingEvaluations.length ? 'warning' : 'success'}
-            onClick={pendingEvaluations.length
-              ? () => goToRoute({ view: 'dashboard', target: 'coach-evaluation' }, onNavigate)
-              : allEvaluations.length ? () => onNavigate('evaluations') : undefined}
-          />
-        )}
+      {myStatus === 'RESTRICTED' && (
+        <Alert tone="warning">You are restricted from events: {myReasons.join('; ')}. <button className="link-button" type="button" onClick={() => goToRoute({ view: 'dashboard', target: 'my-eligibility' }, onNavigate)}>See what to do</button></Alert>
+      )}
+      <GettingStarted session={session} profile={profile} documents={documents.data || []} portfolio={portfolio.data || []} requiredDocuments={requiredDocuments} onNavigate={onNavigate} />
+      <div className="stat-grid stat-grid-actions">
+        <StatCard
+          icon={myStatus === 'RESTRICTED' ? 'alert' : 'check'}
+          label="Eligibility to play"
+          value={myStatus ? statusLabel(myStatus) : '—'}
+          hint={myStatus === 'ELIGIBLE' ? 'You can be picked for event lineups' : myReasons[0] || 'Checking…'}
+          tone={myStatus === 'ELIGIBLE' ? 'success' : myStatus === 'RESTRICTED' ? 'danger' : 'warning'}
+          onClick={() => goToRoute({ view: 'dashboard', target: 'my-eligibility' }, onNavigate)}
+        />
         <StatCard icon="calendar" label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" onClick={() => onNavigate('schedule')} />
-        <StatCard icon="trophy" label="Verified achievements" value={verified} hint={`${(portfolio.data || []).length} submitted`} tone="warning" onClick={() => onNavigate('portfolio')} />
-        <StatCard icon="file" label="Documents on file" value={clearanceDocuments.length} hint={hasMedicalClearance ? 'Medical clearance uploaded' : 'Medical clearance not uploaded yet'} tone={hasMedicalClearance ? 'info' : 'warning'} onClick={() => onNavigate('documents')} />
+        <StatCard icon="file" label="Required documents" value={missingDocuments.length ? `${missingDocuments.length} missing` : 'Complete'} hint={missingDocuments.length ? missingDocuments.join(', ') : `${clearanceDocuments.length} document${clearanceDocuments.length === 1 ? '' : 's'} on file`} tone={missingDocuments.length ? 'danger' : 'info'} onClick={() => onNavigate('documents')} />
+        <StatCard
+          icon="chat"
+          label="Coach evaluation"
+          value={pendingEvaluations.length ? `${pendingEvaluations.length} to do` : 'All done'}
+          hint={pendingEvaluations.length ? `For ${termLabel(pendingEvaluations[0].term)}` : allEvaluations.length ? 'See your past evaluations' : 'Sent when final grades are released'}
+          tone={pendingEvaluations.length ? 'warning' : 'success'}
+          onClick={pendingEvaluations.length
+            ? () => goToRoute({ view: 'dashboard', target: 'coach-evaluation' }, onNavigate)
+            : allEvaluations.length ? () => onNavigate('evaluations') : undefined}
+        />
       </div>
       <div className="dashboard-grid">
+        <Card className="scroll-target" id="my-eligibility" title="My eligibility" subtitle={eligibility.data?.term ? `Based on your ${eligibility.data.term} grades${eligibility.data.units != null ? ` · ${eligibility.data.units} units` : ''}` : 'Checked against the eligibility rules'}
+          actions={myStatus && <EligibilityBadge status={myStatus} reasons={myReasons} />}>
+          <Alert>{eligibility.error || rules.error}</Alert>
+          {eligibility.loading && !eligibility.data ? <Loading /> : <>
+            {myStatus === 'ELIGIBLE'
+              ? <p className="muted">You meet every rule, so your coach can include you in event lineups.</p>
+              : <ul className={`reason-list ${myStatus === 'RESTRICTED' ? 'reason-list-danger' : ''}`}>{myReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}
+            {missingDocuments.length > 0 && <button className="btn btn-secondary btn-sm" type="button" onClick={() => onNavigate('documents')}><Icon name="upload" size={14} />Upload {missingDocuments.join(', ')}</button>}
+            {rules.data && (
+              <details className="rules-details">
+                <summary>The eligibility rules</summary>
+                <ol className="rules-list">{rules.data.rules.map((rule) => <li key={rule}>{rule}</li>)}</ol>
+                <p className="muted">Required documents: {requiredDocuments.join(', ') || 'none'}.</p>
+              </details>
+            )}
+          </>}
+        </Card>
         <Card title="Coming up" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('schedule')}>Full schedule →</button>}>
           {upcoming.loading && !upcoming.data?.length ? <Loading /> : nextEvents.length ? (
             <ul className="row-list">
@@ -219,7 +242,10 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
 function DocumentsPage({ session }) {
   const toast = useToast()
   const { data, loading, error, reload } = useApiData('/api/Documents/me', session.token, { initialData: [] })
-  const [form, setForm] = useState({ documentType: DOCUMENT_TYPES[0], title: '', description: '' })
+  const types = useApiData('/api/DocumentTypes', session.token, { initialData: [] })
+  const typeList = types.data?.length ? types.data : DEFAULT_DOCUMENT_TYPES.map((name) => ({ name, requiredForEligibility: name === 'Medical Clearance' }))
+  const required = typeList.filter((type) => type.requiredForEligibility).map((type) => type.name)
+  const [form, setForm] = useState({ documentType: DEFAULT_DOCUMENT_TYPES[0], newType: '', title: '', description: '' })
   const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
@@ -228,8 +254,12 @@ function DocumentsPage({ session }) {
   const [busy, setBusy] = useState(false)
   const documents = (data || []).filter((item) => item.documentType !== 'Achievement Evidence')
 
+  const addingType = form.documentType === NEW_TYPE
+  const chosenType = addingType ? form.newType.trim().replace(/\s+/g, ' ') : form.documentType
+
   const upload = async (event) => {
     event.preventDefault()
+    if (addingType && chosenType.length < 2) return setActionError('Please type the name of the new document type.')
     if (!files.length) return setActionError('Please add at least one file.')
     if (files.some(fileProblem)) return setActionError('Some files cannot be uploaded. Please remove the ones marked in red first.')
     setUploading(true)
@@ -237,13 +267,15 @@ function DocumentsPage({ session }) {
     setMessage('')
     try {
       const body = new FormData()
-      body.append('documentType', form.documentType)
+      body.append('documentType', chosenType)
       body.append('title', form.title)
       body.append('description', form.description)
       files.forEach((file) => body.append('files', file))
       await api.post('/api/Documents', body, session.token)
       setFiles([])
-      setForm({ ...form, title: '', description: '' })
+      // A new type is saved with the upload and becomes a normal choice in the list.
+      setForm({ ...form, documentType: chosenType, newType: '', title: '', description: '' })
+      if (addingType) types.reload()
       const count = files.length
       setMessage('Documents uploaded. Your coach and the Sports Director can now see them.')
       toast.success(`${count} file${count === 1 ? '' : 's'} uploaded.`)
@@ -274,20 +306,36 @@ function DocumentsPage({ session }) {
     <>
       <PageHeader title="Documents" subtitle="Keep your clearance and consent forms on file — no approval needed" />
       <div className="stack">
+        {required.length > 0 && (
+          <Card title="Required to play in events" subtitle="Missing one restricts you from event lineups">
+            <ul className="required-docs">
+              {required.map((type) => {
+                const onFile = documents.some((item) => item.documentType === type)
+                return <li key={type} className={onFile ? 'done' : ''}><Icon name={onFile ? 'check' : 'alert'} size={16} /><span>{type}</span><StatusBadge status={onFile ? 'APPROVED' : 'REJECTED'} label={onFile ? 'On file' : 'Missing'} /></li>
+              })}
+            </ul>
+          </Card>
+        )}
         <Card title="Upload documents">
           <form className="form-grid" onSubmit={upload}>
-            <Field label="Document type" required>
+            <Field label="Document type" required hint={addingType ? 'The new type is added to the list for everyone.' : required.includes(form.documentType) ? 'Required to stay eligible for events.' : undefined}>
               <select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value })}>
-                {DOCUMENT_TYPES.map((type) => <option key={type}>{type}</option>)}
+                {typeList.map((type) => <option key={type.name} value={type.name}>{type.name}{type.requiredForEligibility ? ' (required)' : ''}</option>)}
+                <option value={NEW_TYPE}>+ Add a new document type…</option>
               </select>
             </Field>
+            {addingType && (
+              <Field label="New document type" required>
+                <input value={form.newType} onChange={(event) => setForm({ ...form, newType: event.target.value })} maxLength={100} placeholder="e.g. PSA Birth Certificate" autoFocus />
+              </Field>
+            )}
             <Field label="Title" optional><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} maxLength={200} placeholder="e.g. PRISAA 2027 requirements" /></Field>
             <Field label="Description" optional className="span-2"><textarea rows="2" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="What are these documents for?" /></Field>
             <div className="span-2"><FileDropZone label="Files" files={files} onChange={setFiles} /></div>
             <div className="span-2"><button className="btn btn-primary" type="submit" disabled={uploading || !files.length}><Icon name="upload" />{uploading ? 'Uploading…' : files.length ? `Upload ${files.length} file${files.length === 1 ? '' : 's'}` : 'Add files to upload'}</button></div>
           </form>
           <Alert tone="success">{message}</Alert>
-          <Alert>{actionError}</Alert>
+          <Alert>{actionError || types.error}</Alert>
         </Card>
         <Card title="My documents">
           <Alert>{error}</Alert>

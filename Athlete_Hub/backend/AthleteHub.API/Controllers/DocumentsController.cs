@@ -26,15 +26,18 @@ public class DocumentsController : ControllerBase
     private readonly AthleteHubDbContext _context;
     private readonly DocumentStorage _storage;
     private readonly AthleteAccessService _access;
+    private readonly EligibilityService _eligibility;
 
     public DocumentsController(
         AthleteHubDbContext context,
         DocumentStorage storage,
-        AthleteAccessService access)
+        AthleteAccessService access,
+        EligibilityService eligibility)
     {
         _context = context;
         _storage = storage;
         _access = access;
+        _eligibility = eligibility;
     }
 
     /// <summary>
@@ -148,9 +151,14 @@ public class DocumentsController : ControllerBase
         {
             return BadRequest(new { message = "Please choose what kind of document this is." });
         }
-        if (string.Equals(documentType.Trim(), "GRADE_EVALUATION", StringComparison.OrdinalIgnoreCase))
+        documentType = DocumentTypesController.Clean(documentType);
+        if (string.Equals(documentType, "GRADE_EVALUATION", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { message = "Only the Registrar can upload a Grade Evaluation." });
+        }
+        if (documentType.Length > 100)
+        {
+            return BadRequest(new { message = "The document type must be 100 characters or fewer." });
         }
 
         var files = GetUploadedFiles(Request.Form.Files);
@@ -173,9 +181,12 @@ public class DocumentsController : ControllerBase
             return BadRequest(new { message = "This proof belongs to another student-athlete's achievement." });
         }
 
-        var documents = await _storage.CreateDocumentsAsync(files, athlete.AthleteId, documentType.Trim(), title, description, achievementId);
+        // A type typed in while uploading joins the list, so everyone can pick it next time.
+        await DocumentTypesController.EnsureExistsAsync(_context, documentType, athlete.UserId);
+        var documents = await _storage.CreateDocumentsAsync(files, athlete.AthleteId, documentType, title, description, achievementId);
         _context.Documents.AddRange(documents);
         await _context.SaveChangesAsync();
+        await _eligibility.RefreshAsync([athlete.AthleteId]);
 
         return Created($"/api/Documents/{documents[0].DocumentId}", documents.Select(ToResponse));
     }
@@ -210,6 +221,7 @@ public class DocumentsController : ControllerBase
         _context.Documents.Remove(document);
         await _context.SaveChangesAsync();
         _storage.Delete(document.FileUrl);
+        await _eligibility.RefreshAsync([document.AthleteId]);
 
         return NoContent();
     }

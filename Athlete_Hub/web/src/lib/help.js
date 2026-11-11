@@ -93,22 +93,37 @@ export const HELP = {
   coach: {
     dashboard: {
       title: 'Coach dashboard',
-      intro: 'How your teams are doing and what needs your action.',
+      intro: 'Only what needs your action: restricted athletes, low attendance, portfolio reviews, and event lineups.',
       steps: [
-        '“Athletes needing attention” lists inactive or low-attendance athletes. Select “View” to open one.',
+        'Select a card to jump to it. “Restricted” opens My athletes showing only restricted athletes.',
+        '“Athletes needing attention” lists restricted, inactive, or low-attendance athletes with the reason. Select “View” to open one.',
         '“Portfolio verification” lists achievements waiting for you. Select “Review”.',
-        'Use “Request training session” to schedule practice.',
+        '“Event lineups” shows lineups the Director returned for changes, or that are waiting for approval.',
       ],
-      tips: ['Attendance below 60% is flagged automatically.'],
+      tips: ['Attendance below 60% is flagged automatically.', 'You are notified when one of your athletes becomes restricted, and again when they are eligible.'],
     },
     athletes: {
       title: 'My athletes',
-      intro: 'Every student-athlete on the teams you coach.',
+      intro: 'Every student-athlete on the teams you coach, as a table.',
       steps: [
-        'Search by name, student ID, team, or sport.',
-        'Select “View profile” to verify portfolio items and see documents.',
+        'Search by name, student ID, team, or program, or filter by sport, team, eligibility, or account status.',
+        'Select a column heading to sort by it; select it again to reverse the order.',
+        'Use “Restricted only” to list athletes who cannot play in events, with the reason.',
+        'Use “Excel” or “PDF” to download the list exactly as filtered.',
+        'Select a name or “View” to verify portfolio items and see documents.',
       ],
-      tips: ['After each semester’s final grades are released, your athletes evaluate you. The Sports Director sees the results.'],
+      tips: ['“Eligibility rules” explains how Eligible, Restricted, and Under review are decided.', 'After each semester’s final grades are released, your athletes evaluate you. The Sports Director sees the results.'],
+    },
+    lineups: {
+      title: 'Event lineups',
+      intro: 'Choose which of your players go to each upcoming sports event or competition.',
+      steps: [
+        'Find the event and select “Build lineup” for your team.',
+        'Tick the players to send. Only Eligible players who meet the event’s rules can be ticked; the others show why not.',
+        'Optionally add each player’s position and a note, then select “Send to Sports Director”.',
+        'If the Director returns the lineup, open it, select “Edit & resend”, fix it, and send it again.',
+      ],
+      tips: ['The event’s rules (sport, roster size, required documents, age and year-level limits) are shown above each event.', 'Players are notified when the Director approves the lineup.'],
     },
     schedule: {
       title: 'Schedule',
@@ -148,13 +163,14 @@ export const HELP = {
   director: {
     dashboard: {
       title: 'Director dashboard',
-      intro: 'Program-wide overview and the training sessions waiting for your approval.',
+      intro: 'Only the things you act on: training requests, lineups, restricted athletes, low attendance, upcoming events, and unanswered coach evaluations.',
       steps: [
+        'Select a card to jump to it. “Restricted athletes” opens All athletes showing only restricted athletes.',
         'Approve or reject coach training requests in “Training approvals”. A rejection needs a reason.',
-        'Use the “Coach overview” table to compare rosters and attendance.',
-        '“ICTD grades” shows the latest semester synced from the ICTD database. Grades and Accounts are under “More” in the menu and need your page password.',
+        '“Restricted athletes” lists who cannot play in events and why. Select “Rules” to see or change the eligibility rules.',
         'Select “Add sports event” to publish an event or competition to every athlete.',
       ],
+      tips: ['Grades and Accounts are under “More” in the menu and need your page password.'],
     },
     coaches: {
       title: 'Coaches',
@@ -169,12 +185,25 @@ export const HELP = {
     },
     athletes: {
       title: 'All athletes',
-      intro: 'Every registered student-athlete.',
+      intro: 'Every registered student-athlete in one table: name, student ID, sport and team, program and year, eligibility, attendance, and account status.',
       steps: [
-        'Search for an athlete.',
-        'Select “View profile” to see their portfolio and documents. Select “View grades” and enter your page password to see their grades.',
+        'Search, or filter by sport, team, eligibility, or account status. Select a column heading to sort by it.',
+        'Use “Restricted only” to see who cannot play in events and the reason for each.',
+        'Use “Excel” or “PDF” to download the list exactly as filtered and sorted.',
+        'Select a name or “View” for their portfolio and documents. Select “View grades” and enter your page password to see their grades.',
+        'Select “Eligibility rules” to see the rules and choose which documents every athlete must have on file.',
       ],
-      tips: ['Grades come from the ICTD database automatically once each semester’s final grades are released.'],
+      tips: ['Eligibility is checked automatically against the rules whenever grades, documents, or accounts change. Coaches are notified when one of their athletes becomes restricted.'],
+    },
+    lineups: {
+      title: 'Event lineups',
+      intro: 'Set each event’s qualification rules and approve the players coaches send.',
+      steps: [
+        'Select “Set rules” on an event to choose the sport, minimum and maximum players, required documents, and age or year-level limits.',
+        '“Awaiting approval” lists lineups coaches sent. Select “Review” to see every player, their eligibility, and whether they meet the rules.',
+        'Select “Approve lineup”, or “Return to coach” with a note saying what to change.',
+      ],
+      tips: ['Coaches can only pick Eligible players. The rules are checked again when you approve, in case something changed since the coach sent it.', 'The coach is notified of your decision, and the players are notified when a lineup is approved.'],
     },
     grades: {
       title: 'Grades',

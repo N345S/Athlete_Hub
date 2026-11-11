@@ -59,6 +59,8 @@ const STATUS_LABELS = {
   PENDING: 'Pending',
   ELIGIBLE: 'Eligible',
   INELIGIBLE: 'Ineligible',
+  RESTRICTED: 'Restricted',
+  UNDER_REVIEW: 'Under review',
   AT_RISK: 'Monitored',
   ACTIVE: 'Active',
   INACTIVE: 'Inactive',
@@ -91,12 +93,14 @@ export function statusTone(status) {
       return 'success'
     case 'REJECTED':
     case 'INELIGIBLE':
+    case 'RESTRICTED':
     case 'SUSPENDED':
     case 'ABSENT':
     case 'FAILED':
     case 'CANCELLED':
       return 'danger'
     case 'AT_RISK':
+    case 'UNDER_REVIEW':
     case 'LATE':
     case 'INACTIVE':
     case 'INC':

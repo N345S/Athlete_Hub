@@ -296,6 +296,19 @@ namespace AthleteHub.API.Migrations
                         .HasColumnType("varchar(150)")
                         .HasColumnName("course");
 
+                    b.Property<DateTime?>("EligibilityCheckedAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("eligibility_checked_at");
+
+                    b.Property<string>("EligibilityReasons")
+                        .HasColumnType("text")
+                        .HasColumnName("eligibility_reasons");
+
+                    b.Property<string>("EligibilityStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("eligibility_status");
+
                     b.Property<string>("ProfilePhotoUrl")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)")
@@ -515,6 +528,44 @@ namespace AthleteHub.API.Migrations
                     b.ToTable("documents", (string)null);
                 });
 
+            modelBuilder.Entity("AthleteHub.API.Models.DocumentType", b =>
+                {
+                    b.Property<int>("DocumentTypeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("document_type_id");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<bool>("RequiredForEligibility")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("required_for_eligibility");
+
+                    b.HasKey("DocumentTypeId")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex(new[] { "Name" }, "document_type_name")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "CreatedBy" }, "fk_document_type_creator");
+
+                    b.ToTable("document_types", (string)null);
+                });
+
             modelBuilder.Entity("AthleteHub.API.Models.EligibilityRecord", b =>
                 {
                     b.Property<int>("EligibilityId")
@@ -592,6 +643,94 @@ namespace AthleteHub.API.Migrations
                     b.HasIndex(new[] { "UploadedBy" }, "fk_eligibility_uploaded_by");
 
                     b.ToTable("eligibility_records", (string)null);
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.EventLineup", b =>
+                {
+                    b.Property<int>("LineupId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("lineup_id");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("ReviewNote")
+                        .HasColumnType("text")
+                        .HasColumnName("review_note");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<int?>("ReviewedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<int>("ScheduleId")
+                        .HasColumnType("int")
+                        .HasColumnName("schedule_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("enum('PENDING','APPROVED','REJECTED')")
+                        .HasColumnName("status")
+                        .HasDefaultValueSql("'PENDING'");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<int?>("SubmittedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<int>("TeamId")
+                        .HasColumnType("int")
+                        .HasColumnName("team_id");
+
+                    b.HasKey("LineupId")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex(new[] { "ScheduleId", "TeamId" }, "event_lineup_unique")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "TeamId" }, "fk_event_lineup_team");
+
+                    b.ToTable("event_lineups", (string)null);
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.EventLineupPlayer", b =>
+                {
+                    b.Property<int>("LineupPlayerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("lineup_player_id");
+
+                    b.Property<int>("AthleteId")
+                        .HasColumnType("int")
+                        .HasColumnName("athlete_id");
+
+                    b.Property<int>("LineupId")
+                        .HasColumnType("int")
+                        .HasColumnName("lineup_id");
+
+                    b.Property<string>("Position")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("position");
+
+                    b.HasKey("LineupPlayerId")
+                        .HasName("PRIMARY");
+
+                    b.HasIndex(new[] { "LineupId", "AthleteId" }, "event_lineup_player_unique")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "AthleteId" }, "fk_event_lineup_player_athlete");
+
+                    b.ToTable("event_lineup_players", (string)null);
                 });
 
             modelBuilder.Entity("AthleteHub.API.Models.Notification", b =>
@@ -902,6 +1041,30 @@ namespace AthleteHub.API.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("end_datetime");
 
+                    b.Property<int?>("LineupMaxAge")
+                        .HasColumnType("int")
+                        .HasColumnName("lineup_max_age");
+
+                    b.Property<int?>("LineupMaxPlayers")
+                        .HasColumnType("int")
+                        .HasColumnName("lineup_max_players");
+
+                    b.Property<int?>("LineupMaxYearLevel")
+                        .HasColumnType("int")
+                        .HasColumnName("lineup_max_year_level");
+
+                    b.Property<int?>("LineupMinPlayers")
+                        .HasColumnType("int")
+                        .HasColumnName("lineup_min_players");
+
+                    b.Property<string>("LineupRequiredDocuments")
+                        .HasColumnType("text")
+                        .HasColumnName("lineup_required_documents");
+
+                    b.Property<int?>("LineupSportId")
+                        .HasColumnType("int")
+                        .HasColumnName("lineup_sport_id");
+
                     b.Property<string>("Location")
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)")
@@ -934,6 +1097,8 @@ namespace AthleteHub.API.Migrations
                         .HasName("PRIMARY");
 
                     b.HasIndex(new[] { "CreatedBy" }, "fk_schedule_creator");
+
+                    b.HasIndex(new[] { "LineupSportId" }, "fk_schedule_lineup_sport");
 
                     b.ToTable("schedules", (string)null);
                 });
@@ -1398,6 +1563,17 @@ namespace AthleteHub.API.Migrations
                     b.Navigation("Athlete");
                 });
 
+            modelBuilder.Entity("AthleteHub.API.Models.DocumentType", b =>
+                {
+                    b.HasOne("AthleteHub.API.Models.User", "CreatedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_document_type_creator");
+
+                    b.Navigation("CreatedByNavigation");
+                });
+
             modelBuilder.Entity("AthleteHub.API.Models.EligibilityRecord", b =>
                 {
                     b.HasOne("AthleteHub.API.Models.AthleteProfile", "Athlete")
@@ -1440,6 +1616,48 @@ namespace AthleteHub.API.Migrations
                     b.Navigation("Athlete");
 
                     b.Navigation("Term");
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.EventLineup", b =>
+                {
+                    b.HasOne("AthleteHub.API.Models.Schedule", "Schedule")
+                        .WithMany("Lineups")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_lineup_schedule");
+
+                    b.HasOne("AthleteHub.API.Models.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_lineup_team");
+
+                    b.Navigation("Schedule");
+
+                    b.Navigation("Team");
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.EventLineupPlayer", b =>
+                {
+                    b.HasOne("AthleteHub.API.Models.AthleteProfile", "Athlete")
+                        .WithMany()
+                        .HasForeignKey("AthleteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_lineup_player_athlete");
+
+                    b.HasOne("AthleteHub.API.Models.EventLineup", "Lineup")
+                        .WithMany("Players")
+                        .HasForeignKey("LineupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_lineup_player_lineup");
+
+                    b.Navigation("Athlete");
+
+                    b.Navigation("Lineup");
                 });
 
             modelBuilder.Entity("AthleteHub.API.Models.Notification", b =>
@@ -1551,7 +1769,15 @@ namespace AthleteHub.API.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_schedule_creator");
 
+                    b.HasOne("AthleteHub.API.Models.Sport", "LineupSport")
+                        .WithMany()
+                        .HasForeignKey("LineupSportId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_schedule_lineup_sport");
+
                     b.Navigation("CreatedByNavigation");
+
+                    b.Navigation("LineupSport");
                 });
 
             modelBuilder.Entity("AthleteHub.API.Models.Team", b =>
@@ -1672,6 +1898,11 @@ namespace AthleteHub.API.Migrations
                     b.Navigation("TrainingSessions");
                 });
 
+            modelBuilder.Entity("AthleteHub.API.Models.EventLineup", b =>
+                {
+                    b.Navigation("Players");
+                });
+
             modelBuilder.Entity("AthleteHub.API.Models.PerformanceMetricDefinition", b =>
                 {
                     b.Navigation("PerformanceRecords");
@@ -1680,6 +1911,11 @@ namespace AthleteHub.API.Migrations
             modelBuilder.Entity("AthleteHub.API.Models.Role", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("AthleteHub.API.Models.Schedule", b =>
+                {
+                    b.Navigation("Lineups");
                 });
 
             modelBuilder.Entity("AthleteHub.API.Models.Sport", b =>

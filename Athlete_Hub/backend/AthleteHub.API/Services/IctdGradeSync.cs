@@ -16,13 +16,15 @@ public class IctdGradeSync
     private readonly AthleteHubDbContext _context;
     private readonly IctdUniversityDatabase _ictd;
     private readonly CoachEvaluationService _evaluations;
+    private readonly EligibilityService _eligibility;
     private readonly int _termsToSync;
 
-    public IctdGradeSync(AthleteHubDbContext context, IctdUniversityDatabase ictd, CoachEvaluationService evaluations, IConfiguration configuration)
+    public IctdGradeSync(AthleteHubDbContext context, IctdUniversityDatabase ictd, CoachEvaluationService evaluations, EligibilityService eligibility, IConfiguration configuration)
     {
         _context = context;
         _ictd = ictd;
         _evaluations = evaluations;
+        _eligibility = eligibility;
         // One academic year back by default, so a student-athlete who joins mid-year still gets last year's grades.
         _termsToSync = Math.Max(1, configuration.GetValue("Ictd:TermsToSync", 3));
     }
@@ -36,7 +38,11 @@ public class IctdGradeSync
     {
         var released = _ictd.ReleasedTerms(_termsToSync);
         var athletes = await ActiveAthletesAsync(cancellationToken);
-        if (released.Count == 0 || athletes.Count == 0) return 0;
+        if (released.Count == 0 || athletes.Count == 0)
+        {
+            await _eligibility.RefreshAsync();
+            return 0;
+        }
 
         var pulled = 0;
         AcademicTerm? newest = null;
@@ -50,6 +56,8 @@ public class IctdGradeSync
 
         // Students evaluate their coach for the term that just ended, not for older terms caught up on.
         if (newest != null) await _evaluations.SendForTermAsync(newest);
+        // New grades (and account or document changes since the last check) can change who may play.
+        await _eligibility.RefreshAsync();
         return pulled;
     }
 
@@ -62,7 +70,9 @@ public class IctdGradeSync
         var athletes = await ActiveAthletesAsync(default);
         if (athletes.Count == 0) return (0, 0);
         var (term, graded) = await PullTermAsync(academicYear, semester, athletes, default);
-        return (graded, await _evaluations.SendForTermAsync(term));
+        var sent = await _evaluations.SendForTermAsync(term);
+        await _eligibility.RefreshAsync();
+        return (graded, sent);
     }
 
     /// <summary>
@@ -89,6 +99,7 @@ public class IctdGradeSync
             .Where(item => item.NotificationType == "COACH_EVALUATION" && item.Message.Contains(termText))
             .ExecuteDeleteAsync();
         await transaction.CommitAsync();
+        await _eligibility.RefreshAsync();
         return (grades, evaluations);
     }
 

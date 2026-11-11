@@ -244,6 +244,7 @@ function StudentDashboardScreen({ route, navigation }: { route: any; navigation:
   const portfolio = useApiData<any[]>('/api/Portfolio/me', session.token, []);
   const documents = useApiData<any[]>('/api/Documents/me', session.token, []);
   const updates = useApiData<any[]>('/api/Notifications/me', session.token, []);
+  const eligibility = useApiData('/api/Eligibility/me', session.token);
 
   const nextEvents = [...(schedule.data || [])]
     .filter((item) => item.startDate >= today)
@@ -259,12 +260,18 @@ function StudentDashboardScreen({ route, navigation }: { route: any; navigation:
     <DashboardShell
       title="Student-Athlete Dashboard"
       subtitle={me ? [me.course, me.yearLevel && `Year ${me.yearLevel}`, me.studentNumber].filter(Boolean).join(' · ') : undefined}
-      sources={[profile, schedule, evaluations, portfolio, documents, updates]}
+      sources={[profile, schedule, evaluations, portfolio, documents, updates, eligibility]}
       navigation={navigation}
     >
       <Text style={styles.greeting}>Welcome, {me?.firstName || session.firstName || 'Athlete'}!</Text>
 
       <View style={styles.cardGrid}>
+        <StatCard
+          style={eligibility.data?.status === 'RESTRICTED' ? styles.statCardPrimary : styles.statCardGreen}
+          label="Eligibility to play"
+          value={eligibility.data ? readable(eligibility.data.status) : '—'}
+          meta={eligibility.data?.status === 'ELIGIBLE' ? 'You can be picked for event lineups' : (eligibility.data?.reasons || []).join('; ') || undefined}
+        />
         <StatCard
           style={styles.statCardGreen}
           label="Next training"
@@ -321,6 +328,13 @@ function RoleDashboardScreen({ route, navigation }: { route: any; navigation: an
   return <GeneralDashboard session={session} navigation={navigation} />;
 }
 
+/** "Eligible", or "Restricted: <reasons>" so the reason is visible without opening the website. */
+function eligibilityText(athlete: any): string {
+  if (!athlete.eligibilityStatus) return '';
+  const reasons = (athlete.eligibilityReasons || []).join('; ');
+  return athlete.eligibilityStatus === 'RESTRICTED' && reasons ? `Restricted: ${reasons}` : readable(athlete.eligibilityStatus);
+}
+
 function AthleteRow({ athlete, detail, onRecord, onProgress }: { athlete: any; detail: string; onRecord?: () => void; onProgress: () => void }) {
   return (
     <View style={styles.row}>
@@ -353,8 +367,13 @@ function CoachDashboard({ session, navigation }: { session: Session; navigation:
     <DashboardShell title="Coach Dashboard" subtitle={`Welcome, ${session.firstName || 'Coach'}!`} sources={[dashboard, updates]} navigation={navigation}>
       {data?.message ? <Text style={styles.subtle}>{data.message}</Text> : null}
       <View style={styles.cardGrid}>
-        <StatCard style={styles.statCardBlue} label="Teams" value={data ? data.teamCount : '—'} />
-        <StatCard style={styles.statCardGreen} label="Athletes" value={data ? data.athleteCount : '—'} />
+        <StatCard style={styles.statCardGreen} label="Athletes" value={data ? data.athleteCount : '—'} meta={data ? `Across ${data.teamCount} team${data.teamCount === 1 ? '' : 's'}` : undefined} />
+        <StatCard
+          style={styles.statCardPrimary}
+          label="Restricted"
+          value={data ? teams.flatMap((team: any) => team.athletes).filter((athlete: any) => athlete.eligibilityStatus === 'RESTRICTED').length : '—'}
+          meta="Cannot be put in an event lineup"
+        />
       </View>
 
       <Section title="Upcoming training">
@@ -376,7 +395,7 @@ function CoachDashboard({ session, navigation }: { session: Session; navigation:
               <AthleteRow
                 key={athlete.athleteId}
                 athlete={athlete}
-                detail={[athlete.course, athlete.attendanceRate != null && `Attendance ${athlete.attendanceRate}%`].filter(Boolean).join(' · ') || athlete.studentNumber}
+                detail={[eligibilityText(athlete), athlete.attendanceRate != null && `Attendance ${athlete.attendanceRate}%`].filter(Boolean).join(' · ') || athlete.studentNumber}
                 onRecord={() => navigation.navigate('PerformanceEntry', { session, athlete: toAthlete(athlete, team.teamId) })}
                 onProgress={() => navigation.navigate('PerformanceTrend', { session, athlete: toAthlete(athlete, team.teamId) })}
               />
@@ -404,6 +423,8 @@ function DirectorDashboard({ session, navigation }: { session: Session; navigati
     <DashboardShell title="Director Dashboard" subtitle={`Welcome, ${session.firstName || 'Director'}!`} sources={[dashboard, pending]} navigation={navigation}>
       <View style={styles.cardGrid}>
         <StatCard style={styles.statCardBlue} label="Student-athletes" value={dashboard.data ? dashboard.data.athleteCount : '—'} />
+        <StatCard style={styles.statCardSlate} label="Restricted" value={dashboard.data ? athletes.filter((athlete) => athlete.eligibilityStatus === 'RESTRICTED').length : '—'} meta="Cannot play in events" />
+        <StatCard style={styles.statCardGreen} label="Lineups to approve" value={dashboard.data ? dashboard.data.pendingLineups ?? 0 : '—'} meta="Approve them on the Athlete-Hub website" />
         <StatCard style={styles.statCardPrimary} label="Training to approve" value={pending.data?.length ?? '—'} meta="Approve them on the Athlete-Hub website" />
       </View>
 
@@ -414,7 +435,7 @@ function DirectorDashboard({ session, navigation }: { session: Session; navigati
             <AthleteRow
               key={athlete.athleteId}
               athlete={athlete}
-              detail={[athlete.teams?.map((team: any) => team.teamName).join(', ') || 'No team', athlete.attendanceRate != null && `Attendance ${athlete.attendanceRate}%`].filter(Boolean).join(' · ')}
+              detail={[athlete.teams?.map((team: any) => team.teamName).join(', ') || 'No team', eligibilityText(athlete), athlete.attendanceRate != null && `Attendance ${athlete.attendanceRate}%`].filter(Boolean).join(' · ')}
               onProgress={() => navigation.navigate('PerformanceTrend', { session, athlete: { athleteId: athlete.athleteId, firstName: athlete.firstName, lastName: athlete.lastName } })}
             />
           ))}

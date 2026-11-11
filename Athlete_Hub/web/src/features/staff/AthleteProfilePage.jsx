@@ -6,6 +6,7 @@ import FileLink from '../../components/FileLink.jsx'
 import { useToast } from '../../components/toast.jsx'
 import { Alert, Avatar, Card, EmptyState, Field, Loading, Modal, ReasonDialog, StatusBadge } from '../../components/ui.jsx'
 import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
+import { EligibilityBadge } from '../../components/Eligibility.jsx'
 import { LockedGradesCard } from '../director/GradesPage.jsx'
 
 const SEMESTERS = ['1st Semester', '2nd Semester', 'Summer']
@@ -187,6 +188,26 @@ function PortfolioReview({ athlete, session, canReview }) {
   )
 }
 
+/** Eligible / Restricted / Under review with every reason, checked fresh against the written rules. */
+function EligibilityCard({ athlete, session }) {
+  const { data, loading, error } = useApiData(`/api/Eligibility/athlete/${athlete.athleteId}/status`, session.token)
+  const status = data?.status || athlete.eligibilityStatus
+  const reasons = data?.reasons || athlete.eligibilityReasons || []
+  return (
+    <Card title="Eligibility to play" subtitle={data?.term ? `Based on ${data.term}${data.units != null ? ` · ${data.units} units` : ''}` : 'Checked against the eligibility rules'}
+      actions={<EligibilityBadge status={status} reasons={reasons} />}>
+      <Alert>{error}</Alert>
+      {loading && !data && !status ? <Loading /> : status === 'ELIGIBLE'
+        ? <p className="muted">Meets every rule and can be included in event lineups.</p>
+        : (
+          <ul className={`reason-list ${status === 'RESTRICTED' ? 'reason-list-danger' : ''}`}>
+            {reasons.map((reason) => <li key={reason}>{reason}</li>)}
+          </ul>
+        )}
+    </Card>
+  )
+}
+
 /** Read-only list of the athlete's clearance documents for staff monitoring. */
 function DocumentsCard({ athlete, session }) {
   const { data, loading, error } = useApiData(`/api/Documents/athlete/${athlete.athleteId}`, session.token, { initialData: [] })
@@ -238,6 +259,7 @@ export default function AthleteProfilePage({ athlete, session, canEdit, canReque
         <div><dt>Attendance</dt><dd>{athlete.attendanceRate == null ? '—' : `${athlete.attendanceRate}%`}</dd></div>
       </dl>
       <div className="stack">
+        <EligibilityCard athlete={athlete} session={session} />
         {REGISTRAR_ELIGIBILITY && <AcademicEligibilityCard athlete={athlete} session={session} canRequest={canRequestEvaluation} />}
         {onViewGrades && <LockedGradesCard onView={() => onViewGrades(athlete)} />}
         <PortfolioReview athlete={athlete} session={session} canReview={canEdit} />

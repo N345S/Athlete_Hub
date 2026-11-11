@@ -31,5 +31,27 @@ public partial class Schedule
 
     public DateTime? RescheduledAt { get; set; }
 
+    // Qualification rules a team's lineup must meet for this event (all optional). See Controllers/LineupsController.cs.
+
+    /// <summary>Only teams of this sport may submit a lineup; null means any sport.</summary>
+    public int? LineupSportId { get; set; }
+
+    public int? LineupMinPlayers { get; set; }
+
+    public int? LineupMaxPlayers { get; set; }
+
+    /// <summary>JSON array of document types every player must have on file, e.g. ["Medical Clearance"].</summary>
+    public string? LineupRequiredDocuments { get; set; }
+
+    /// <summary>League age limit: a player may be at most this old on the event date.</summary>
+    public int? LineupMaxAge { get; set; }
+
+    /// <summary>League limit on year level, e.g. 4 for players up to 4th year.</summary>
+    public int? LineupMaxYearLevel { get; set; }
+
+    public virtual Sport? LineupSport { get; set; }
+
+    public virtual ICollection<EventLineup> Lineups { get; set; } = new List<EventLineup>();
+
     public virtual User? CreatedByNavigation { get; set; }
 }
