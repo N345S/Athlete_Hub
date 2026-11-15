@@ -16,17 +16,20 @@ public class CoachDashboardController : ControllerBase
     private readonly AthleteHubDbContext _context;
     private readonly AppClock _clock;
     private readonly EligibilityService _eligibilityService;
+    private readonly TrainingRequestExpiry _expiry;
 
-    public CoachDashboardController(AthleteHubDbContext context, AppClock clock, EligibilityService eligibilityService)
+    public CoachDashboardController(AthleteHubDbContext context, AppClock clock, EligibilityService eligibilityService, TrainingRequestExpiry expiry)
     {
         _context = context;
         _clock = clock;
         _eligibilityService = eligibilityService;
+        _expiry = expiry;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetDashboard()
     {
+        await _expiry.ExpireStaleAsync();
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
         var coach = await _context.CoachProfiles.FirstOrDefaultAsync(item => item.UserId == userId);
         if (coach == null)

@@ -57,6 +57,7 @@ const STATUS_LABELS = {
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   PENDING: 'Pending',
+  EXPIRED: 'Expired',
   ELIGIBLE: 'Eligible',
   INELIGIBLE: 'Ineligible',
   RESTRICTED: 'Restricted',

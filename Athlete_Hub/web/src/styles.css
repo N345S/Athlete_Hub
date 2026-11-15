@@ -1833,3 +1833,10 @@ button.day-number:hover { background: var(--brand-100); color: var(--brand-700);
   .status-legend > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .lineup-count { width: 100%; text-align: center; }
 }
+
+/* "See more" / "See all" under a list: a quiet full-width row so it reads as part of the card. */
+.see-more { display: flex; width: 100%; justify-content: center; gap: 6px; margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px dashed var(--line); border-radius: 0; }
+.see-more .muted { font-weight: 400; }
+/* Dashboard section label above the action cards. */
+.section-label { margin: var(--space-2) 0 var(--space-3); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-500); }
+.dashboard-stack { display: grid; gap: var(--space-5); }

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { initials, statusLabel, statusTone } from '../lib/format.js'
+import { PREVIEW_ROWS } from '../lib/lists.jsx'
 import Icon from './icons.jsx'
 
 export function PageHeader({ title, subtitle, actions }) {
@@ -313,5 +314,16 @@ export function HelpDialog({ help, onClose }) {
         </div>
       )}
     </Modal>
+  )
+}
+
+
+/** Footer link under a dashboard preview that opens the full list, e.g. "See all 12 in Schedule". */
+export function SeeAllLink({ total, shown = PREVIEW_ROWS, label, onClick }) {
+  if (total <= shown) return null
+  return (
+    <button className="btn btn-ghost btn-sm see-more" type="button" onClick={onClick}>
+      {label || `See all ${total}`} <span aria-hidden="true">→</span>
+    </button>
   )
 }

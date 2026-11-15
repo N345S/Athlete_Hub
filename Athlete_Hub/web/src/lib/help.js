@@ -16,14 +16,14 @@ export const HELP = {
   athlete: {
     dashboard: {
       title: 'Your dashboard',
-      intro: 'A summary of your schedule, achievements, documents, and coach evaluations.',
+      intro: 'What matters most first: whether you can play, your next training, and missing documents.',
       steps: [
         'When final grades are released, an “Evaluate your coach” card appears at the top. Select “Evaluate” to fill in the form.',
         'Check the “Getting started” list and finish any step that is not ticked.',
         'Select a summary card (for example “Next training”) to open that page.',
-        'Review “Coming up” for your next approved training and events.',
+        '“Coming up” and “Latest updates” show the next three. Select “See the full schedule” or “See all notifications” for the rest.',
       ],
-      tips: ['Your grades come from the ICTD university database. You do not need to upload them yourself.'],
+      tips: ['Your past coach evaluations are under Profile.', 'Your grades come from the ICTD university database. You do not need to upload them yourself.'],
     },
     schedule: {
       title: 'Schedule',
@@ -93,9 +93,10 @@ export const HELP = {
   coach: {
     dashboard: {
       title: 'Coach dashboard',
-      intro: 'Only what needs your action: restricted athletes, low attendance, portfolio reviews, and event lineups.',
+      intro: 'Only what needs your action: restricted athletes, portfolio reviews, event lineups, and training requests. Each list shows the top three.',
       steps: [
         'Select a card to jump to it. “Restricted” opens My athletes showing only restricted athletes.',
+        'Each list shows three items. Select “See all” under it for the rest, e.g. “See all in Schedule” for training requests.',
         '“Athletes needing attention” lists restricted, inactive, or low-attendance athletes with the reason. Select “View” to open one.',
         '“Portfolio verification” lists achievements waiting for you. Select “Review”.',
         '“Event lineups” shows lineups the Director returned for changes, or that are waiting for approval.',
@@ -130,7 +131,8 @@ export const HELP = {
       intro: 'Your training sessions plus the Director’s sports events and competitions.',
       steps: [
         'Select “Request training session”, choose a team, then tap each date on the calendar (or use “Repeat weekly” for a regular schedule) and submit.',
-        'New sessions show “Awaiting approval” until the Sports Director approves them.',
+        'New sessions show “Awaiting approval” until the Sports Director approves them. “Training approvals” at the top lists them; select “See more” for older ones.',
+        'A request the Director has not approved by its date expires. You are notified, and you can request a new date.',
         'To move a session, open it in the calendar, select “Reschedule”, choose the new date and time, and give the reason.',
         'To cancel an approved session, open it and select “Cancel session”, then give the reason. A pending request can be withdrawn instead.',
       ],
@@ -163,14 +165,14 @@ export const HELP = {
   director: {
     dashboard: {
       title: 'Director dashboard',
-      intro: 'Only the things you act on: training requests, lineups, restricted athletes, low attendance, upcoming events, and unanswered coach evaluations.',
+      intro: 'Only the things you act on, most urgent at the top: training requests, lineups, restricted athletes, and low attendance.',
       steps: [
         'Select a card to jump to it. “Restricted athletes” opens All athletes showing only restricted athletes.',
-        'Approve or reject coach training requests in “Training approvals”. A rejection needs a reason.',
-        '“Restricted athletes” lists who cannot play in events and why. Select “Rules” to see or change the eligibility rules.',
+        '“Training approvals” shows the three soonest requests. Approve or reject them there, or select “See all in Schedule” for the rest. A rejection needs a reason.',
+        'Every list shows three items; select “See all” under a list to open the full page.',
         'Select “Add sports event” to publish an event or competition to every athlete.',
       ],
-      tips: ['Grades and Accounts are under “More” in the menu and need your page password.'],
+      tips: ['A training request you have not decided on by its date expires and leaves the list; the coach is notified.', 'Grades and Accounts are under “More” in the menu and need your page password.'],
     },
     coaches: {
       title: 'Coaches',
@@ -220,12 +222,12 @@ export const HELP = {
       title: 'Schedule',
       intro: 'Publish events and approve coaches’ training sessions.',
       steps: [
-        'Review pending training sessions under “Training approvals”, below the calendar.',
+        'Review pending training sessions under “Training approvals”, above the calendar. Five show at a time; select “See more” for the next five.',
         'Select “Add sports event” then tap each date on the calendar, or use “Repeat weekly” for a recurring event.',
         'To move an approved training session, sports event, or competition, open it in the calendar and select “Reschedule”. Give the reason.',
         'To cancel one, open it and select “Cancel session” or “Cancel event”, then give the reason.',
       ],
-      tips: ['Everyone affected is notified with your reason. Cancelled items stay on the calendar, crossed out.'],
+      tips: ['Everyone affected is notified with your reason. Cancelled items stay on the calendar, crossed out.', 'Requests whose date passes before you decide expire automatically and the coach is notified.'],
     },
     performance: {
       title: 'Performance',
@@ -309,7 +311,7 @@ export const HELP = {
     dashboard: {
       title: 'Parent dashboard',
       intro: 'Your children’s approved training and attendance.',
-      steps: ['Each child has a card with their next session and recent attendance.', 'Select “Next training” to open the full calendar.'],
+      steps: ['Each child has a card with their next session and the last two sessions’ attendance.', 'Select “See all sessions and attendance” or “Next training” for the full calendar and history.'],
       tips: ['Attendance counts Present and Late as attended.', 'If no child is shown, ask the athletics office to link your account.'],
     },
     training: {

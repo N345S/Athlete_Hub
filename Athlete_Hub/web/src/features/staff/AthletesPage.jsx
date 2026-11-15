@@ -65,7 +65,7 @@ export default function AthletesPage({ athletes, title, subtitle, onViewProfile,
   const [team, setTeam] = useState('')
   const [eligibility, setEligibility] = useState(initialFilter?.eligibility || '')
   const [account, setAccount] = useState('')
-  const [sort, setSort] = useState({ key: 'eligibility', direction: 'asc' })
+  const [sort, setSort] = useState(initialFilter?.sort || { key: 'eligibility', direction: 'asc' })
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
   const [page, setPage] = useState(1)
   const [exporting, setExporting] = useState('')

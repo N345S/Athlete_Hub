@@ -18,12 +18,14 @@ public class SchedulesController : ControllerBase
     private readonly AthleteHubDbContext _context;
     private readonly NotificationService _notifications;
     private readonly AppClock _clock;
+    private readonly TrainingRequestExpiry _expiry;
 
-    public SchedulesController(AthleteHubDbContext context, NotificationService notifications, AppClock clock)
+    public SchedulesController(AthleteHubDbContext context, NotificationService notifications, AppClock clock, TrainingRequestExpiry expiry)
     {
         _context = context;
         _notifications = notifications;
         _clock = clock;
+        _expiry = expiry;
     }
 
     [HttpGet]
@@ -126,6 +128,7 @@ public class SchedulesController : ControllerBase
     [Authorize(Roles = "COACH,DIRECTOR")]
     public async Task<IActionResult> GetStaffCalendar(DateTime? from = null, DateTime? to = null)
     {
+        await _expiry.ExpireStaleAsync();
         var trainingQuery = _context.TrainingSessions
             .Include(session => session.Team)
             .AsQueryable();

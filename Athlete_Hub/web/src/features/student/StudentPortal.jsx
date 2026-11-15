@@ -8,8 +8,9 @@ import FileLink from '../../components/FileLink.jsx'
 import NotificationsPage, { NotificationList } from '../../components/NotificationsPage.jsx'
 import Icon from '../../components/icons.jsx'
 import { useToast } from '../../components/toast.jsx'
-import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, PageHeader, StatCard, StatusBadge } from '../../components/ui.jsx'
+import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Field, Loading, PageHeader, SeeAllLink, StatCard, StatusBadge } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
+import { PREVIEW_ROWS } from '../../lib/lists.jsx'
 import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
 import { EligibilityBadge } from '../../components/Eligibility.jsx'
 import { goToRoute, NOTIFICATION_ROUTES, openNotification } from '../../lib/notifications.js'
@@ -23,7 +24,6 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
 // Shown until the list loads from the server, and if it cannot be loaded.
 const DEFAULT_DOCUMENT_TYPES = ['Medical Clearance', 'Consent Form', 'Enrollment Form', 'Athletic Eligibility Form', 'Other']
 const NEW_TYPE = '__new__'
-const termLabel = (term) => `${term.semester} ${term.academicYear}`
 const ACHIEVEMENT_CATEGORIES = ['Competition', 'Award', 'Certification', 'Leadership', 'Academic', 'Other']
 
 function fileProblem(file) {
@@ -120,8 +120,6 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
   const eligibility = useApiData('/api/Eligibility/me', session.token)
   const rules = useApiData('/api/Eligibility/rules', session.token)
   const requiredDocuments = rules.data?.requiredDocuments || []
-  const allEvaluations = coachEvaluations.data?.evaluations || []
-  const pendingEvaluations = allEvaluations.filter((item) => item.status === 'PENDING')
   const nextEvents = [...(upcoming.data || [])]
     .filter((item) => item.startDate >= localDateISO())
     .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`))
@@ -146,11 +144,8 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
       {REGISTRAR_ELIGIBILITY && latestDecision?.academicStatus === 'INELIGIBLE' && (
         <Alert tone="warning">The Registrar marked you ineligible for {termOf(latestDecision)}. Please coordinate with your coach.</Alert>
       )}
-      {myStatus === 'RESTRICTED' && (
-        <Alert tone="warning">You are restricted from events: {myReasons.join('; ')}. <button className="link-button" type="button" onClick={() => goToRoute({ view: 'dashboard', target: 'my-eligibility' }, onNavigate)}>See what to do</button></Alert>
-      )}
       <GettingStarted session={session} profile={profile} documents={documents.data || []} portfolio={portfolio.data || []} requiredDocuments={requiredDocuments} onNavigate={onNavigate} />
-      <div className="stat-grid stat-grid-actions">
+      <div className="stat-grid stat-grid-actions stat-grid-3">
         <StatCard
           icon={myStatus === 'RESTRICTED' ? 'alert' : 'check'}
           label="Eligibility to play"
@@ -161,16 +156,6 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
         />
         <StatCard icon="calendar" label="Next training" value={nextTraining ? formatDate(nextTraining.startDate) : '—'} hint={nextTraining ? `${nextTraining.title} · ${formatTimeRange(nextTraining.startTime)}` : 'No upcoming session'} tone="brand" onClick={() => onNavigate('schedule')} />
         <StatCard icon="file" label="Required documents" value={missingDocuments.length ? `${missingDocuments.length} missing` : 'Complete'} hint={missingDocuments.length ? missingDocuments.join(', ') : `${clearanceDocuments.length} document${clearanceDocuments.length === 1 ? '' : 's'} on file`} tone={missingDocuments.length ? 'danger' : 'info'} onClick={() => onNavigate('documents')} />
-        <StatCard
-          icon="chat"
-          label="Coach evaluation"
-          value={pendingEvaluations.length ? `${pendingEvaluations.length} to do` : 'All done'}
-          hint={pendingEvaluations.length ? `For ${termLabel(pendingEvaluations[0].term)}` : allEvaluations.length ? 'See your past evaluations' : 'Sent when final grades are released'}
-          tone={pendingEvaluations.length ? 'warning' : 'success'}
-          onClick={pendingEvaluations.length
-            ? () => goToRoute({ view: 'dashboard', target: 'coach-evaluation' }, onNavigate)
-            : allEvaluations.length ? () => onNavigate('evaluations') : undefined}
-        />
       </div>
       <div className="dashboard-grid">
         <Card className="scroll-target" id="my-eligibility" title="My eligibility" subtitle={eligibility.data?.term ? `Based on your ${eligibility.data.term} grades${eligibility.data.units != null ? ` · ${eligibility.data.units} units` : ''}` : 'Checked against the eligibility rules'}
@@ -190,10 +175,10 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
             )}
           </>}
         </Card>
-        <Card title="Coming up" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('schedule')}>Full schedule →</button>}>
+        <Card title="Coming up" subtitle="Your next training and events">
           {upcoming.loading && !upcoming.data?.length ? <Loading /> : nextEvents.length ? (
             <ul className="row-list">
-              {nextEvents.slice(0, 5).map((item) => (
+              {nextEvents.slice(0, PREVIEW_ROWS).map((item) => (
                 <li className="row" key={item.id}>
                   <div className="row-main">
                     <strong>{item.title}</strong>
@@ -210,11 +195,13 @@ function StudentDashboard({ session, profile, coachEvaluations, onNavigate, onNo
               ))}
             </ul>
           ) : <EmptyState icon="calendar" title="Nothing scheduled" message="Approved training and events will appear here." />}
+          <SeeAllLink total={nextEvents.length} label="See the full schedule" onClick={() => onNavigate('schedule')} />
         </Card>
-        <Card title="Latest updates" subtitle="Portfolio reviews, new events, and approved training" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('notifications')}>All notifications →</button>}>
+        <Card title="Latest updates" subtitle="Portfolio reviews, new events, and approved training">
           {(updates.data || []).length ? (
-            <NotificationList items={updates.data.slice(0, 5)} routes={NOTIFICATION_ROUTES.athlete} compact onOpen={openUpdate} />
+            <NotificationList items={updates.data.slice(0, PREVIEW_ROWS)} routes={NOTIFICATION_ROUTES.athlete} compact onOpen={openUpdate} />
           ) : <EmptyState icon="bell" title="No updates yet" message="You'll be notified when your portfolio is reviewed or new events are scheduled." />}
+          <SeeAllLink total={(updates.data || []).length} label="See all notifications" onClick={() => onNavigate('notifications')} />
         </Card>
         {REGISTRAR_ELIGIBILITY && <Card title="Academic eligibility" subtitle="Registrar decisions from your official Grade Evaluation">
           <Alert>{evaluations.error}</Alert>
@@ -485,7 +472,7 @@ function PortfolioPage({ session, profile }) {
   )
 }
 
-function ProfilePage({ session, profile, onSaved }) {
+function ProfilePage({ session, profile, onSaved, onNavigate }) {
   const toast = useToast()
   const [form, setForm] = useState(() => ({
     course: profile?.course || '',
@@ -550,6 +537,8 @@ function ProfilePage({ session, profile, onSaved }) {
           <Alert tone="success">{message}</Alert>
           <Alert>{error}</Alert>
         </Card>
+        <Card title="Coach evaluations" subtitle="The evaluations of your coaches you answered after each semester"
+          actions={<button className="btn btn-secondary btn-sm" type="button" onClick={() => onNavigate('evaluations')}>Open</button>} />
       </div>
     </>
   )
@@ -573,7 +562,7 @@ export default function StudentPortal({ session, onLogout }) {
     documents: <DocumentsPage session={session} />,
     portfolio: <PortfolioPage session={session} profile={profile.data} />,
     evaluations: <CoachEvaluationsPage session={session} evaluations={evaluations} onChanged={evaluations.reload} onBack={() => setView('dashboard')} />,
-    profile: <ProfilePage key={profile.data ? 'loaded' : 'loading'} session={session} profile={profile.data} onSaved={profile.reload} />,
+    profile: <ProfilePage key={profile.data ? 'loaded' : 'loading'} session={session} profile={profile.data} onSaved={profile.reload} onNavigate={setView} />,
     notifications: <NotificationsPage session={session} routes={NOTIFICATION_ROUTES.athlete} onNavigate={setView} onChanged={refreshUnread} />,
   }
 

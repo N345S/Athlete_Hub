@@ -7,11 +7,12 @@ import CalendarView, { ScheduleStatusBadge } from '../../components/CalendarView
 import NotificationsPage from '../../components/NotificationsPage.jsx'
 import { ErrorBoundary } from '../../components/ErrorBoundary.jsx'
 import { useToast } from '../../components/toast.jsx'
-import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Loading, Modal, PageHeader, ProgressBar, SearchInput, StatCard, StatusBadge, Tabs } from '../../components/ui.jsx'
+import { Alert, Avatar, Card, ConfirmDialog, EmptyState, Loading, Modal, PageHeader, ProgressBar, SearchInput, SeeAllLink, StatCard, StatusBadge, Tabs } from '../../components/ui.jsx'
 import { EligibilityBadge, EligibilityRulesDialog } from '../../components/Eligibility.jsx'
 import Icon from '../../components/icons.jsx'
 import { HELP } from '../../lib/help.js'
-import { NOTIFICATION_ROUTES } from '../../lib/notifications.js'
+import { PREVIEW_ROWS } from '../../lib/lists.jsx'
+import { goToRoute, NOTIFICATION_ROUTES } from '../../lib/notifications.js'
 import { REGISTRAR_ELIGIBILITY } from '../../lib/features.js'
 import AccountsPage from '../accounts/AccountsPage.jsx'
 import AthletesPage from '../staff/AthletesPage.jsx'
@@ -484,6 +485,7 @@ export default function DirectorPortal({ session, onLogout }) {
       <PageHeader title="Schedule" subtitle="Publish sports events and competitions, and approve coaches' training sessions" actions={addEventButton} />
       <Alert>{schedule.error || pending.error}</Alert>
       <div className="stack">
+        <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
         <Card>
           <CalendarView
             events={schedule.data || []}
@@ -491,7 +493,6 @@ export default function DirectorPortal({ session, onLogout }) {
             renderActions={(event, close) => <ChangeButtons actions={changeActions(event, close)} />}
           />
         </Card>
-        <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
       </div>
     </>
   } else if (view === 'performance') {
@@ -502,94 +503,104 @@ export default function DirectorPortal({ session, onLogout }) {
     content = <>
       <PageHeader title="Director dashboard" subtitle={longToday()} actions={addEventButton} />
       <Alert>{dashboard.error || coaches.error || pending.error}</Alert>
-      {dashboard.loading && !dashboard.data ? <Loading label="Loading dashboard…" /> : <>
-        {/* Only what needs the Director's action; everything else is one tap away in the menu. */}
-        <div className="stat-grid stat-grid-actions stat-grid-3">
-          <StatCard icon="clock" label="Training requests" value={pending.data?.length || 0} hint="Waiting for your approval" tone="warning" onClick={() => document.getElementById('training-approvals')?.scrollIntoView({ behavior: 'smooth' })} />
-          <StatCard icon="team" label="Lineups to approve" value={pendingLineups} hint="Players coaches sent for events" tone="info" onClick={() => navigate('lineups')} />
-          <StatCard icon="alert" label="Restricted athletes" value={restricted.length} hint="Cannot play in events" tone="danger" onClick={() => showAthletes({ eligibility: 'RESTRICTED' })} />
-          <StatCard icon="clipboard" label="Below 60% attendance" value={lowAttendance.length} hint="Active athletes" tone="warning" onClick={() => document.getElementById('director-attendance')?.scrollIntoView({ behavior: 'smooth' })} />
-          <StatCard icon="calendar" label="Upcoming events" value={upcomingEvents.length} hint={upcomingEvents[0] ? `Next: ${formatDate(upcomingEvents[0].startDate)}` : 'None scheduled'} tone="brand" onClick={() => navigate('schedule')} />
-          <StatCard icon="chat" label="Coach evaluations" value={coachEvaluations ? coachEvaluations.pending : '—'} hint={coachEvaluations ? `Not yet answered · ${coachEvaluations.term}` : 'Sent when grades are released'} tone="info" onClick={() => navigate('coaches')} />
-        </div>
+      {dashboard.loading && !dashboard.data ? <Loading label="Loading dashboard…" /> : (
+        <div className="dashboard-stack">
+          {/* Only what needs the Director's action, most urgent first. Each list shows a few and links to the rest. */}
+          <section aria-label="Needs your action">
+            <h2 className="section-label">Needs your action</h2>
+            <div className="stat-grid stat-grid-actions">
+              <StatCard icon="clock" label="Training requests" value={pending.data?.length || 0} hint="Waiting for your approval" tone="warning" onClick={() => document.getElementById('dashboard-approvals')?.scrollIntoView({ behavior: 'smooth' })} />
+              <StatCard icon="team" label="Lineups to approve" value={pendingLineups} hint="Players coaches sent for events" tone="info" onClick={() => navigate('lineups')} />
+              <StatCard icon="alert" label="Restricted athletes" value={restricted.length} hint="Cannot play in events" tone="danger" onClick={() => showAthletes({ eligibility: 'RESTRICTED' })} />
+              <StatCard icon="clipboard" label="Below 60% attendance" value={lowAttendance.length} hint="Active athletes" tone="warning" onClick={() => document.getElementById('director-attendance')?.scrollIntoView({ behavior: 'smooth' })} />
+            </div>
+          </section>
 
-        <TrainingApprovals sessions={pending.data || []} session={session} onReviewed={onReviewed} />
+          <TrainingApprovals
+            id="dashboard-approvals"
+            preview={PREVIEW_ROWS}
+            sessions={pending.data || []}
+            session={session}
+            onReviewed={onReviewed}
+            onSeeAll={() => goToRoute({ view: 'schedule', target: 'training-approvals' }, navigate)}
+          />
 
-        <div className="dashboard-grid">
-          <Card className="scroll-target" id="director-restricted" title="Restricted athletes" subtitle="Cannot be included in event lineups until fixed"
-            actions={<>
-              <button className="btn btn-ghost btn-sm" type="button" onClick={() => setShowRules(true)}>Rules</button>
-              <button className="btn btn-ghost btn-sm" type="button" onClick={() => showAthletes({ eligibility: 'RESTRICTED' })}>See all →</button>
-            </>}>
-            {restricted.length ? (
-              <ul className="row-list">
-                {restricted.slice(0, 6).map((athlete) => (
-                  <li className="row" key={athlete.athleteId}>
-                    <div className="row-main">
-                      <strong>{fullName(athlete)}</strong>
-                      <span>{athlete.teamName || 'No active team'}</span>
-                      <small className="text-danger">{(athlete.eligibilityReasons || []).join(' · ')}</small>
-                    </div>
-                    <button className="btn btn-ghost btn-sm" type="button" onClick={() => openAthlete(athlete.athleteId)}>View</button>
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState icon="check" title="No restricted athletes" message="Every student-athlete meets the eligibility rules." />}
-            {restricted.length > 6 && <p className="card-footnote">{restricted.length - 6} more in All athletes.</p>}
-          </Card>
-
-          <Card className="scroll-target" id="director-attendance" title="Below 60% attendance" subtitle="Lowest first">
-            {lowAttendance.length ? (
-              <ul className="row-list">
-                {lowAttendance.slice(0, 6).map((athlete) => (
-                  <li className="row" key={athlete.athleteId}>
-                    <div className="row-main"><strong>{fullName(athlete)}</strong><span>{athlete.teamName || 'No active team'}</span></div>
-                    <div className="row-actions">
-                      <ProgressBar value={athlete.attendanceRate} />
+          <div className="dashboard-grid">
+            <Card className="scroll-target" id="director-restricted" title="Restricted athletes" subtitle="Cannot be put in an event lineup until fixed">
+              {restricted.length ? (
+                <ul className="row-list">
+                  {restricted.slice(0, PREVIEW_ROWS).map((athlete) => (
+                    <li className="row" key={athlete.athleteId}>
+                      <div className="row-main">
+                        <strong>{fullName(athlete)}</strong>
+                        <span>{athlete.teamName || 'No active team'}</span>
+                        <small className="text-danger">{(athlete.eligibilityReasons || [])[0]}{athlete.eligibilityReasons?.length > 1 ? ` +${athlete.eligibilityReasons.length - 1} more` : ''}</small>
+                      </div>
                       <button className="btn btn-ghost btn-sm" type="button" onClick={() => openAthlete(athlete.athleteId)}>View</button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState icon="check" title="Attendance is on track" message="No active athlete is below 60%." />}
-          </Card>
+                    </li>
+                  ))}
+                </ul>
+              ) : <EmptyState icon="check" title="No restricted athletes" message="Every student-athlete meets the eligibility rules." />}
+              <SeeAllLink total={restricted.length} label={`See all ${restricted.length} in All athletes`} onClick={() => showAthletes({ eligibility: 'RESTRICTED' })} />
+            </Card>
 
-          <Card title="Upcoming events" subtitle="Sports events and competitions you published" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('lineups')}>Lineups →</button>}>
-            {upcomingEvents.length ? (
-              <ul className="row-list">
-                {upcomingEvents.slice(0, 5).map((item) => (
-                  <li className="row" key={item.id}>
-                    <div className="row-main"><strong>{item.title}</strong><span>{formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</span><small>{item.location || 'Location TBA'}</small></div>
-                    <div className="row-actions">
-                      <span className={`badge type-${item.type.toLowerCase()}`}>{eventTypeLabel(item.type)}</span>
-                      <ScheduleStatusBadge item={item} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState icon="calendar" title="No upcoming events" action={addEventButton} />}
-          </Card>
+            <Card className="scroll-target" id="director-attendance" title="Below 60% attendance" subtitle="Lowest first">
+              {lowAttendance.length ? (
+                <ul className="row-list">
+                  {lowAttendance.slice(0, PREVIEW_ROWS).map((athlete) => (
+                    <li className="row" key={athlete.athleteId}>
+                      <div className="row-main"><strong>{fullName(athlete)}</strong><span>{athlete.teamName || 'No active team'}</span></div>
+                      <div className="row-actions">
+                        <ProgressBar value={athlete.attendanceRate} />
+                        <button className="btn btn-ghost btn-sm" type="button" onClick={() => openAthlete(athlete.athleteId)}>View</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : <EmptyState icon="check" title="Attendance is on track" message="No active athlete is below 60%." />}
+              <SeeAllLink total={lowAttendance.length} label={`See all ${lowAttendance.length} in All athletes`} onClick={() => showAthletes({ sort: { key: 'attendance', direction: 'asc' } })} />
+            </Card>
 
-          <Card title="Coaches needing follow-up" subtitle="Coaches with training requests waiting or restricted athletes" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => navigate('coaches')}>All coaches →</button>}>
-            {coachesToFollow.length ? (
-              <ul className="row-list">
-                {coachesToFollow.map((summary) => (
-                  <li className="row" key={summary.coach.coachId}>
-                    <div className="row-main">
-                      <button className="link-button" type="button" onClick={() => { setProfileCoach(summary.coach, 'coaches'); setView('coaches') }}>{fullName(summary.coach)}</button>
-                      <span>{summary.coach.teams?.map((team) => team.teamName).join(', ') || 'No team'} · {summary.athletes} athlete{summary.athletes === 1 ? '' : 's'}</span>
-                    </div>
-                    <div className="row-actions">
-                      {summary.pending > 0 && <span className="badge badge-warning">{summary.pending} request{summary.pending === 1 ? '' : 's'}</span>}
-                      {summary.restricted > 0 && <span className="badge badge-danger">{summary.restricted} restricted</span>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState icon="check" title="Nothing to follow up" message="No coach has requests waiting or restricted athletes." />}
-          </Card>
+            <Card title="Upcoming events" subtitle={upcomingEvents[0] ? `Next: ${formatDate(upcomingEvents[0].startDate)}` : 'Sports events and competitions you published'}>
+              {upcomingEvents.length ? (
+                <ul className="row-list">
+                  {upcomingEvents.slice(0, PREVIEW_ROWS).map((item) => (
+                    <li className="row" key={item.id}>
+                      <div className="row-main"><strong>{item.title}</strong><span>{formatDate(item.startDate)} · {formatTimeRange(item.startTime, item.endTime)}</span><small>{item.location || 'Location TBA'}</small></div>
+                      <div className="row-actions">
+                        <span className={`badge type-${item.type.toLowerCase()}`}>{eventTypeLabel(item.type)}</span>
+                        <ScheduleStatusBadge item={item} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : <EmptyState icon="calendar" title="No upcoming events" action={addEventButton} />}
+              <SeeAllLink total={upcomingEvents.length} label={`See all ${upcomingEvents.length} in Schedule`} onClick={() => navigate('schedule')} />
+            </Card>
+
+            <Card title="Coaches needing follow-up"
+              subtitle={coachEvaluations?.pending ? `${coachEvaluations.pending} coach evaluation${coachEvaluations.pending === 1 ? '' : 's'} not yet answered · ${coachEvaluations.term}` : 'Coaches with training requests waiting or restricted athletes'}>
+              {coachesToFollow.length ? (
+                <ul className="row-list">
+                  {coachesToFollow.slice(0, PREVIEW_ROWS).map((summary) => (
+                    <li className="row" key={summary.coach.coachId}>
+                      <div className="row-main">
+                        <button className="link-button" type="button" onClick={() => { setProfileCoach(summary.coach, 'coaches'); setView('coaches') }}>{fullName(summary.coach)}</button>
+                        <span>{summary.coach.teams?.map((team) => team.teamName).join(', ') || 'No team'}</span>
+                      </div>
+                      <div className="row-actions">
+                        {summary.pending > 0 && <span className="badge badge-warning">{summary.pending} request{summary.pending === 1 ? '' : 's'}</span>}
+                        {summary.restricted > 0 && <span className="badge badge-danger">{summary.restricted} restricted</span>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : <EmptyState icon="check" title="Nothing to follow up" message="No coach has requests waiting or restricted athletes." />}
+              <SeeAllLink total={coachesToFollow.length} label={`See all ${coachesToFollow.length} in Coaches`} onClick={() => navigate('coaches')} />
+            </Card>
+          </div>
         </div>
-      </>}
+      )}
     </>
   }
   const pageTitle = profileAthlete && view === 'athletes' ? 'Athlete profile' : profileCoach && view === 'coaches' ? 'Coach profile' : TITLES[view]
@@ -600,11 +611,11 @@ export default function DirectorPortal({ session, onLogout }) {
       roleLabel="Sports Director"
       session={session}
       nav={[
-        { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard', badge: pending.data?.length || 0 },
+        { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: 'dashboard' },
         { key: 'coaches', label: 'Coaches', icon: 'coach' },
         { key: 'athletes', label: 'All athletes', shortLabel: 'Athletes', icon: 'users' },
         { key: 'lineups', label: 'Event lineups', shortLabel: 'Lineups', icon: 'team', badge: pendingLineups },
-        { key: 'schedule', label: 'Schedule', icon: 'calendar' },
+        { key: 'schedule', label: 'Schedule', icon: 'calendar', badge: pending.data?.length || 0 },
         { key: 'performance', label: 'Performance', shortLabel: 'Stats', icon: 'chart' },
         { key: 'confidential', label: 'More', icon: 'more', children: [
           { key: 'grades', label: 'Grades', icon: 'file', locked: !access.unlocked },

@@ -21,16 +21,18 @@ public class TrainingController : ControllerBase
     private readonly AthleteHubDbContext _context;
     private readonly NotificationService _notifications;
     private readonly AppClock _clock;
+    private readonly TrainingRequestExpiry _expiry;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrainingController"/> class.
     /// </summary>
     /// <param name="context">The database context.</param>
-    public TrainingController(AthleteHubDbContext context, NotificationService notifications, AppClock clock)
+    public TrainingController(AthleteHubDbContext context, NotificationService notifications, AppClock clock, TrainingRequestExpiry expiry)
     {
         _context = context;
         _notifications = notifications;
         _clock = clock;
+        _expiry = expiry;
     }
 
     /// <summary>
@@ -45,6 +47,7 @@ public class TrainingController : ControllerBase
     [HttpGet("sessions")]
     public async Task<IActionResult> GetSessions(DateTime? from = null, DateTime? to = null)
     {
+        await _expiry.ExpireStaleAsync();
         var query = _context.TrainingSessions.Include(session => session.Team).AsQueryable();
         if (User.IsInRole("COACH"))
         {
@@ -88,7 +91,8 @@ public class TrainingController : ControllerBase
     }
 
     /// <summary>
-    /// Gets pending training sessions awaiting director approval (director only).
+    /// Gets pending training sessions awaiting director approval (director only). Requests whose date has
+    /// passed are expired first, so only ones that can still be approved are listed.
     /// </summary>
     /// <returns>List of pending training sessions with team, sport, and coach details.</returns>
     /// <response code="200">Returns pending training sessions.</response>
@@ -98,6 +102,7 @@ public class TrainingController : ControllerBase
     [Authorize(Roles = "DIRECTOR")]
     public async Task<IActionResult> GetPendingSessions()
     {
+        await _expiry.ExpireStaleAsync();
         var sessions = await _context.TrainingSessions
             .Include(session => session.Team).ThenInclude(team => team.Sport)
             .Include(session => session.Coach).ThenInclude(coach => coach.User)
@@ -142,11 +147,13 @@ public class TrainingController : ControllerBase
     {
         var normalizedStatus = status.Trim().ToUpperInvariant();
         if (normalizedStatus is not ("APPROVED" or "REJECTED")) return BadRequest(new { message = "Please choose Approve or Reject." });
+        await _expiry.ExpireStaleAsync();
 
         var session = await _context.TrainingSessions
             .Include(item => item.Team).ThenInclude(team => team.TeamMembers).ThenInclude(member => member.Athlete)
             .FirstOrDefaultAsync(item => item.TrainingSessionId == sessionId);
         if (session == null) return NotFound(new { message = "We could not find this training session. It may have been deleted." });
+        if (session.ApprovalStatus == TrainingRequestExpiry.Expired) return Conflict(new { message = "This request expired because its date has passed. The coach can request a new date." });
         if (session.ApprovalStatus != "PENDING") return Conflict(new { message = "This training was already approved or rejected." });
 
         var reviewerId = GetUserId();
@@ -220,6 +227,9 @@ public class TrainingController : ControllerBase
             .OrderBy(date => date)
             .ToList();
         if (dates.Count == 0) return BadRequest(new { message = "Please choose at least one date." });
+        // A request for a time that has already passed could never be approved; it would only expire.
+        if (dates.Any(date => _expiry.HasPassed(date, request.StartTime)))
+            return BadRequest(new { message = "One of the dates has already passed. Choose today (with a later start time) or a future date." });
 
         var sessions = dates.Select(date => new TrainingSession
         {
@@ -404,6 +414,7 @@ public class TrainingController : ControllerBase
         if (session == null) return (null, NotFound(new { message = "We could not find this training session. It may have been deleted." }));
         if (session.ApprovalStatus == "CANCELLED") return (null, Conflict(new { message = "This session is already cancelled." }));
         if (session.ApprovalStatus == "REJECTED") return (null, BadRequest(new { message = "This request was rejected. Submit a new request instead." }));
+        if (session.ApprovalStatus == TrainingRequestExpiry.Expired) return (null, BadRequest(new { message = "This request expired because its date passed before it was approved. Submit a new request instead." }));
         if (User.IsInRole("COACH"))
         {
             var coach = await GetCoachAsync();

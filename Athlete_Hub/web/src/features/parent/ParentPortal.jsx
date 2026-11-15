@@ -4,8 +4,9 @@ import { useApiData, useHashView, useUnreadNotifications } from '../../lib/hooks
 import AppLayout from '../../components/AppLayout.jsx'
 import CalendarView from '../../components/CalendarView.jsx'
 import NotificationsPage, { NotificationList } from '../../components/NotificationsPage.jsx'
-import { Alert, Avatar, Card, EmptyState, Loading, PageHeader, ProgressBar, StatCard, StatusBadge, Tabs } from '../../components/ui.jsx'
+import { Alert, Avatar, Card, EmptyState, Loading, PageHeader, ProgressBar, SeeAllLink, StatCard, StatusBadge, Tabs } from '../../components/ui.jsx'
 import { HELP } from '../../lib/help.js'
+import { PREVIEW_ROWS, useSeeMore } from '../../lib/lists.jsx'
 import { NOTIFICATION_ROUTES, openNotification } from '../../lib/notifications.js'
 
 const VIEWS = ['dashboard', 'training', 'notifications']
@@ -52,8 +53,7 @@ function Dashboard({ session, athletes, sessions, loading, onNavigate, onNotific
           <EmptyState icon="users" title="No athletes linked yet" message="Ask the athletics office to link your account to your child's athlete account." />
         </Card>
       ) : <>
-        <div className="stat-grid">
-          <StatCard icon="users" label={athletes.length === 1 ? 'My child' : 'My children'} value={athletes.length} hint={athletes.map((child) => child.firstName).join(', ')} />
+        <div className="stat-grid stat-grid-actions stat-grid-3">
           <StatCard icon="calendar" label="Next training" value={upcoming[0] ? formatDate(upcoming[0].startDate) : '—'} hint={upcoming[0] ? `${upcoming[0].title} · ${formatTimeRange(upcoming[0].startTime)}` : 'No upcoming session'} tone="brand" onClick={() => onNavigate('training')} />
           <StatCard icon="clock" label="Sessions this month" value={thisMonth} hint="Approved training" tone="info" onClick={() => onNavigate('training')} />
           <StatCard icon="check" label="Attendance" value={familyRate == null ? '—' : `${familyRate}%`} hint="Present or late, of recorded sessions" tone="success" />
@@ -63,8 +63,9 @@ function Dashboard({ session, athletes, sessions, loading, onNavigate, onNotific
           {athletes.map((child) => {
             const rows = childRows(sessions, child.athleteId)
             const next = rows.filter((row) => row.session.startDate >= today).sort((a, b) => byStart(a.session, b.session))[0]
-            const recent = rows.filter((row) => row.session.startDate <= today).sort((a, b) => byStart(b.session, a.session)).slice(0, 4)
-            const rate = attendanceRate(rows.filter((row) => row.session.startDate <= today))
+            const past = rows.filter((row) => row.session.startDate <= today).sort((a, b) => byStart(b.session, a.session))
+            const recent = past.slice(0, PREVIEW_ROWS - 1)
+            const rate = attendanceRate(past)
             return (
               <Card key={child.athleteId}
                 title={fullName(child)}
@@ -93,14 +94,16 @@ function Dashboard({ session, athletes, sessions, loading, onNavigate, onNotific
                     </li>
                   ))}
                 </ul>
+                <SeeAllLink total={past.length} shown={recent.length} label="See all sessions and attendance" onClick={() => onNavigate('training')} />
               </Card>
             )
           })}
 
-          <Card title="Latest updates" subtitle="New, cancelled, and attended training sessions" actions={<button className="btn btn-ghost btn-sm" type="button" onClick={() => onNavigate('notifications')}>All notifications →</button>}>
+          <Card title="Latest updates" subtitle="New, cancelled, and attended training sessions">
             {(updates.data || []).length ? (
-              <NotificationList items={updates.data.slice(0, 5)} routes={NOTIFICATION_ROUTES.parent} compact onOpen={openUpdate} />
+              <NotificationList items={updates.data.slice(0, PREVIEW_ROWS)} routes={NOTIFICATION_ROUTES.parent} compact onOpen={openUpdate} />
             ) : <EmptyState icon="bell" title="No updates yet" message="You'll be notified when training is scheduled, cancelled, or attendance is recorded." />}
+            <SeeAllLink total={(updates.data || []).length} label="See all notifications" onClick={() => onNavigate('notifications')} />
           </Card>
         </div>
       </>}
@@ -114,6 +117,7 @@ function TrainingPage({ athletes, sessions, loading, error }) {
   const visible = selectedId ? sessions.filter((item) => item.children.some((child) => child.athleteId === selectedId)) : sessions
   const today = localDateISO()
   const history = childRows(visible.filter((item) => item.startDate <= today), selectedId).sort((a, b) => byStart(b.session, a.session))
+  const [historyShown, historyMore] = useSeeMore(history, 10)
 
   return (
     <>
@@ -143,12 +147,12 @@ function TrainingPage({ athletes, sessions, loading, error }) {
         />
       </Card>
       <Card title="Attendance history" subtitle="Past sessions, most recent first">
-        {history.length ? (
+        {history.length ? (<>
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Date</th><th>Session</th><th>Team</th><th>Athlete</th><th>Attendance</th></tr></thead>
               <tbody>
-                {history.map(({ session: item, child }) => (
+                {historyShown.map(({ session: item, child }) => (
                   <tr key={`${item.id}-${child.athleteId}`}>
                     <td>{formatDate(item.startDate)}<br /><small className="muted">{formatTimeRange(item.startTime, item.endTime)}</small></td>
                     <td><strong>{item.title}</strong>{child.remarks && <><br /><small className="muted">{child.remarks}</small></>}</td>
@@ -160,7 +164,8 @@ function TrainingPage({ athletes, sessions, loading, error }) {
               </tbody>
             </table>
           </div>
-        ) : <EmptyState icon="clipboard" title="No past sessions yet" message="Attendance appears here once your child's coach records it." />}
+            {historyMore}
+        </>) : <EmptyState icon="clipboard" title="No past sessions yet" message="Attendance appears here once your child's coach records it." />}
       </Card>
     </>
   )

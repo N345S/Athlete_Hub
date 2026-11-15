@@ -1,10 +1,7 @@
-import { useState } from 'react'
 import { eventTypeLabel, formatDate, formatTimeRange } from '../../lib/format.js'
 import { ScheduleStatusBadge } from '../../components/CalendarView.jsx'
 import { Card, Loading } from '../../components/ui.jsx'
-
-// The list shows the next few items; the rest are one click away.
-const PREVIEW_COUNT = 5
+import { useSeeMore } from '../../lib/lists.jsx'
 
 /** Buttons for the actions on one schedule item ({ label, onSelect, tone? }); `small` for list rows. */
 export function ChangeButtons({ actions, small }) {
@@ -18,14 +15,14 @@ export function ChangeButtons({ actions, small }) {
 /**
  * Schedule items the coach or Director can change, each with its own buttons, so the actions are in plain sight
  * rather than only inside the calendar's event dialog. `actionsFor(event)` returns the actions for an item, or none
- * when it cannot be changed; only items with actions are listed. `countLabel` names the count badge.
+ * when it cannot be changed; only items with actions are listed. `countLabel` names the count badge. Five are
+ * shown at first and "See more" opens five more at a time.
  */
 export default function ManageScheduleCard({ title, subtitle, events, loading, actionsFor, empty, countLabel = 'upcoming', id }) {
-  const [showAll, setShowAll] = useState(false)
   const rows = events
     .filter((item) => actionsFor(item).length)
     .sort((a, b) => `${a.startDate}${a.startTime || ''}`.localeCompare(`${b.startDate}${b.startTime || ''}`))
-  const shown = showAll ? rows : rows.slice(0, PREVIEW_COUNT)
+  const [shown, seeMore] = useSeeMore(rows, 5)
 
   return (
     <Card className={id ? 'scroll-target' : ''} id={id} title={title} subtitle={subtitle} actions={rows.length > 0 && <span className="badge badge-neutral">{rows.length} {countLabel}</span>}>
@@ -45,11 +42,7 @@ export default function ManageScheduleCard({ title, subtitle, events, loading, a
             </li>
           ))}
         </ul>
-        {rows.length > PREVIEW_COUNT && (
-          <button className="btn btn-ghost btn-sm manage-schedule-more" type="button" onClick={() => setShowAll((value) => !value)}>
-            {showAll ? 'Show fewer' : `Show all ${rows.length}`}
-          </button>
-        )}
+        {seeMore}
       </> : empty}
     </Card>
   )
