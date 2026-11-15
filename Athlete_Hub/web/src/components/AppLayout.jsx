@@ -182,7 +182,7 @@ export default function AppLayout({ portal, roleLabel, session, nav, activeKey, 
 
       <div className="app-main">
         <header className={`topbar ${scrolled ? 'scrolled' : ''}`}>
-          <button className="icon-button menu-toggle" type="button" onClick={() => setMenuOpen(true)} aria-label="Open menu" aria-expanded={menuOpen}>☰</button>
+          <button className="icon-button menu-toggle" type="button" onClick={() => setMenuOpen(true)} aria-label="Open menu" aria-expanded={menuOpen}><Icon name="menu" size={20} /></button>
           <div className="appbar-brand" aria-hidden="true">
             <img src="/athletehub-logo.png" alt="" />
             <span className="appbar-brand-name">Athlete-Hub</span>

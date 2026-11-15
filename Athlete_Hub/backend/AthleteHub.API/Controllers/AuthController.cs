@@ -364,6 +364,31 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// A forgotten confidential-page password: the sign-in password proves it is really the director, so the old page
+    /// password is not needed. Replaces it (or sets one up if there was none) and opens the pages.
+    /// </summary>
+    /// <response code="400">Wrong sign-in password, or the new password is too short or the same as the sign-in one.</response>
+    [Authorize(Roles = "DIRECTOR")]
+    [HttpPost("confidential-password/reset")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> ResetConfidentialPassword(SetUpConfidentialPasswordRequest request)
+    {
+        var user = await CurrentUserAsync();
+        if (user?.Role == null) return Unauthorized(new { message = "You have been signed out. Please sign in again." });
+        if (!BCrypt.Net.BCrypt.Verify(request.SignInPassword ?? string.Empty, user.PasswordHash))
+        {
+            return BadRequest(new { message = "Your sign-in password is wrong. Please try again." });
+        }
+
+        var problem = CheckNewConfidentialPassword(request.NewPassword, user);
+        if (problem != null) return BadRequest(new { message = problem });
+
+        user.ConfidentialPasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _context.SaveChangesAsync();
+        return Ok(UnlockedResponse(user));
+    }
+
+    /// <summary>
     /// Checks the confidential-page password and returns a short-lived token that the Grades and Accounts
     /// endpoints accept (see <see cref="SensitiveAccess"/>).
     /// </summary>

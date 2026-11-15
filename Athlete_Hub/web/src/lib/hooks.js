@@ -113,7 +113,7 @@ export function useUnreadNotifications(token) {
 
 /**
  * Grades and accounts are confidential: the director opens them with a separate page password, made the first time
- * (`setUp`) and changeable later (`change`). Each returns a short-lived token (about 15 minutes) that only those
+ * (`setUp`), changeable later (`change`), and reset with the sign-in password when forgotten (`reset`). Each returns a short-lived token (about 15 minutes) that only those
  * pages use. It is kept in memory, never in storage, so it is gone after a reload, and `lock` throws it away as soon
  * as the director leaves those pages. `onUnlocked` runs in the same render as the unlock, so callers can open the
  * page with it.
@@ -133,6 +133,9 @@ export function useSensitiveAccess(session) {
     open((token) => api.post('/api/Auth/confidential-password', { signInPassword, newPassword }, token), onUnlocked), [open])
   const change = useCallback((currentPassword, newPassword, onUnlocked) =>
     open((token) => api.put('/api/Auth/confidential-password', { currentPassword, newPassword }, token), onUnlocked), [open])
+  // Forgotten page password: the sign-in password stands in for the old one.
+  const reset = useCallback((signInPassword, newPassword, onUnlocked) =>
+    open((token) => api.post('/api/Auth/confidential-password/reset', { signInPassword, newPassword }, token), onUnlocked), [open])
 
   const lock = useCallback(() => setAccess(null), [])
 
@@ -143,5 +146,5 @@ export function useSensitiveAccess(session) {
     return () => clearTimeout(timer)
   }, [access, lock])
 
-  return { unlocked: Boolean(access), token: access?.token ?? null, unlock, setUp, change, lock }
+  return { unlocked: Boolean(access), token: access?.token ?? null, unlock, setUp, change, reset, lock }
 }

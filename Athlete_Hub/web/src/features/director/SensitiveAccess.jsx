@@ -6,11 +6,22 @@ const TEXT = {
   unlock: { title: 'Enter your page password', button: 'Open', busy: 'Checking…' },
   setUp: { title: 'Make a password for these pages', button: 'Save and open', busy: 'Saving…' },
   change: { title: 'Change your page password', button: 'Save and open', busy: 'Saving…' },
+  forgot: { title: 'Reset your page password', button: 'Reset and open', busy: 'Saving…' },
 }
+
+const SUBTITLE = {
+  unlock: 'Enter your password to continue.',
+  setUp: 'Make a password that only you know. You will use it every time you open Grades or Accounts.',
+  change: 'Enter your current page password, then choose a new one.',
+  forgot: 'No need for the old page password — confirm it is you with your sign-in password, then choose a new one.',
+}
+
+// Modes that prove identity with the sign-in password rather than the page password.
+const USES_SIGN_IN = new Set(['setUp', 'forgot'])
 
 /**
  * Asks for the director's page password before Grades or Accounts open. The first time, there is none yet, so the
- * dialog sets one up instead; it can also be changed from here. `access` is useSensitiveAccess(); `onOpened` runs in
+ * dialog sets one up instead; it can also be changed from here, or reset with the sign-in password when forgotten. `access` is useSensitiveAccess(); `onOpened` runs in
  * the same render as the unlock.
  */
 export function UnlockDialog({ session, access, section, onOpened, onCancel }) {
@@ -39,6 +50,7 @@ export function UnlockDialog({ session, access, section, onOpened, onCancel }) {
     try {
       if (mode === 'unlock') await access.unlock(form.password, onOpened)
       else if (mode === 'setUp') await access.setUp(form.current, form.next, onOpened)
+      else if (mode === 'forgot') await access.reset(form.current, form.next, onOpened)
       else await access.change(form.current, form.next, onOpened)
     } catch (err) {
       // Someone else's dialog may have set the password up meanwhile, or it was reset: show the right form.
@@ -56,7 +68,7 @@ export function UnlockDialog({ session, access, section, onOpened, onCancel }) {
   return (
     <Modal
       title={text.title}
-      subtitle={`${section} are private. ${mode === 'setUp' ? 'Make a password that only you know. You will use it every time you open Grades or Accounts.' : 'Enter your password to continue.'}`}
+      subtitle={`${section} are private. ${SUBTITLE[mode]}`}
       onClose={onCancel}
       size="sm"
       closeOnBackdrop={false}
@@ -73,7 +85,11 @@ export function UnlockDialog({ session, access, section, onOpened, onCancel }) {
             </Field>
           )}
           {mode !== 'unlock' && <>
-            <Field label={mode === 'setUp' ? 'Your sign-in password' : 'Current page password'} required hint={mode === 'setUp' ? 'To check that it is really you.' : undefined}>
+            <Field
+              label={USES_SIGN_IN.has(mode) ? 'Your sign-in password' : 'Current page password'}
+              required
+              hint={USES_SIGN_IN.has(mode) ? 'The password you use to sign in to Athlete-Hub — it proves it is really you.' : undefined}
+            >
               <input type="password" value={form.current} onChange={update('current')} autoComplete="current-password" required />
             </Field>
             <Field label="New page password" required hint="At least 8 characters, and different from your sign-in password.">
@@ -86,11 +102,17 @@ export function UnlockDialog({ session, access, section, onOpened, onCancel }) {
           <Alert>{error || status.error}</Alert>
           {mode === 'unlock' && (
             <p className="field-hint">
+              <button className="link-button" type="button" onClick={() => switchTo('forgot')}>Forgot page password?</button>
+              {' · '}
               <button className="link-button" type="button" onClick={() => switchTo('change')}>Change page password</button>
-              {' · '}Forgot it? Ask the person who runs Athlete-Hub to reset it.
             </p>
           )}
-          {mode === 'change' && <p className="field-hint"><button className="link-button" type="button" onClick={() => switchTo('unlock')}>Back</button></p>}
+          {(mode === 'change' || mode === 'forgot') && (
+            <p className="field-hint">
+              {mode === 'change' && <><button className="link-button" type="button" onClick={() => switchTo('forgot')}>Don't know the current one?</button>{' · '}</>}
+              <button className="link-button" type="button" onClick={() => switchTo('unlock')}>Back</button>
+            </p>
+          )}
           <p className="field-hint">The pages lock again when you leave them or after 15 minutes.</p>
         </form>
       )}
