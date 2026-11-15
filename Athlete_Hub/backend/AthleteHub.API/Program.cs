@@ -316,7 +316,11 @@ if (args.Contains("--reset-demo-data") || args.Contains("--wipe-all-data"))
     using var seedScope = app.Services.CreateScope();
     var seeder = NewDemoSeeder(seedScope.ServiceProvider);
     await seeder.WipeAsync();
-    if (args.Contains("--reset-demo-data")) await seeder.SeedAsync();
+    if (args.Contains("--reset-demo-data"))
+    {
+        await seeder.SeedAsync();
+        Console.WriteLine(await NewLineupShowcase(seedScope.ServiceProvider).AddAsync());
+    }
     return;
 }
 
@@ -349,6 +353,24 @@ if (builder.Configuration.GetValue<bool>("App:SeedTestDataIfEmpty"))
     if (await seeder.IsEmptyAsync()) await seeder.SeedAsync();
 }
 
+// Event lineup demo data (Data/LineupShowcase.cs), added on top of the demo data without wiping anything.
+// `dotnet run -- --add-lineup-demo` adds it and exits; a demo database with no lineups at all gets it on start-up.
+var addLineupDemo = args.Contains("--add-lineup-demo");
+using (var lineupScope = app.Services.CreateScope())
+{
+    var showcase = NewLineupShowcase(lineupScope.ServiceProvider);
+    if (addLineupDemo || (await NewDemoSeeder(lineupScope.ServiceProvider).HasDemoDataAsync() && await showcase.HasNoLineupsAsync()))
+    {
+        var result = await showcase.AddAsync();
+        app.Logger.LogInformation("{Result}", result);
+        if (addLineupDemo)
+        {
+            Console.WriteLine(result);
+            return;
+        }
+    }
+}
+
 // The ICTD grades office sign-in (Services/IctdOffice.cs). After the seeding above, which only fills a database
 // with no accounts at all.
 using (var officeScope = app.Services.CreateScope())
@@ -367,3 +389,9 @@ DemoDataSeeder NewDemoSeeder(IServiceProvider services) => new(
     services.GetRequiredService<AppClock>(),
     app.Environment,
     services.GetRequiredService<IctdGradeSync>());
+
+LineupShowcase NewLineupShowcase(IServiceProvider services) => new(
+    services.GetRequiredService<AthleteHubDbContext>(),
+    services.GetRequiredService<EligibilityService>(),
+    services.GetRequiredService<NotificationService>(),
+    services.GetRequiredService<AppClock>());
